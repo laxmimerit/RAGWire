@@ -325,6 +325,38 @@ metadata = extractor.extract(document_text)
 print(metadata)
 ```
 
+#### `MetadataExtractor.from_yaml(llm, yaml_path)`
+
+Create an extractor configured from a YAML file. The YAML defines fields (auto-builds the prompt) or a full `prompt_template`.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `llm` | `Any` | Yes | LangChain chat model instance |
+| `yaml_path` | `str` | Yes | Path to metadata YAML config file |
+
+**Returns:** `MetadataExtractor`
+
+```python
+extractor = MetadataExtractor.from_yaml(llm, "metadata.yaml")
+metadata = extractor.extract(document_text)
+```
+
+See [Custom Metadata via YAML](metadata.md#custom-metadata-via-yaml-file) for the YAML format.
+
+---
+
+#### `MetadataExtractor.build_prompt_from_fields(fields)`
+
+Build a JSON extraction prompt from a list of field definitions. Called automatically by `from_yaml()`.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `fields` | `list[dict]` | Each dict: `name` (str), `description` (str), `values` (list, optional) |
+
+**Returns:** `str` — prompt template with `{content}` placeholder.
+
+---
+
 #### `extractor.extract_batch(texts)`
 
 | Parameter | Type | Description |

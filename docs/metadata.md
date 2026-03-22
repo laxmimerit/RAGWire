@@ -235,12 +235,76 @@ for doc in results:
 
 ---
 
-## Custom Metadata Extraction Prompt
+## Custom Metadata via YAML File
 
-If your documents are not financial (e.g. legal, medical, technical), you can customize the extraction prompt:
+The easiest way to define custom metadata fields is a YAML config file. RAGWire auto-builds the extraction prompt from your field definitions — no code changes needed.
+
+### 1. Create `metadata.yaml`
+
+```yaml
+fields:
+  - name: organization
+    description: "Organization name in lowercase"
+
+  - name: doc_type
+    description: "Type of document"
+    values: ["contract", "policy", "report", "memo", "other"]
+
+  - name: effective_year
+    description: "Year the document is effective, as integer or null"
+
+  - name: jurisdiction
+    description: "Country or region the document applies to, or null"
+```
+
+### 2. Reference it in `config.yaml`
+
+```yaml
+metadata:
+  config_file: "metadata.yaml"
+```
+
+That's it. RAGWire reads the YAML at startup, builds an extraction prompt from your fields, and uses it for every ingested document. The extracted values are stored in Qdrant and can be filtered at query time exactly like the built-in fields.
+
+### Field definitions
+
+| Key | Required | Description |
+|---|---|---|
+| `name` | Yes | JSON key name stored in metadata |
+| `description` | Yes | Human-readable hint sent to the LLM |
+| `values` | No | Allowed values — shown as `val1\|val2\|val3` in the prompt |
+
+### Optional: fully custom prompt
+
+If you need full control over the prompt, add a `prompt_template` key. When present, `fields` is ignored.
+
+```yaml
+prompt_template: |
+  Extract metadata from the document. Return ONLY valid JSON:
+  {
+    "organization": "organization name in lowercase",
+    "doc_type": "contract|policy|report|memo|other",
+    "effective_year": year as integer or null,
+    "jurisdiction": "country or region or null"
+  }
+
+  Document Text:
+  {content}
+
+  Extracted Metadata (JSON only):
+```
+
+!!! note "The `{content}` placeholder"
+    Your `prompt_template` must include `{content}` — RAGWire substitutes the document text there.
+
+---
+
+## Custom Metadata Extraction in Code
+
+You can also pass a custom prompt directly in Python without a YAML file:
 
 ```python
-from ragwire.metadata.extractor import MetadataExtractor
+from ragwire import MetadataExtractor
 from langchain_openai import ChatOpenAI
 
 custom_prompt = """
@@ -265,5 +329,12 @@ metadata = extractor.extract(document_text)
 print(metadata)
 ```
 
+Or load directly from a YAML file:
+
+```python
+extractor = MetadataExtractor.from_yaml(llm, "metadata.yaml")
+metadata = extractor.extract(document_text)
+```
+
 !!! warning "Custom fields and filtering"
-    If you add custom fields via a custom prompt, they will be stored in Qdrant but are not part of the default `DocumentMetadata` schema. You can still filter by them using the same `filters={}` mechanism.
+    Custom fields are stored in Qdrant but are not part of the default `DocumentMetadata` schema. You can still filter by them using the same `filters={}` mechanism.

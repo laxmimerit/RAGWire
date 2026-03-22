@@ -7,7 +7,8 @@ Extracts structured metadata from documents using a language model.
 
 import json
 import logging
-from typing import Optional, Dict, Any
+from pathlib import Path
+from typing import Optional, Dict, Any, List
 
 logger = logging.getLogger(__name__)
 
@@ -17,8 +18,7 @@ class MetadataExtractor:
     Extract structured metadata from documents using LLM.
 
     This extractor uses a language model to parse document content
-    and extract finance-specific metadata like company name,
-    document type, fiscal period, etc.
+    and extract metadata like company name, document type, fiscal period, etc.
 
     Attributes:
         llm: Language model instance for extraction
@@ -30,7 +30,7 @@ class MetadataExtractor:
         >>> print(metadata['company_name'])
     """
 
-    # Prompt template for metadata extraction
+    # Default prompt template for financial documents
     PROMPT_TEMPLATE = """
 You are a financial document metadata extractor. Extract structured metadata from the following document text.
 
@@ -142,6 +142,79 @@ Extracted Metadata (JSON only):
             return json.loads(json_str)
         else:
             return json.loads(response_text)
+
+    @classmethod
+    def build_prompt_from_fields(cls, fields: List[Dict[str, Any]]) -> str:
+        """
+        Build a JSON extraction prompt from a list of field definitions.
+
+        Each field dict should have:
+          - name: field name (required)
+          - description: human-readable description (required)
+          - values: list of allowed values (optional)
+
+        Args:
+            fields: List of field definition dicts
+
+        Returns:
+            Prompt template string with a {content} placeholder
+        """
+        json_lines = []
+        for field in fields:
+            name = field["name"]
+            desc = field.get("description", name)
+            values = field.get("values")
+            if values:
+                hint = "|".join(str(v) for v in values)
+                json_lines.append(f'  "{name}": "{hint}"  // {desc}')
+            else:
+                json_lines.append(f'  "{name}": ...  // {desc}')
+
+        json_block = "{\n" + ",\n".join(json_lines) + "\n}"
+
+        return (
+            "Extract metadata from the following document. Return ONLY valid JSON:\n"
+            f"{json_block}\n\n"
+            "Document Text:\n{content}\n\n"
+            "Extracted Metadata (JSON only):\n"
+        )
+
+    @classmethod
+    def from_yaml(cls, llm, yaml_path: str) -> "MetadataExtractor":
+        """
+        Create a MetadataExtractor configured from a YAML file.
+
+        The YAML file may contain:
+          - fields: list of {name, description, values} dicts (required if no prompt_template)
+          - prompt_template: full custom prompt (optional — overrides auto-built prompt)
+
+        Args:
+            llm: Language model instance
+            yaml_path: Path to the metadata YAML config file
+
+        Returns:
+            MetadataExtractor instance
+        """
+        import yaml
+
+        path = Path(yaml_path)
+        if not path.exists():
+            raise FileNotFoundError(f"Metadata config file not found: {yaml_path}")
+
+        with open(path, "r", encoding="utf-8") as f:
+            meta_config = yaml.safe_load(f)
+
+        prompt_template = meta_config.get("prompt_template")
+        if not prompt_template:
+            fields = meta_config.get("fields")
+            if not fields:
+                raise ValueError(
+                    f"Metadata config '{yaml_path}' must define either 'fields' or 'prompt_template'"
+                )
+            prompt_template = cls.build_prompt_from_fields(fields)
+            logger.debug(f"Built metadata prompt from {len(fields)} field definitions")
+
+        return cls(llm, prompt_template=prompt_template)
 
     def extract_batch(self, texts: list) -> list:
         """

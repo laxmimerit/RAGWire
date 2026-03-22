@@ -157,7 +157,14 @@ class RAGPipeline:
         else:
             raise ValueError(f"Unsupported LLM provider: {provider}")
 
-        self.metadata_extractor = MetadataExtractor(llm)
+        metadata_config = self.config.get("metadata", {})
+        metadata_yaml = metadata_config.get("config_file") if metadata_config else None
+
+        if metadata_yaml:
+            self.metadata_extractor = MetadataExtractor.from_yaml(llm, metadata_yaml)
+            logger.info(f"Metadata extractor loaded from: {metadata_yaml}")
+        else:
+            self.metadata_extractor = MetadataExtractor(llm)
         logger.info(f"LLM initialized for metadata extraction (provider={provider}, model={model})")
 
     def _initialize_vectorstore(self) -> None:

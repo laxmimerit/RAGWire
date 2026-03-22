@@ -1,0 +1,48 @@
+# RAGWire Custom Metadata Configuration
+# =======================================
+# Use this file when your documents are not financial (e.g. legal, HR, medical, technical).
+# Reference it from config.yaml under:
+#
+#   metadata:
+#     config_file: "metadata.yaml"
+#
+# RAGWire will build a JSON extraction prompt from the fields below
+# and use your configured LLM to extract them from each ingested document.
+#
+# If you provide a custom prompt_template, the fields list is ignored.
+
+# -------------------------------------------------------
+# Field definitions — used to auto-generate the prompt
+# -------------------------------------------------------
+fields:
+  - name: organization
+    description: "Organization name in lowercase"
+
+  - name: doc_type
+    description: "Type of document"
+    values: ["contract", "policy", "report", "memo", "other"]
+
+  - name: effective_year
+    description: "Year the document is effective, as integer or null"
+
+  - name: jurisdiction
+    description: "Country or region the document applies to, or null"
+
+# -------------------------------------------------------
+# Optional: override the auto-generated prompt entirely
+# -------------------------------------------------------
+# If set, this replaces the auto-built prompt. Must include a {content} placeholder.
+#
+# prompt_template: |
+#   Extract metadata from the document. Return ONLY valid JSON:
+#   {
+#     "organization": "organization name in lowercase",
+#     "doc_type": "contract|policy|report|memo|other",
+#     "effective_year": year as integer or null,
+#     "jurisdiction": "country or region or null"
+#   }
+#
+#   Document Text:
+#   {content}
+#
+#   Extracted Metadata (JSON only):

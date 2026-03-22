@@ -53,6 +53,14 @@ llm:
   # model: "gpt-4o-mini"
 
 # =================================================================
+# Metadata Extraction (optional)
+# =================================================================
+# metadata:
+#   config_file: "metadata.yaml"   # Path to a custom metadata YAML (see metadata.example.yaml)
+#                                  # If omitted, the built-in financial fields are used:
+#                                  # company_name, doc_type, fiscal_quarter, fiscal_year
+
+# =================================================================
 # Vector Store (Qdrant)
 # =================================================================
 vectorstore:
