@@ -102,6 +102,7 @@ results = pipeline.retrieve(
 ### Filter by fiscal year
 
 ```python
+# fiscal_year is stored as a list — pass the year as an int
 results = pipeline.retrieve(
     "What is the net income?",
     top_k=5,

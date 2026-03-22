@@ -361,7 +361,7 @@ class RAGPipeline:
         # Build search kwargs without mutating the shared retriever
         search_kwargs = {**self.retriever.search_kwargs, "k": top_k}
         if filters:
-            search_kwargs["filter"] = filters
+            search_kwargs["filter"] = self._build_qdrant_filter(filters)
 
         retriever = self.vectorstore.as_retriever(
             search_type=self.retriever.search_type,
@@ -386,7 +386,32 @@ class RAGPipeline:
         Returns:
             List of retrieved documents
         """
-        return hybrid_search(self.vectorstore, query, k=k, filters=filters)
+        qdrant_filter = self._build_qdrant_filter(filters) if filters else None
+        return hybrid_search(self.vectorstore, query, k=k, filters=qdrant_filter)
+
+    @staticmethod
+    def _build_qdrant_filter(filters: Dict[str, Any]) -> Any:
+        """Convert a plain dict of metadata filters to a Qdrant Filter object."""
+        from qdrant_client.http import models as rest
+
+        conditions = []
+        for key, value in filters.items():
+            if isinstance(value, list):
+                for v in value:
+                    conditions.append(
+                        rest.FieldCondition(
+                            key=f"metadata.{key}",
+                            match=rest.MatchValue(value=v),
+                        )
+                    )
+            else:
+                conditions.append(
+                    rest.FieldCondition(
+                        key=f"metadata.{key}",
+                        match=rest.MatchValue(value=value),
+                    )
+                )
+        return rest.Filter(must=conditions)
 
     def get_stats(self) -> Dict[str, Any]:
         """
