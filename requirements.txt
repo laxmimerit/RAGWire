@@ -1,6 +1,5 @@
 # Requirements file for ragwire package.
 # Install with: pip install -r requirements.txt
-# For development: pip install -r requirements-dev.txt
 
 # Core dependencies
 langchain>=0.1.0
@@ -39,3 +38,9 @@ langchain-google-genai>=0.0.0
 
 # Optional: FastEmbed for sparse vectors
 fastembed>=0.2.0
+
+# Optional: Groq LLM
+langchain-groq>=0.0.0
+
+# Optional: Anthropic LLM
+langchain-anthropic>=0.0.0
