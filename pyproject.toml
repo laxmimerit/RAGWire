@@ -122,8 +122,8 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://kgptalkie.com"
-Documentation = "https://github.com/laxmimerit/ragwire#readme"
+Homepage = "https://laxmimerit.github.io/RAGWire/"
+Documentation = "https://laxmimerit.github.io/RAGWire/"
 Repository = "https://github.com/laxmimerit/ragwire.git"
 Issues = "https://github.com/laxmimerit/ragwire/issues"
 YouTube = "https://youtube.com/kgptalkie"
