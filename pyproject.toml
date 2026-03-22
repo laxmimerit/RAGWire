@@ -7,7 +7,7 @@ name = "ragwire"
 version = "1.0.0"
 description = "RAGWire — Production-grade RAG toolkit for document ingestion and retrieval with hybrid search support"
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
 authors = [
     {name = "KGP Talkie Private Limited", email = "udemy@kgptalkie.com"}
 ]
@@ -28,7 +28,6 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
