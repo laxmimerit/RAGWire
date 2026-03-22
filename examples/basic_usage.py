@@ -50,17 +50,10 @@ def main():
         logger.error(f"Config file not found: {CONFIG_PATH}")
         return
 
-    # Discover PDFs in examples/data/
-    pdf_files = sorted(DATA_DIR.glob("*.pdf")) if DATA_DIR.exists() else []
-
-    if not pdf_files:
+    if not DATA_DIR.exists() or not any(DATA_DIR.glob("*.pdf")):
         logger.error(f"No PDF files found in {DATA_DIR}")
         logger.info("Place PDF files in the examples/data/ directory and re-run.")
         return
-
-    logger.info(f"Found {len(pdf_files)} PDF(s) to process:")
-    for f in pdf_files:
-        logger.info(f"  - {f.name}")
 
     # ------------------------------------------------------------------ #
     # 1. Initialize pipeline
@@ -69,10 +62,13 @@ def main():
     pipeline = RAGPipeline(str(CONFIG_PATH))
 
     # ------------------------------------------------------------------ #
-    # 2. Ingest documents
+    # 2a. Ingest via directory (new helper — scans examples/data/ for you)
     # ------------------------------------------------------------------ #
-    logger.info("\nIngesting documents...")
-    stats = pipeline.ingest_documents([str(f) for f in pdf_files])
+    logger.info("\nIngesting documents from directory...")
+    stats = pipeline.ingest_directory(str(DATA_DIR))
+
+    # Alternatively, pass an explicit list:
+    #   stats = pipeline.ingest_documents([str(f) for f in DATA_DIR.glob("*.pdf")])
 
     logger.info("\nIngestion complete:")
     logger.info(f"  - Processed : {stats['processed']}/{stats['total']}")

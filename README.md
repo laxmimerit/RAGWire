@@ -16,12 +16,14 @@
 ## Features
 
 - **Document Loading** — PDF, DOCX, XLSX, PPTX and more via MarkItDown
-- **LLM Metadata Extraction** — extracts company, doc type, fiscal period using your LLM
+- **LLM Metadata Extraction** — extracts company, doc type, fiscal period using your LLM; fully customisable via YAML
 - **Smart Text Splitting** — markdown-aware and recursive chunking strategies
 - **Multiple Embedding Providers** — Ollama, OpenAI, HuggingFace, Google, FastEmbed
 - **Qdrant Vector Store** — dense, sparse, and hybrid search
-- **Advanced Retrieval** — similarity, MMR, and hybrid search
+- **Advanced Retrieval** — similarity, MMR, and hybrid search with metadata filtering
 - **SHA256 Deduplication** — at both file and chunk level
+- **Directory Ingestion** — ingest an entire folder with one call, with optional recursive scan
+- **Env Var Substitution** — use `${VAR}` in `config.yaml` for secrets
 
 ## Installation
 
@@ -42,9 +44,12 @@ from ragwire import RAGPipeline
 
 pipeline = RAGPipeline("config.yaml")
 
-# Ingest documents
+# Ingest a list of files (shows tqdm progress bar)
 stats = pipeline.ingest_documents(["data/Apple_10k_2025.pdf"])
 print(f"Chunks created: {stats['chunks_created']}")
+
+# Or ingest an entire directory
+stats = pipeline.ingest_directory("data/", recursive=True)
 
 # Retrieve
 results = pipeline.retrieve("What is Apple's total revenue?", top_k=5)
@@ -54,7 +59,20 @@ for doc in results:
 
 ## Configuration
 
-Copy `config.example.yaml` to `config.yaml` and edit:
+Copy `config.example.yaml` to `config.yaml` and edit. Secrets can be injected via environment variables:
+
+```yaml
+vectorstore:
+  url: "https://your-cluster.qdrant.io"
+  api_key: "${QDRANT_API_KEY}"
+
+llm:
+  provider: "openai"
+  model: "gpt-4o-mini"
+  api_key: "${OPENAI_API_KEY}"
+```
+
+Full example:
 
 ```yaml
 embeddings:
