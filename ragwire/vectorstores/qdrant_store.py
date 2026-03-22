@@ -165,7 +165,7 @@ class QdrantStore:
                 collection_name=name,
                 vectors_config=vectors_config,
                 sparse_vectors_config={
-                    "sparse": rest.SparseVectorParams(index=rest.SparseIndexParams())
+                    "langchain-sparse": rest.SparseVectorParams(index=rest.SparseIndexParams())
                 },
             )
             logger.info(f"Created collection '{name}' with hybrid search")
