@@ -10,7 +10,10 @@ Coordinates all components of the RAG system:
 - Hybrid retrieval
 """
 
+import asyncio
 import logging
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 
@@ -235,7 +238,13 @@ class RAGPipeline:
 
         logger.info(f"Starting ingestion of {len(file_paths)} documents")
 
-        for file_path in file_paths:
+        try:
+            from tqdm import tqdm
+            file_iter = tqdm(file_paths, desc="Ingesting", unit="file")
+        except ImportError:
+            file_iter = file_paths
+
+        for file_path in file_iter:
             try:
                 # File-level deduplication — skip if already ingested
                 file_hash = sha256_file_from_path(file_path)
@@ -278,6 +287,140 @@ class RAGPipeline:
 
         logger.info(
             f"Ingestion complete: {stats['processed']}/{stats['total']} documents"
+        )
+        return stats
+
+    def ingest_directory(
+        self,
+        directory: str,
+        recursive: bool = False,
+        extensions: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Ingest all supported documents from a directory.
+
+        Args:
+            directory: Path to the directory
+            recursive: Whether to search subdirectories (default: False)
+            extensions: File extensions to include (defaults to loader config)
+
+        Returns:
+            Dictionary with ingestion statistics
+
+        Example:
+            >>> stats = pipeline.ingest_directory("data/", recursive=True)
+        """
+        dir_path = Path(directory)
+        if not dir_path.is_dir():
+            raise ValueError(f"Not a directory: {directory}")
+
+        exts = extensions or self.loader_extensions
+        pattern = "**/*" if recursive else "*"
+
+        file_paths = [
+            str(p) for p in dir_path.glob(pattern)
+            if p.is_file() and p.suffix.lower() in exts
+        ]
+
+        if not file_paths:
+            logger.warning(f"No supported files found in {directory} (extensions: {exts})")
+            return {
+                "total": 0, "processed": 0, "skipped": 0,
+                "failed": 0, "chunks_created": 0, "errors": [],
+            }
+
+        logger.info(f"Found {len(file_paths)} file(s) in {directory}")
+        return self.ingest_documents(file_paths)
+
+    def _ingest_one(self, file_path: str) -> Dict[str, Any]:
+        """Process a single file for ingestion. Used by async_ingest_documents."""
+        try:
+            file_hash = sha256_file_from_path(file_path)
+            if self.vectorstore_wrapper.file_hash_exists(file_hash):
+                logger.info(f"Skipping (already ingested): {file_path}")
+                return {"status": "skipped", "file": file_path}
+
+            result = self.loader.load(file_path)
+            if not result["success"]:
+                return {"status": "failed", "file": file_path, "error": result["error"]}
+
+            chunks = self._process_document(
+                text=result["text_content"],
+                file_path=file_path,
+                file_name=result["file_name"],
+                file_type=result["file_type"],
+                file_hash=file_hash,
+            )
+
+            if chunks:
+                self.vectorstore.add_documents(chunks)
+                logger.info(f"Processed {file_path}: {len(chunks)} chunks")
+                return {"status": "processed", "file": file_path, "chunks": len(chunks)}
+
+            return {"status": "failed", "file": file_path, "error": "No chunks generated"}
+
+        except Exception as e:
+            logger.error(f"Error processing {file_path}: {e}", exc_info=True)
+            return {"status": "failed", "file": file_path, "error": str(e)}
+
+    async def async_ingest_documents(
+        self,
+        file_paths: List[str],
+        max_workers: int = 4,
+    ) -> Dict[str, Any]:
+        """
+        Ingest documents concurrently using a thread pool.
+
+        Runs document loading, LLM metadata extraction, and embedding in parallel
+        across up to `max_workers` threads. Use this for large collections where
+        LLM latency is the bottleneck.
+
+        Args:
+            file_paths: List of file paths to ingest
+            max_workers: Maximum concurrent workers (default: 4)
+
+        Returns:
+            Dictionary with ingestion statistics
+
+        Example:
+            >>> import asyncio
+            >>> stats = asyncio.run(pipeline.async_ingest_documents(files, max_workers=8))
+        """
+        loop = asyncio.get_running_loop()
+        stats = {
+            "total": len(file_paths),
+            "processed": 0,
+            "skipped": 0,
+            "failed": 0,
+            "chunks_created": 0,
+            "errors": [],
+        }
+
+        logger.info(
+            f"Starting async ingestion of {len(file_paths)} documents (max_workers={max_workers})"
+        )
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            results = await asyncio.gather(
+                *[loop.run_in_executor(executor, self._ingest_one, fp) for fp in file_paths],
+                return_exceptions=True,
+            )
+
+        for r in results:
+            if isinstance(r, Exception):
+                stats["failed"] += 1
+                stats["errors"].append({"file": "unknown", "error": str(r)})
+            elif r["status"] == "processed":
+                stats["processed"] += 1
+                stats["chunks_created"] += r.get("chunks", 0)
+            elif r["status"] == "skipped":
+                stats["skipped"] += 1
+            else:
+                stats["failed"] += 1
+                stats["errors"].append({"file": r["file"], "error": r.get("error", "unknown")})
+
+        logger.info(
+            f"Async ingestion complete: {stats['processed']}/{stats['total']} documents"
         )
         return stats
 
@@ -333,6 +476,7 @@ class RAGPipeline:
                 "chunk_hash": chunk_hash,
                 "chunk_index": i,
                 "total_chunks": len(chunk_texts),
+                "created_at": datetime.now(timezone.utc).isoformat(),
                 **llm_metadata,
             }
 

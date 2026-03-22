@@ -79,6 +79,23 @@ retriever:
 
 See the provider docs for the exact values to fill in.
 
+### Using environment variables in config
+
+Any string value in `config.yaml` can reference an environment variable using `${VAR}` syntax:
+
+```yaml
+vectorstore:
+  url: "https://your-cluster.qdrant.io"
+  api_key: "${QDRANT_API_KEY}"
+
+llm:
+  provider: "openai"
+  model: "gpt-4o-mini"
+  api_key: "${OPENAI_API_KEY}"
+```
+
+RAGWire resolves these at startup (after loading `.env` via `python-dotenv`). If a variable is not set, the placeholder is kept and a warning is logged.
+
 ## 4. Place Documents
 
 Put your PDF (or DOCX, XLSX, PPTX, TXT, MD) files in `examples/data/`:

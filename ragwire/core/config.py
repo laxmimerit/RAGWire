@@ -5,10 +5,14 @@ Loads configuration from YAML files and environment variables.
 Supports hierarchical config with defaults and overrides.
 """
 
+import logging
 import os
+import re
 from pathlib import Path
 from typing import Any, Optional
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 try:
     import yaml
@@ -58,6 +62,7 @@ class Config:
         with open(config_path, "r", encoding="utf-8") as f:
             self.config = yaml.safe_load(f)
 
+        self.config = self._resolve_env_vars(self.config)
         self.config_path = config_path
 
     def get(self, key: str, default: Any = None) -> Any:
@@ -85,6 +90,24 @@ class Config:
                 return default
 
         return value
+
+    @staticmethod
+    def _resolve_env_vars(obj: Any) -> Any:
+        """Recursively replace ${VAR} placeholders with environment variable values."""
+        if isinstance(obj, dict):
+            return {k: Config._resolve_env_vars(v) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [Config._resolve_env_vars(v) for v in obj]
+        if isinstance(obj, str):
+            def _replacer(match):
+                var = match.group(1)
+                value = os.getenv(var)
+                if value is None:
+                    logger.warning(f"Environment variable '{var}' referenced in config but not set")
+                    return match.group(0)
+                return value
+            return re.sub(r"\$\{([^}]+)\}", _replacer, obj)
+        return obj
 
     def get_env_override(self, key: str, env_var: str, default: Any = None) -> Any:
         """

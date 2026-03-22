@@ -37,7 +37,7 @@ Set per chunk at ingestion time.
 | `chunk_hash` | `str` | `"def456..."` | SHA256 hash of chunk content |
 | `chunk_index` | `int` | `0` | Position of this chunk within the document |
 | `total_chunks` | `int` | `42` | Total chunks in the document |
-| `created_at` | `str` | `"2026-03-22T10:00:00"` | ISO timestamp of ingestion |
+| `created_at` | `str` | `"2026-03-22T10:00:00+00:00"` | UTC ISO timestamp set at ingestion |
 
 ---
 
@@ -336,5 +336,5 @@ extractor = MetadataExtractor.from_yaml(llm, "metadata.yaml")
 metadata = extractor.extract(document_text)
 ```
 
-!!! warning "Custom fields and filtering"
-    Custom fields are stored in Qdrant but are not part of the default `DocumentMetadata` schema. You can still filter by them using the same `filters={}` mechanism.
+!!! note "Custom fields are fully supported"
+    Custom fields extracted by your prompt are stored in Qdrant alongside the built-in fields. `DocumentMetadata` accepts arbitrary extra keys, so there are no schema validation errors. You can filter by custom fields using the same `filters={}` mechanism as built-in fields.

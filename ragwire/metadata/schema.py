@@ -62,6 +62,7 @@ class DocumentMetadata(BaseModel):
 
     model_config = {
         "arbitrary_types_allowed": True,
+        "extra": "allow",
         "json_schema_extra": {
             "example": {
                 "company_name": "apple",

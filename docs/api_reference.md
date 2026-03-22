@@ -70,6 +70,55 @@ stats = pipeline.ingest_documents([
 print(f"Processed: {stats['processed']}, Chunks: {stats['chunks_created']}")
 ```
 
+A progress bar is shown automatically via `tqdm` while ingestion runs.
+
+---
+
+#### `pipeline.ingest_directory(directory, recursive, extensions)`
+
+Ingest all supported documents from a directory. Internally calls `ingest_documents()`.
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `directory` | `str` | Yes | — | Path to the directory |
+| `recursive` | `bool` | No | `False` | Search subdirectories |
+| `extensions` | `list[str]` | No | loader config | File extensions to include |
+
+**Returns:** `dict` — same stats dict as `ingest_documents()`
+
+```python
+# Ingest all PDFs/DOCX in a folder
+stats = pipeline.ingest_directory("data/")
+
+# Recursively include subdirectories
+stats = pipeline.ingest_directory("data/", recursive=True)
+
+# Only specific extensions
+stats = pipeline.ingest_directory("data/", extensions=[".pdf"])
+```
+
+---
+
+#### `pipeline.async_ingest_documents(file_paths, max_workers)`
+
+Async version of `ingest_documents()` — processes files concurrently in a thread pool. Use this for large collections where LLM metadata extraction latency is the bottleneck.
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `file_paths` | `list[str]` | Yes | — | List of file paths to ingest |
+| `max_workers` | `int` | No | `4` | Maximum concurrent threads |
+
+**Returns:** `dict` — same stats dict as `ingest_documents()`
+
+```python
+import asyncio
+
+stats = asyncio.run(
+    pipeline.async_ingest_documents(file_paths, max_workers=8)
+)
+print(f"Processed: {stats['processed']}, Chunks: {stats['chunks_created']}")
+```
+
 ---
 
 #### `pipeline.retrieve(query, top_k, filters)`
