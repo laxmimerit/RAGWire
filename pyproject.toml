@@ -88,6 +88,16 @@ fastembed = [
     "fastembed>=0.2.0",
 ]
 
+# Groq LLM
+groq = [
+    "langchain-groq>=0.0.0",
+]
+
+# Anthropic LLM
+anthropic = [
+    "langchain-anthropic>=0.0.0",
+]
+
 # Development dependencies
 dev = [
     "pytest>=7.0.0",
@@ -106,6 +116,8 @@ all = [
     "ragwire[ollama]",
     "ragwire[google]",
     "ragwire[fastembed]",
+    "ragwire[groq]",
+    "ragwire[anthropic]",
     "ragwire[dev]",
 ]
 

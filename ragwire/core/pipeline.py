@@ -145,6 +145,15 @@ class RAGPipeline:
         elif provider == "openai":
             from langchain_openai import ChatOpenAI
             llm = ChatOpenAI(model=model, temperature=temperature)
+        elif provider == "google" or provider == "gemini":
+            from langchain_google_genai import ChatGoogleGenerativeAI
+            llm = ChatGoogleGenerativeAI(model=model, temperature=temperature, google_api_key=llm_config.get("api_key"))
+        elif provider == "groq":
+            from langchain_groq import ChatGroq
+            llm = ChatGroq(model=model, temperature=temperature, groq_api_key=llm_config.get("api_key"))
+        elif provider == "anthropic":
+            from langchain_anthropic import ChatAnthropic
+            llm = ChatAnthropic(model=model, temperature=temperature, anthropic_api_key=llm_config.get("api_key"))
         else:
             raise ValueError(f"Unsupported LLM provider: {provider}")
 
