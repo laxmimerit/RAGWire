@@ -71,9 +71,10 @@ llm:
 vectorstore:
   url: "http://localhost:6333"
   collection_name: "my_docs"
+  use_sparse: true
 
 retriever:
-  search_type: "similarity"
+  search_type: "hybrid"
   top_k: 5
 ```
 

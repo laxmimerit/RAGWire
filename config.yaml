@@ -40,14 +40,14 @@ llm:
 vectorstore:
   url: "http://localhost:6333"
   collection_name: "financial_docs"
-  use_sparse: false      # true enables hybrid search (requires: pip install fastembed)
+  use_sparse: true       # true enables hybrid search (requires: pip install fastembed)
   force_recreate: false  # Set true ONLY during testing to wipe and rebuild the collection
 
 # =================================================================
 # Retriever
 # =================================================================
 retriever:
-  search_type: "similarity"   # "similarity" | "mmr" | "hybrid" (hybrid requires use_sparse: true)
+  search_type: "hybrid"   # "similarity" | "mmr" | "hybrid" (hybrid requires use_sparse: true)
   top_k: 5
 
 # =================================================================

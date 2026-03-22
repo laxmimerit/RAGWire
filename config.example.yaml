@@ -1,187 +1,80 @@
-# RAG Setup Configuration File
-# =============================
-#
-# This configuration file controls all aspects of the RAG pipeline:
-# - Document loading and processing
-# - Text splitting and chunking
-# - Embedding models
-# - Vector store settings
-# - Retrieval strategies
-#
-# Environment variables can override any setting:
-#   export RAG_EMBEDDINGS_PROVIDER="openai"
-#   export RAG_VECTORSTORE_URL="http://qdrant:6333"
+# RAGWire Configuration Example
+# ==============================
+# Copy this file to config.yaml and edit for your environment.
 
 # =================================================================
-# Document Loader Configuration
+# Document Loader
 # =================================================================
 loader:
-  # Whether to keep image references in extracted markdown
-  keep_images: false
-  
-  # Whether to keep table structures
-  keep_tables: true
+  extensions: [".pdf", ".docx", ".xlsx", ".pptx", ".txt", ".md"]
 
 # =================================================================
-# Text Splitter Configuration
+# Text Splitter
 # =================================================================
 splitter:
-  # Maximum size of each chunk (in characters)
   chunk_size: 10000
-  
-  # Number of characters to overlap between chunks
   chunk_overlap: 2000
-  
-  # Splitting strategy: "markdown" or "recursive"
-  strategy: "markdown"
+  strategy: "markdown"   # "markdown" | "recursive"
 
 # =================================================================
-# Embedding Model Configuration
+# Embedding Model
 # =================================================================
 embeddings:
-  # Provider: openai, huggingface, ollama, google, fastembed
-  provider: "google"
-  
-  # Model name (provider-specific)
-  model: "models/embedding-001"
-  
-  # API key (can also use environment variable)
-  # api_key: "${GOOGLE_API_KEY}"
-  
-  # Provider-specific settings
-  # For HuggingFace:
-  # model_name: "sentence-transformers/all-MiniLM-L6-v2"
-  # model_kwargs: {"device": "cpu"}
-  
-  # For Ollama:
-  # model: "nomic-embed-text"
-  # base_url: "http://localhost:11434"
-
-# =================================================================
-# LLM Configuration (used when metadata.extract_with_llm: true)
-# =================================================================
-llm:
-  # Provider: ollama, openai
+  # --- Ollama (local, no API key) ---
   provider: "ollama"
-
-  # Model name
-  model: "qwen3.5:9b"
-
-  # For Ollama (local)
+  model: "qwen3-embedding:0.6b"
   base_url: "http://localhost:11434"
 
-  # For OpenAI:
+  # --- OpenAI ---
+  # provider: "openai"
+  # model: "text-embedding-3-small"
+
+  # --- HuggingFace (local) ---
+  # provider: "huggingface"
+  # model_name: "sentence-transformers/all-MiniLM-L6-v2"
+
+  # --- Google ---
+  # provider: "google"
+  # model: "models/embedding-001"
+
+# =================================================================
+# LLM — used for metadata extraction on every ingested document
+# =================================================================
+llm:
+  # --- Ollama (local) ---
+  provider: "ollama"
+  model: "qwen3.5:9b"
+  base_url: "http://localhost:11434"
+  temperature: 0.0       # Low temperature for deterministic JSON output
+  num_ctx: 16384         # Context window — must fit your largest chunk
+
+  # --- OpenAI ---
   # provider: "openai"
   # model: "gpt-4o-mini"
-  # api_key: "${OPENAI_API_KEY}"
 
 # =================================================================
-# Vector Store Configuration (Qdrant)
+# Vector Store (Qdrant)
 # =================================================================
 vectorstore:
-  # Qdrant server URL
   url: "http://localhost:6333"
-  
-  # For cloud Qdrant, add API key
-  # api_key: "${QDRANT_API_KEY}"
-  
-  # Collection name for storing documents
+  # api_key: "${QDRANT_API_KEY}"   # For Qdrant Cloud
+  # url: "./qdrant_storage"        # For local file-based storage
   collection_name: "financial_docs"
-  
-  # Enable sparse vectors for hybrid search (requires: pip install fastembed)
-  use_sparse: false
-  
-  # Alternative: Use local file-based storage
-  # url: "./qdrant_storage"
+  use_sparse: true       # true enables hybrid search (requires: pip install fastembed)
+  force_recreate: false  # Set true ONLY to wipe and rebuild the collection
 
 # =================================================================
-# Retriever Configuration
+# Retriever
 # =================================================================
 retriever:
-  # Search type: "similarity", "mmr", "hybrid" (use "hybrid" only when use_sparse: true)
-  search_type: "similarity"
-  
-  # Number of documents to retrieve
+  search_type: "hybrid"   # "similarity" | "mmr" | "hybrid" (hybrid requires use_sparse: true)
   top_k: 5
-  
-  # For MMR search:
-  # fetch_k: 20              # Number of docs to fetch before MMR
-  # lambda_mult: 0.5         # Diversity parameter (0-1)
-  
-  # For hybrid search:
-  # sparse_weight: 0.5       # Weight for sparse (keyword) search
-  # dense_weight: 0.5        # Weight for dense (semantic) search
 
 # =================================================================
-# Metadata Extraction Configuration
-# =================================================================
-metadata:
-  extract_from_filename: true
-  
-  # Metadata fields to extract
-  fields:
-    - company_name
-    - doc_type
-    - fiscal_quarter
-    - fiscal_year
-
-# =================================================================
-# Logging Configuration
+# Logging
 # =================================================================
 logging:
-  # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
   level: "INFO"
-  
-  # Log file path (optional)
-  # log_file: "logs/rag_pipeline.log"
-  
-  # Console output
   console_output: true
-  
-  # Use colored console output
   colored: true
-
-# =================================================================
-# Pipeline Configuration
-# =================================================================
-pipeline:
-  # Batch size for document processing
-  batch_size: 10
-  
-  # Whether to upsert (update or insert) documents
-  upsert: true
-  
-  # Deduplication strategy: "hash", "none"
-  deduplication: "hash"
-  
-  # Progress bar
-  show_progress: true
-
-# =================================================================
-# Example Usage Scenarios
-# =================================================================
-
-# Scenario 1: Local development with Ollama
-# embeddings:
-#   provider: "ollama"
-#   model: "nomic-embed-text"
-# vectorstore:
-#   url: "./qdrant_storage"  # Local file-based storage
-
-# Scenario 2: Production with OpenAI and cloud Qdrant
-# embeddings:
-#   provider: "openai"
-#   model: "text-embedding-3-small"
-#   api_key: "${OPENAI_API_KEY}"
-# vectorstore:
-#   url: "${QDRANT_CLOUD_URL}"
-#   api_key: "${QDRANT_API_KEY}"
-#   use_sparse: true
-
-# Scenario 3: Self-hosted with HuggingFace
-# embeddings:
-#   provider: "huggingface"
-#   model_name: "sentence-transformers/all-MiniLM-L6-v2"
-#   model_kwargs: {"device": "cuda"}  # Use GPU if available
-# vectorstore:
-#   url: "http://qdrant-server:6333"
+  # log_file: "logs/rag.log"
