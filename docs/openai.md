@@ -41,8 +41,8 @@ embeddings:
 
 llm:
   provider: "openai"
-  model: "gpt-4o-mini"              # Fast, affordable — good for metadata extraction
-  # model: "gpt-4o"                 # Higher quality
+  model: "gpt-5.4-nano"             # Latest — fast, affordable, good for metadata extraction
+  # model: "gpt-4o-mini"            # Previous generation
   temperature: 0.0
 
 vectorstore:

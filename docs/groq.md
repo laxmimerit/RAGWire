@@ -50,8 +50,8 @@ embeddings:
 
 llm:
   provider: "groq"
-  model: "llama-3.3-70b-versatile"   # Best quality/cost in production
-  # model: "llama-3.1-8b-instant"    # Ultra-fast, ~560 tok/s
+  model: "qwen/qwen3-32b"            # Latest — strong quality, thinking mode support
+  # model: "llama-3.3-70b-versatile" # High quality alternative
   temperature: 0.0
 
 vectorstore:
@@ -74,7 +74,7 @@ embeddings:
 
 llm:
   provider: "groq"
-  model: "llama-3.3-70b-versatile"   # 131K context, ~280 tok/s
+  model: "qwen/qwen3-32b"            # 131K context, thinking mode support
   temperature: 0.0
 
 vectorstore:
@@ -115,11 +115,11 @@ python examples/basic_usage.py
 
 | Model | Context | Speed | Notes |
 |---|---|---|---|
-| `llama-3.3-70b-versatile` | 131K | ~280 tok/s | Best quality — recommended |
+| `qwen/qwen3-32b` | 131K | — | Latest — recommended, thinking mode support |
+| `llama-3.3-70b-versatile` | 131K | ~280 tok/s | High quality alternative |
 | `llama-3.1-8b-instant` | 131K | ~560 tok/s | Ultra-fast |
-| `openai/gpt-oss-120b` | 131K | ~500 tok/s | High quality alternative |
+| `openai/gpt-oss-120b` | 131K | ~500 tok/s | High quality |
 | `openai/gpt-oss-20b` | 131K | ~1000 tok/s | Fastest large model |
-| `qwen/qwen3-32b` | 131K | — | Preview, thinking mode support |
 
 Full list: [console.groq.com/docs/models](https://console.groq.com/docs/models)
 
