@@ -35,16 +35,16 @@ pip install "ragwire[all]"
 ## Quick Start
 
 ```python
-from ragwire import RAGPipeline
+from ragwire import RAGWire
 
-pipeline = RAGPipeline("config.yaml")
+rag = RAGWire("config.yaml")
 
 # Ingest documents
-stats = pipeline.ingest_documents(["data/Apple_10k_2025.pdf"])
+stats = rag.ingest_documents(["data/Apple_10k_2025.pdf"])
 print(f"Chunks created: {stats['chunks_created']}")
 
 # Retrieve
-results = pipeline.retrieve("What is Apple's total revenue?", top_k=5)
+results = rag.retrieve("What is Apple's total revenue?", top_k=5)
 for doc in results:
     print(doc.metadata.get("company_name"), doc.page_content[:200])
 ```

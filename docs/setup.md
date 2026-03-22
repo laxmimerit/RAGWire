@@ -116,7 +116,7 @@ python examples/basic_usage.py
 
 ```
 ragwire/
-├── core/           Config loader + RAGPipeline orchestrator
+├── core/           Config loader + RAGWire orchestrator
 ├── loaders/        MarkItDown document converter
 ├── processing/     Text splitters + SHA256 hashing
 ├── metadata/       Pydantic schema + LLM extractor

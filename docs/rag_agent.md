@@ -26,12 +26,12 @@ pip install langgraph           # for memory / checkpointing
 ## 1. Ingest Documents
 
 ```python
-from ragwire import RAGPipeline
+from ragwire import RAGWire
 
-pipeline = RAGPipeline("config.yaml")
+rag = RAGWire("config.yaml")
 
 # Ingest all documents from a directory
-stats = pipeline.ingest_directory("data/")
+stats = rag.ingest_directory("data/")
 print(f"Ingested {stats['processed']} docs, {stats['chunks_created']} chunks")
 ```
 
@@ -49,7 +49,7 @@ def search_documents(query: str) -> str:
     Use this whenever the user asks a question that may be answered
     by the ingested documents.
     """
-    results = pipeline.retrieve(query, top_k=5)
+    results = rag.retrieve(query, top_k=5)
     if not results:
         return "No relevant documents found."
 
@@ -268,7 +268,7 @@ from langchain.tools import tool
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import InMemorySaver
 
-from ragwire import RAGPipeline, setup_logging
+from ragwire import RAGWire, setup_logging
 
 logger = setup_logging(log_level="INFO")
 
@@ -279,8 +279,8 @@ DATA_DIR = Path(__file__).parent / "data"
 # ------------------------------------------------------------------ #
 # 1. Pipeline
 # ------------------------------------------------------------------ #
-pipeline = RAGPipeline(str(CONFIG_PATH))
-stats = pipeline.ingest_directory(str(DATA_DIR))
+rag = RAGWire(str(CONFIG_PATH))
+stats = rag.ingest_directory(str(DATA_DIR))
 logger.info(f"Ingested {stats['processed']} docs, {stats['chunks_created']} chunks")
 
 
@@ -294,7 +294,7 @@ def search_documents(query: str) -> str:
     Use this whenever the user asks a question that may be answered
     by the ingested documents.
     """
-    results = pipeline.retrieve(query, top_k=5)
+    results = rag.retrieve(query, top_k=5)
     if not results:
         return "No relevant documents found."
 

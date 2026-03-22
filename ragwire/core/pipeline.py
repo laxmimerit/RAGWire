@@ -28,7 +28,7 @@ from ..retriever.hybrid import get_retriever, hybrid_search
 logger = logging.getLogger(__name__)
 
 
-class RAGPipeline:
+class RAGWire:
     """
     Main RAG pipeline for document ingestion and retrieval.
 
@@ -44,7 +44,7 @@ class RAGPipeline:
         retriever: Retriever instance
 
     Example:
-        >>> pipeline = RAGPipeline("config.yaml")
+        >>> pipeline = RAGWire("config.yaml")
         >>> pipeline.ingest_documents(["doc1.pdf", "doc2.pdf"])
         >>> results = pipeline.retrieve("What is Amazon's revenue?")
     """

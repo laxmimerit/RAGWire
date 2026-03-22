@@ -3,7 +3,7 @@
 All public APIs are importable directly from `ragwire`:
 
 ```python
-from ragwire import RAGPipeline, MarkItDownLoader, get_embedding, QdrantStore, ...
+from ragwire import RAGWire, MarkItDownLoader, get_embedding, QdrantStore, ...
 ```
 
 ---
@@ -14,15 +14,15 @@ These are the primary user-facing APIs. Most applications only need these.
 
 ---
 
-### RAGPipeline
+### RAGWire
 
 The main orchestrator. Handles the full pipeline from config loading to ingestion and retrieval.
 
 ```python
-from ragwire import RAGPipeline
+from ragwire import RAGWire
 ```
 
-#### `RAGPipeline(config_path)`
+#### `RAGWire(config_path)`
 
 Initialize the pipeline from a YAML config file.
 
@@ -36,12 +36,12 @@ Initialize the pipeline from a YAML config file.
 - `ValueError` — missing required config keys (e.g. `llm.model`)
 
 ```python
-pipeline = RAGPipeline("config.yaml")
+rag = RAGWire("config.yaml")
 ```
 
 ---
 
-#### `pipeline.ingest_documents(file_paths)`
+#### `rag.ingest_documents(file_paths)`
 
 Ingest a list of documents into the vector store. Skips files already ingested (SHA256 deduplication).
 
@@ -63,7 +63,7 @@ Ingest a list of documents into the vector store. Skips files already ingested (
 ```
 
 ```python
-stats = pipeline.ingest_documents([
+stats = rag.ingest_documents([
     "data/Apple_10k_2025.pdf",
     "data/Microsoft_10k_2025.pdf",
 ])
@@ -74,7 +74,7 @@ A progress bar (`tqdm`) is shown automatically while ingestion runs.
 
 ---
 
-#### `pipeline.ingest_directory(directory, recursive, extensions)`
+#### `rag.ingest_directory(directory, recursive, extensions)`
 
 Ingest all supported documents from a directory. Internally calls `ingest_documents()`.
 
@@ -88,18 +88,18 @@ Ingest all supported documents from a directory. Internally calls `ingest_docume
 
 ```python
 # Ingest all PDFs/DOCX in a folder
-stats = pipeline.ingest_directory("data/")
+stats = rag.ingest_directory("data/")
 
 # Recursively include subdirectories
-stats = pipeline.ingest_directory("data/", recursive=True)
+stats = rag.ingest_directory("data/", recursive=True)
 
 # Only specific extensions
-stats = pipeline.ingest_directory("data/", extensions=[".pdf"])
+stats = rag.ingest_directory("data/", extensions=[".pdf"])
 ```
 
 ---
 
-#### `pipeline.retrieve(query, top_k, filters)`
+#### `rag.retrieve(query, top_k, filters)`
 
 Retrieve the most relevant chunks for a query.
 
@@ -118,10 +118,10 @@ Each `Document` has:
 
 ```python
 # Basic retrieval
-results = pipeline.retrieve("What is the total revenue?", top_k=5)
+results = rag.retrieve("What is the total revenue?", top_k=5)
 
 # With filters
-results = pipeline.retrieve(
+results = rag.retrieve(
     "What is the net income?",
     top_k=5,
     filters={"company_name": "apple", "fiscal_year": 2025}
@@ -134,7 +134,7 @@ for doc in results:
 
 ---
 
-#### `pipeline.hybrid_search(query, k, filters)`
+#### `rag.hybrid_search(query, k, filters)`
 
 Perform hybrid search combining dense (semantic) and sparse (keyword) vectors. Requires `use_sparse: true` in config.
 
@@ -147,7 +147,7 @@ Perform hybrid search combining dense (semantic) and sparse (keyword) vectors. R
 **Returns:** `list[Document]`
 
 ```python
-results = pipeline.hybrid_search(
+results = rag.hybrid_search(
     "Apple revenue fiscal 2025",
     k=5,
     filters={"company_name": "apple"}
@@ -156,7 +156,7 @@ results = pipeline.hybrid_search(
 
 ---
 
-#### `pipeline.get_stats()`
+#### `rag.get_stats()`
 
 Get statistics about the current collection.
 
@@ -172,7 +172,7 @@ Get statistics about the current collection.
 ```
 
 ```python
-stats = pipeline.get_stats()
+stats = rag.get_stats()
 print(f"Collection: {stats['collection_name']}, Chunks: {stats['total_documents']}")
 ```
 
@@ -425,7 +425,7 @@ See [Metadata & Filtering](metadata.md) for the full field reference.
 
 ### setup_logging
 
-Configure logging for the pipeline.
+Configure logging for the rag.
 
 ```python
 from ragwire import setup_logging
@@ -457,7 +457,7 @@ These APIs are exported for advanced use cases — custom pipelines, direct vect
 
 ### QdrantStore
 
-Direct Qdrant collection management. Use this when you need fine-grained control over the vector store outside of `RAGPipeline`.
+Direct Qdrant collection management. Use this when you need fine-grained control over the vector store outside of `RAGWire`.
 
 ```python
 from ragwire import QdrantStore
@@ -499,7 +499,7 @@ docs = vectorstore.similarity_search("revenue", k=5)
 
 ### Retrieval Functions
 
-Use these when building a custom retrieval layer outside of `RAGPipeline`.
+Use these when building a custom retrieval layer outside of `RAGWire`.
 
 ```python
 from ragwire import get_retriever, hybrid_search, mmr_search

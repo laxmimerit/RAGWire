@@ -1,6 +1,6 @@
 """Core module for RAG pipeline."""
 
 from .config import Config
-from .pipeline import RAGPipeline
+from .pipeline import RAGWire
 
-__all__ = ["Config", "RAGPipeline"]
+__all__ = ["Config", "RAGWire"]

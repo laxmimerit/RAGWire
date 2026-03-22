@@ -79,16 +79,16 @@ retriever:
 ## 4. Python Usage
 
 ```python
-from ragwire import RAGPipeline
+from ragwire import RAGWire
 
-pipeline = RAGPipeline("config.yaml")
+rag = RAGWire("config.yaml")
 
 # Ingest
-stats = pipeline.ingest_documents(["data/Apple_10k_2025.pdf"])
+stats = rag.ingest_documents(["data/Apple_10k_2025.pdf"])
 print(f"Chunks created: {stats['chunks_created']}")
 
 # Retrieve
-results = pipeline.retrieve("What is Apple's total revenue?", top_k=5)
+results = rag.retrieve("What is Apple's total revenue?", top_k=5)
 for doc in results:
     print(doc.metadata.get("company_name"), doc.page_content[:200])
 ```
@@ -108,15 +108,15 @@ from langchain.agents import create_agent
 from langchain.tools import tool
 from langchain_ollama import ChatOllama
 from langgraph.checkpoint.memory import InMemorySaver
-from ragwire import RAGPipeline
+from ragwire import RAGWire
 
-pipeline = RAGPipeline("config.yaml")
-pipeline.ingest_directory("data/")
+rag = RAGWire("config.yaml")
+rag.ingest_directory("data/")
 
 @tool
 def search_documents(query: str) -> str:
     """Search the document knowledge base for relevant information."""
-    results = pipeline.retrieve(query, top_k=5)
+    results = rag.retrieve(query, top_k=5)
     if not results:
         return "No relevant documents found."
     return "\n\n---\n\n".join(

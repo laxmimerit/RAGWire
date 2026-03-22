@@ -1,7 +1,7 @@
 """
 Example: Basic RAG Pipeline Usage
 
-Demonstrates the full RAG pipeline:
+Demonstrates the full RAG rag:
 1. Initialize with config.yaml
 2. Ingest PDF documents from examples/data/
 3. Retrieve relevant chunks — plain and with metadata filters
@@ -14,7 +14,7 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from ragwire import RAGPipeline, setup_logging
+from ragwire import RAGWire, setup_logging
 
 # Setup logging
 logger = setup_logging(log_level="INFO", console_output=True)
@@ -43,7 +43,7 @@ def print_results(results, label=""):
 
 
 def main():
-    """Run the basic RAG pipeline example."""
+    """Run the basic RAG rag example."""
 
     # Check config
     if not CONFIG_PATH.exists():
@@ -56,19 +56,19 @@ def main():
         return
 
     # ------------------------------------------------------------------ #
-    # 1. Initialize pipeline
+    # 1. Initialize rag
     # ------------------------------------------------------------------ #
-    logger.info("\nInitializing RAG pipeline...")
-    pipeline = RAGPipeline(str(CONFIG_PATH))
+    logger.info("\nInitializing RAG rag...")
+    rag = RAGWire(str(CONFIG_PATH))
 
     # ------------------------------------------------------------------ #
     # 2a. Ingest via directory (new helper — scans examples/data/ for you)
     # ------------------------------------------------------------------ #
     logger.info("\nIngesting documents from directory...")
-    stats = pipeline.ingest_directory(str(DATA_DIR))
+    stats = rag.ingest_directory(str(DATA_DIR))
 
     # Alternatively, pass an explicit list:
-    #   stats = pipeline.ingest_documents([str(f) for f in DATA_DIR.glob("*.pdf")])
+    #   stats = rag.ingest_documents([str(f) for f in DATA_DIR.glob("*.pdf")])
 
     logger.info("\nIngestion complete:")
     logger.info(f"  - Processed : {stats['processed']}/{stats['total']}")
@@ -80,7 +80,7 @@ def main():
             logger.warning(f"    * {err['file']}: {err['error']}")
 
     # Pipeline stats
-    pipeline_stats = pipeline.get_stats()
+    pipeline_stats = rag.get_stats()
     logger.info(f"\nCollection  : {pipeline_stats['collection_name']}")
     logger.info(f"Total chunks: {pipeline_stats['total_documents']}")
     logger.info(f"Vector size : {pipeline_stats['vector_size']}")
@@ -103,7 +103,7 @@ def main():
     for query in queries:
         logger.info(f"\nQuery: {query}")
         logger.info("-" * 60)
-        results = pipeline.retrieve(query, top_k=3)
+        results = rag.retrieve(query, top_k=3)
         print_results(results)
 
     # ------------------------------------------------------------------ #
@@ -114,7 +114,7 @@ def main():
     logger.info("=" * 60)
 
     # Get company name and year from the first ingested doc's metadata
-    sample = pipeline.retrieve("revenue", top_k=1)
+    sample = rag.retrieve("revenue", top_k=1)
     company = sample[0].metadata.get("company_name") if sample else None
     year = sample[0].metadata.get("fiscal_year") if sample else None
     year_val = year[0] if isinstance(year, list) and year else year
@@ -124,19 +124,19 @@ def main():
     # Filter by company
     logger.info(f"\nQuery: 'total revenue'  |  filter: company_name={company}")
     logger.info("-" * 60)
-    results = pipeline.retrieve("total revenue", top_k=3, filters={"company_name": company})
+    results = rag.retrieve("total revenue", top_k=3, filters={"company_name": company})
     print_results(results, label=f"company_name={company}")
 
     # Filter by fiscal year
     logger.info(f"\nQuery: 'net income'  |  filter: fiscal_year={year_val}")
     logger.info("-" * 60)
-    results = pipeline.retrieve("net income", top_k=3, filters={"fiscal_year": year_val})
+    results = rag.retrieve("net income", top_k=3, filters={"fiscal_year": year_val})
     print_results(results, label=f"fiscal_year={year_val}")
 
     # Filter by company + year combined
     logger.info(f"\nQuery: 'risk factors'  |  filter: company={company}, year={year_val}")
     logger.info("-" * 60)
-    results = pipeline.retrieve(
+    results = rag.retrieve(
         "risk factors",
         top_k=3,
         filters={"company_name": company, "fiscal_year": year_val},
@@ -153,7 +153,7 @@ def main():
     hybrid_query = f"{company} revenue fiscal {year_val}" if company else "revenue fiscal year"
     logger.info(f"\nQuery: '{hybrid_query}'")
     logger.info("-" * 60)
-    results = pipeline.hybrid_search(hybrid_query, k=3)
+    results = rag.hybrid_search(hybrid_query, k=3)
     print_results(results)
 
     # ------------------------------------------------------------------ #
@@ -163,7 +163,7 @@ def main():
     logger.info("SECTION 4 — Full Metadata Inspection")
     logger.info("=" * 60)
 
-    results = pipeline.retrieve("revenue", top_k=1)
+    results = rag.retrieve("revenue", top_k=1)
     if results:
         logger.info("\nFull metadata on first retrieved chunk:")
         for key, value in results[0].metadata.items():

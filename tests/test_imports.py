@@ -12,7 +12,7 @@ def test_package_imports():
 def test_public_api():
     from ragwire import (
         Config,
-        RAGPipeline,
+        RAGWire,
         DocumentMetadata,
         MetadataExtractor,
         MarkItDownLoader,

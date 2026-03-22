@@ -7,7 +7,7 @@ rag-setup/
 ├── ragwire/                        # Main package
 │   ├── core/
 │   │   ├── config.py               # YAML + ENV configuration loader
-│   │   ├── pipeline.py             # Main RAG pipeline orchestrator
+│   │   ├── rag.py             # Main RAG pipeline orchestrator
 │   │   └── __init__.py
 │   ├── loaders/
 │   │   ├── markitdown_loader.py    # Document conversion (PDF, DOCX, XLSX, etc.)
@@ -54,7 +54,7 @@ rag-setup/
 | Component | File | Description |
 |-----------|------|-------------|
 | Config | `core/config.py` | YAML loading, dot-notation access, ENV overrides |
-| Pipeline | `core/pipeline.py` | Full ingest → retrieve orchestration |
+| Pipeline | `core/rag.py` | Full ingest → retrieve orchestration |
 | Loader | `loaders/markitdown_loader.py` | PDF, DOCX, XLSX, PPTX → markdown |
 | Splitter | `processing/splitter.py` | Markdown, recursive, code splitters |
 | Hashing | `processing/hashing.py` | SHA256 for file and chunk deduplication |
@@ -121,14 +121,14 @@ python examples/basic_usage.py
 ### Pipeline (high-level)
 
 ```python
-from ragwire import RAGPipeline
+from ragwire import RAGWire
 
-pipeline = RAGPipeline("config.yaml")
+rag = RAGWire("config.yaml")
 
-stats = pipeline.ingest_documents(["data/Apple_10k_2025.pdf"])
+stats = rag.ingest_documents(["data/Apple_10k_2025.pdf"])
 print(f"Chunks created: {stats['chunks_created']}")
 
-results = pipeline.retrieve("What is Apple's total revenue?", top_k=5)
+results = rag.retrieve("What is Apple's total revenue?", top_k=5)
 for doc in results:
     print(doc.metadata.get("company_name"), doc.page_content[:200])
 ```

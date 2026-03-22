@@ -10,9 +10,9 @@ A clean, installable Python toolkit providing:
 - Advanced retrieval strategies (similarity, MMR, hybrid)
 
 Example:
-    >>> from ragwire import RAGPipeline
+    >>> from ragwire import RAGWire
     >>>
-    >>> pipeline = RAGPipeline("config.yaml")
+    >>> pipeline = RAGWire("config.yaml")
     >>> stats = pipeline.ingest_documents(["doc.pdf"])
     >>> results = pipeline.retrieve("What is the revenue?")
     >>> for doc in results:
@@ -32,7 +32,7 @@ except PackageNotFoundError:
 __author__ = "KGP Talkie Private Limited"
 
 from .core.config import Config
-from .core.pipeline import RAGPipeline
+from .core.pipeline import RAGWire
 from .metadata.schema import DocumentMetadata
 from .metadata.extractor import MetadataExtractor
 from .loaders.markitdown_loader import MarkItDownLoader
@@ -46,7 +46,7 @@ from .utils.logging import setup_logging, get_logger
 __all__ = [
     # Core
     "Config",
-    "RAGPipeline",
+    "RAGWire",
     # Metadata
     "DocumentMetadata",
     "MetadataExtractor",

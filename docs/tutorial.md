@@ -123,13 +123,13 @@ your-project/
 Create a Python script `run.py`:
 
 ```python
-from ragwire import RAGPipeline
+from ragwire import RAGWire
 
 # Initialize — loads config, connects to Qdrant, initializes models
-pipeline = RAGPipeline("config.yaml")
+rag = RAGWire("config.yaml")
 
 # Ingest documents
-stats = pipeline.ingest_documents(["data/Apple_10k_2025.pdf"])
+stats = rag.ingest_documents(["data/Apple_10k_2025.pdf"])
 
 print(f"Processed : {stats['processed']}/{stats['total']}")
 print(f"Skipped   : {stats['skipped']} (already ingested)")
@@ -162,9 +162,9 @@ Chunks    : 42
 Add retrieval to your script:
 
 ```python
-from ragwire import RAGPipeline
+from ragwire import RAGWire
 
-pipeline = RAGPipeline("config.yaml")
+rag = RAGWire("config.yaml")
 
 queries = [
     "What is the total revenue?",
@@ -176,7 +176,7 @@ for query in queries:
     print(f"\nQuery: {query}")
     print("-" * 50)
 
-    results = pipeline.retrieve(query, top_k=3)
+    results = rag.retrieve(query, top_k=3)
 
     for i, doc in enumerate(results, 1):
         print(f"\nResult {i}:")
@@ -241,12 +241,12 @@ Hybrid search combines dense (semantic) and sparse (keyword) vectors for better 
 You can also call it directly:
 
 ```python
-from ragwire import RAGPipeline
+from ragwire import RAGWire
 
-pipeline = RAGPipeline("config.yaml")
+rag = RAGWire("config.yaml")
 
 # Hybrid search (dense + sparse)
-results = pipeline.hybrid_search("Apple total revenue fiscal 2025", k=5)
+results = rag.hybrid_search("Apple total revenue fiscal 2025", k=5)
 
 for doc in results:
     print(doc.page_content[:200])

@@ -44,10 +44,10 @@ Set per chunk at ingestion time.
 ## Inspecting Metadata on Retrieved Chunks
 
 ```python
-from ragwire import RAGPipeline
+from ragwire import RAGWire
 
-pipeline = RAGPipeline("config.yaml")
-results = pipeline.retrieve("What is Apple's revenue?", top_k=3)
+rag = RAGWire("config.yaml")
+results = rag.retrieve("What is Apple's revenue?", top_k=3)
 
 for doc in results:
     print(doc.metadata)
@@ -82,7 +82,7 @@ Pass a `filters` dictionary to `retrieve()` to narrow results to specific metada
 ### Filter by company
 
 ```python
-results = pipeline.retrieve(
+results = rag.retrieve(
     "What is the total revenue?",
     top_k=5,
     filters={"company_name": "apple"}
@@ -92,7 +92,7 @@ results = pipeline.retrieve(
 ### Filter by document type
 
 ```python
-results = pipeline.retrieve(
+results = rag.retrieve(
     "What are the risk factors?",
     top_k=5,
     filters={"doc_type": "10-k"}
@@ -103,7 +103,7 @@ results = pipeline.retrieve(
 
 ```python
 # fiscal_year is stored as a list — pass the year as an int
-results = pipeline.retrieve(
+results = rag.retrieve(
     "What is the net income?",
     top_k=5,
     filters={"fiscal_year": 2025}
@@ -113,7 +113,7 @@ results = pipeline.retrieve(
 ### Filter by company + year (combined)
 
 ```python
-results = pipeline.retrieve(
+results = rag.retrieve(
     "What is the revenue breakdown by segment?",
     top_k=5,
     filters={
@@ -126,7 +126,7 @@ results = pipeline.retrieve(
 ### Filter by file name
 
 ```python
-results = pipeline.retrieve(
+results = rag.retrieve(
     "What are the capital expenditures?",
     top_k=5,
     filters={"file_name": "Apple_10k_2025.pdf"}
@@ -140,7 +140,7 @@ results = pipeline.retrieve(
 Filters also work with `hybrid_search()`:
 
 ```python
-results = pipeline.hybrid_search(
+results = rag.hybrid_search(
     "Apple revenue fiscal 2025",
     k=5,
     filters={"company_name": "apple"}
@@ -187,12 +187,12 @@ When answering questions, extract any filters from the user query
 ### Full example — LLM-driven filter extraction
 
 ```python
-from ragwire import RAGPipeline
+from ragwire import RAGWire
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 import json
 
-pipeline = RAGPipeline("config.yaml")
+rag = RAGWire("config.yaml")
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.0)
 
 FILTER_PROMPT = """
@@ -220,7 +220,7 @@ def query_with_filters(user_query: str, top_k: int = 5):
     print(f"Extracted filters: {filters}")
 
     # Step 2: Retrieve with filters
-    results = pipeline.retrieve(user_query, top_k=top_k, filters=filters or None)
+    results = rag.retrieve(user_query, top_k=top_k, filters=filters or None)
 
     return results
 
