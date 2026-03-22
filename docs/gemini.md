@@ -36,13 +36,12 @@ GOOGLE_API_KEY=AIza...
 ```yaml
 embeddings:
   provider: "google"
-  model: "models/text-embedding-004"   # Latest, 768-dim
-  # model: "models/embedding-001"      # Older version
+  model: "models/gemini-embedding-001"   # Stable, recommended for production
 
 llm:
   provider: "google"
-  model: "gemini-2.0-flash"            # Fast and cheap
-  # model: "gemini-1.5-pro"            # Higher quality
+  model: "gemini-2.5-flash"              # Best price/performance
+  # model: "gemini-2.5-pro"             # Most advanced, deep reasoning
   temperature: 0.0
 
 vectorstore:
@@ -81,10 +80,18 @@ python examples/basic_usage.py
 
 ## Embedding Model Comparison
 
-| Model | Dimensions | Notes |
-|---|---|---|
-| `models/text-embedding-004` | 768 | Latest, recommended |
-| `models/embedding-001` | 768 | Older version |
+| Model | Notes |
+|---|---|
+| `models/gemini-embedding-001` | Stable, recommended for production |
+| `models/gemini-embedding-2-preview` | Newer multimodal embedding (preview) |
+
+## Chat Model Comparison
+
+| Model | Notes |
+|---|---|
+| `gemini-2.5-flash` | Best price/performance — recommended |
+| `gemini-2.5-pro` | Most advanced, deep reasoning |
+| `gemini-2.5-flash-lite` | Fastest and most budget-friendly |
 
 ## Notes
 

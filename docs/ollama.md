@@ -30,12 +30,17 @@ Other good options:
 
 ```bash
 # Embeddings
-ollama pull nomic-embed-text        # 768-dim, general purpose
-ollama pull mxbai-embed-large       # 1024-dim, higher quality
+ollama pull nomic-embed-text        # 274MB, fast, very popular
+ollama pull mxbai-embed-large       # Higher quality, BERT-large class
+ollama pull bge-m3                  # Multilingual, multi-granularity
+ollama pull qwen3-embedding:4b      # 2.5GB, higher quality
+ollama pull qwen3-embedding:8b      # 4.7GB, best quality, 40K context
 
 # Chat
-ollama pull llama3.2:3b             # Lightweight
-ollama pull mistral:7b              # Strong general purpose
+ollama pull llama3.1                # Meta, 8B/70B sizes — most popular
+ollama pull qwen3                   # Alibaba, dense + MoE variants
+ollama pull deepseek-r1             # Reasoning model
+ollama pull gemma3                  # Google, runs on single GPU
 ```
 
 ## 2. Install Dependencies

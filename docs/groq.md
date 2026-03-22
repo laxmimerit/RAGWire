@@ -45,14 +45,13 @@ GROQ_API_KEY=gsk_...
 ```yaml
 embeddings:
   provider: "ollama"
-  model: "qwen3-embedding:0.6b"
+  model: "nomic-embed-text"
   base_url: "http://localhost:11434"
 
 llm:
   provider: "groq"
-  model: "llama-3.3-70b-versatile"   # Fast and capable
-  # model: "llama-3.1-8b-instant"    # Ultra-fast, lighter
-  # model: "mixtral-8x7b-32768"      # Large context
+  model: "llama-3.3-70b-versatile"   # Best quality/cost in production
+  # model: "llama-3.1-8b-instant"    # Ultra-fast, ~560 tok/s
   temperature: 0.0
 
 vectorstore:
@@ -75,7 +74,7 @@ embeddings:
 
 llm:
   provider: "groq"
-  model: "llama-3.3-70b-versatile"
+  model: "llama-3.3-70b-versatile"   # 131K context, ~280 tok/s
   temperature: 0.0
 
 vectorstore:
@@ -114,12 +113,13 @@ python examples/basic_usage.py
 
 ## Available Models
 
-| Model | Context | Notes |
-|---|---|---|
-| `llama-3.3-70b-versatile` | 128k | Best quality |
-| `llama-3.1-8b-instant` | 128k | Ultra-fast |
-| `mixtral-8x7b-32768` | 32k | Good balance |
-| `gemma2-9b-it` | 8k | Lightweight |
+| Model | Context | Speed | Notes |
+|---|---|---|---|
+| `llama-3.3-70b-versatile` | 131K | ~280 tok/s | Best quality — recommended |
+| `llama-3.1-8b-instant` | 131K | ~560 tok/s | Ultra-fast |
+| `openai/gpt-oss-120b` | 131K | ~500 tok/s | High quality alternative |
+| `openai/gpt-oss-20b` | 131K | ~1000 tok/s | Fastest large model |
+| `qwen/qwen3-32b` | 131K | — | Preview, thinking mode support |
 
 Full list: [console.groq.com/docs/models](https://console.groq.com/docs/models)
 

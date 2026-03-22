@@ -45,13 +45,14 @@ ANTHROPIC_API_KEY=sk-ant-...
 ```yaml
 embeddings:
   provider: "ollama"
-  model: "qwen3-embedding:0.6b"
+  model: "nomic-embed-text"
   base_url: "http://localhost:11434"
 
 llm:
   provider: "anthropic"
-  model: "claude-haiku-4-5-20251001"   # Fast and cheap, good for extraction
-  # model: "claude-sonnet-4-6"         # Higher quality
+  model: "claude-haiku-4-5-20251001"   # Fastest, cheapest — ideal for extraction
+  # model: "claude-sonnet-4-6"         # Best speed/intelligence balance
+  # model: "claude-opus-4-6"           # Most intelligent
   temperature: 0.0
 
 vectorstore:
@@ -74,7 +75,7 @@ embeddings:
 
 llm:
   provider: "anthropic"
-  model: "claude-haiku-4-5-20251001"
+  model: "claude-haiku-4-5-20251001"   # 200K context, $1/$5 per MTok
   temperature: 0.0
 
 vectorstore:
@@ -113,11 +114,11 @@ python examples/basic_usage.py
 
 ## Available Models
 
-| Model | Notes |
-|---|---|
-| `claude-haiku-4-5-20251001` | Fastest, cheapest — ideal for metadata extraction |
-| `claude-sonnet-4-6` | Best price/performance balance |
-| `claude-opus-4-6` | Highest quality |
+| Model | Context | Price (in/out per MTok) | Notes |
+|---|---|---|---|
+| `claude-haiku-4-5-20251001` | 200K | $1 / $5 | Fastest, cheapest — recommended for extraction |
+| `claude-sonnet-4-6` | 1M | $3 / $15 | Best speed/intelligence balance |
+| `claude-opus-4-6` | 1M | $5 / $25 | Most intelligent |
 
 ## Notes
 

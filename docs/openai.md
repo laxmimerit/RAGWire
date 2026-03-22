@@ -36,13 +36,12 @@ OPENAI_API_KEY=sk-...
 ```yaml
 embeddings:
   provider: "openai"
-  model: "text-embedding-3-small"   # 1536-dim, fast and cheap
-  # model: "text-embedding-3-large" # 3072-dim, higher quality
-  # model: "text-embedding-ada-002" # Legacy
+  model: "text-embedding-3-small"   # 1536-dim, best price/performance
+  # model: "text-embedding-3-large" # 3072-dim, highest quality
 
 llm:
   provider: "openai"
-  model: "gpt-4o-mini"              # Fast, cheap, good for extraction
+  model: "gpt-4o-mini"              # Fast, affordable — good for metadata extraction
   # model: "gpt-4o"                 # Higher quality
   temperature: 0.0
 
@@ -84,9 +83,9 @@ python examples/basic_usage.py
 
 | Model | Dimensions | Notes |
 |---|---|---|
-| `text-embedding-3-small` | 1536 | Best price/performance |
-| `text-embedding-3-large` | 3072 | Highest quality |
-| `text-embedding-ada-002` | 1536 | Legacy, use 3-small instead |
+| `text-embedding-3-small` | 1536 | Best price/performance — recommended |
+| `text-embedding-3-large` | 3072 | Highest quality, multilingual |
+| `text-embedding-ada-002` | 1536 | Legacy — avoid for new projects |
 
 ## Notes
 
