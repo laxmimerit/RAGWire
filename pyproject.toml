@@ -1,0 +1,151 @@
+[build-system]
+requires = ["setuptools>=68.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ragwire"
+version = "1.0.0"
+description = "RAGWire — Production-grade RAG toolkit for document ingestion and retrieval with hybrid search support"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "KGP Talkie Private Limited", email = "udemy@kgptalkie.com"}
+]
+maintainers = [
+    {name = "KGP Talkie Private Limited", email = "udemy@kgptalkie.com"}
+]
+keywords = [
+    "rag",
+    "retrieval",
+    "vector-database",
+    "qdrant",
+    "embeddings",
+    "hybrid-search",
+    "nlp",
+    "document-processing"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: Linguistic",
+]
+requires-python = ">=3.9"
+dependencies = [
+    # Core dependencies
+    "langchain>=0.1.0",
+    "langchain-core>=0.1.0",
+    "langchain-community>=0.0.0",
+    "langchain-text-splitters>=0.0.1",
+    
+    # Vector database
+    "qdrant-client>=1.6.0",
+    "langchain-qdrant>=0.1.0",
+    
+    # Document processing
+    "markitdown[pdf]>=0.0.1",
+    
+    # Configuration
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0.0",
+    
+    # Data validation
+    "pydantic>=2.0.0",
+    
+    # Progress bars
+    "tqdm>=4.66.0",
+]
+
+[project.optional-dependencies]
+# OpenAI embeddings
+openai = [
+    "langchain-openai>=0.0.0",
+]
+
+# HuggingFace embeddings
+huggingface = [
+    "langchain-huggingface>=0.0.0",
+]
+
+# Ollama embeddings
+ollama = [
+    "langchain-ollama>=0.0.0",
+]
+
+# Google/Gemini embeddings and LLM
+google = [
+    "langchain-google-genai>=0.0.0",
+]
+
+# FastEmbed for sparse vectors
+fastembed = [
+    "fastembed>=0.2.0",
+]
+
+# Development dependencies
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "isort>=5.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+    "pre-commit>=3.0.0",
+]
+
+# All dependencies
+all = [
+    "ragwire[openai]",
+    "ragwire[huggingface]",
+    "ragwire[ollama]",
+    "ragwire[google]",
+    "ragwire[fastembed]",
+    "ragwire[dev]",
+]
+
+[project.urls]
+Homepage = "https://kgptalkie.com"
+Documentation = "https://github.com/laxmimerit/ragwire#readme"
+Repository = "https://github.com/laxmimerit/ragwire.git"
+Issues = "https://github.com/laxmimerit/ragwire/issues"
+YouTube = "https://youtube.com/kgptalkie"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["ragwire*"]
+
+[tool.setuptools.package-data]
+ragwire = ["py.typed"]
+
+[tool.setuptools.data-files]
+"assets" = ["assets/ragwire.png"]
+
+[tool.black]
+line-length = 88
+target-version = ['py39', 'py310', 'py311', 'py312']
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+line_length = 88
+multi_line_output = 3
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --cov=ragwire --cov-report=term-missing"

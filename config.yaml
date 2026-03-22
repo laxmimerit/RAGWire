@@ -1,0 +1,60 @@
+# RAG Setup Configuration
+# Copy from config.example.yaml and customize for your environment
+
+# =================================================================
+# Document Loader
+# =================================================================
+loader:
+  # Extensions to process when scanning a directory
+  extensions: [".pdf", ".docx", ".xlsx", ".pptx", ".txt", ".md"]
+
+# =================================================================
+# Text Splitter
+# =================================================================
+splitter:
+  chunk_size: 10000
+  chunk_overlap: 2000
+  strategy: "markdown"   # "markdown" | "recursive"
+
+# =================================================================
+# Embedding Model (Ollama - local)
+# =================================================================
+embeddings:
+  provider: "ollama"
+  model: "qwen3-embedding:0.6b"
+  base_url: "http://localhost:11434"
+
+# =================================================================
+# LLM — used for metadata extraction on every ingested document
+# =================================================================
+llm:
+  provider: "ollama"
+  model: "qwen3.5:9b"
+  base_url: "http://localhost:11434"
+  temperature: 0.0       # Low temperature for deterministic JSON output
+  num_ctx: 16384         # Context window — must fit your largest chunk
+
+# =================================================================
+# Vector Store (Qdrant)
+# =================================================================
+vectorstore:
+  url: "http://localhost:6333"
+  collection_name: "financial_docs"
+  use_sparse: false      # true enables hybrid search (requires: pip install fastembed)
+  force_recreate: false  # Set true ONLY during testing to wipe and rebuild the collection
+
+# =================================================================
+# Retriever
+# =================================================================
+retriever:
+  search_type: "similarity"   # "similarity" | "mmr" | "hybrid" (hybrid requires use_sparse: true)
+  top_k: 5
+
+# =================================================================
+# Logging
+# =================================================================
+logging:
+  level: "INFO"
+  console_output: true
+  colored: true
+  # log_file: "logs/rag.log"
