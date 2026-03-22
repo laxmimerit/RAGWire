@@ -57,6 +57,7 @@ nav:
     - Installation & Setup: setup.md
     - Quick Tutorial: tutorial.md
     - Metadata & Filtering: metadata.md
+    - RAG Agent: rag_agent.md
   - Providers:
     - Ollama (Local): ollama.md
     - OpenAI: openai.md

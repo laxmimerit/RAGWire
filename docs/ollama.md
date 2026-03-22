@@ -99,6 +99,50 @@ for doc in results:
 python examples/basic_usage.py
 ```
 
+## 6. Build a RAG Agent
+
+Use `create_agent` to wrap the retriever as a tool and build a conversational Q&A app:
+
+```python
+from langchain.agents import create_agent
+from langchain.tools import tool
+from langchain_ollama import ChatOllama
+from langgraph.checkpoint.memory import InMemorySaver
+from ragwire import RAGPipeline
+
+pipeline = RAGPipeline("config.yaml")
+pipeline.ingest_directory("data/")
+
+@tool
+def search_documents(query: str) -> str:
+    """Search the document knowledge base for relevant information."""
+    results = pipeline.retrieve(query, top_k=5)
+    if not results:
+        return "No relevant documents found."
+    return "\n\n---\n\n".join(
+        f"[{doc.metadata.get('file_name')}]\n{doc.page_content}"
+        for doc in results
+    )
+
+agent = create_agent(
+    model=ChatOllama(model="qwen3.5:9b", temperature=0),
+    tools=[search_documents],
+    system_prompt="You are a helpful document assistant. Use search_documents to answer questions.",
+    checkpointer=InMemorySaver(),
+)
+
+config = {"configurable": {"thread_id": "session-1"}}
+response = agent.invoke(
+    {"messages": [{"role": "user", "content": "What is the total revenue?"}]},
+    config=config,
+)
+print(response["messages"][-1].content)
+```
+
+See [RAG Agent](rag_agent.md) for the full guide including multi-turn memory and structured output.
+
+---
+
 ## Notes
 
 - `num_ctx` must be large enough to fit your chunk size. Default `10000` chars → set `num_ctx: 16384` or higher.

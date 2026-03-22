@@ -87,6 +87,50 @@ python examples/basic_usage.py
 | `text-embedding-3-large` | 3072 | Highest quality, multilingual |
 | `text-embedding-ada-002` | 1536 | Legacy — avoid for new projects |
 
+## 6. Build a RAG Agent
+
+Use `create_agent` to wrap the retriever as a tool and build a conversational Q&A app:
+
+```python
+from langchain.agents import create_agent
+from langchain.tools import tool
+from langchain_openai import ChatOpenAI
+from langgraph.checkpoint.memory import InMemorySaver
+from ragwire import RAGPipeline
+
+pipeline = RAGPipeline("config.yaml")
+pipeline.ingest_directory("data/")
+
+@tool
+def search_documents(query: str) -> str:
+    """Search the document knowledge base for relevant information."""
+    results = pipeline.retrieve(query, top_k=5)
+    if not results:
+        return "No relevant documents found."
+    return "\n\n---\n\n".join(
+        f"[{doc.metadata.get('file_name')}]\n{doc.page_content}"
+        for doc in results
+    )
+
+agent = create_agent(
+    model=ChatOpenAI(model="gpt-5.4-nano", temperature=0),
+    tools=[search_documents],
+    system_prompt="You are a helpful document assistant. Use search_documents to answer questions.",
+    checkpointer=InMemorySaver(),
+)
+
+config = {"configurable": {"thread_id": "session-1"}}
+response = agent.invoke(
+    {"messages": [{"role": "user", "content": "What is the total revenue?"}]},
+    config=config,
+)
+print(response["messages"][-1].content)
+```
+
+See [RAG Agent](rag_agent.md) for the full guide including multi-turn memory and structured output.
+
+---
+
 ## Notes
 
 - If you change embedding model after ingestion, set `force_recreate: true` once to rebuild the collection (dimensions will differ).
