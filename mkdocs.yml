@@ -57,7 +57,6 @@ nav:
     - Installation & Setup: setup.md
     - Quick Tutorial: tutorial.md
     - Metadata & Filtering: metadata.md
-  - API Reference: api_reference.md
   - Providers:
     - Ollama (Local): ollama.md
     - OpenAI: openai.md
@@ -66,6 +65,7 @@ nav:
     - Anthropic: anthropic.md
     - HuggingFace: huggingface.md
     - FastEmbed: fastembed.md
+  - API Reference: api_reference.md
 
 extra:
   social:
