@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/ragwire.png" alt="RAGWire logo" width="120"/>
+  <img src="https://raw.githubusercontent.com/laxmimerit/RAGWire/main/assets/ragwire.png" alt="RAGWire logo" width="120"/>
 </p>
 
 <h1 align="center">RAGWire</h1>
