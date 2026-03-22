@@ -44,9 +44,9 @@ class RAGWire:
         retriever: Retriever instance
 
     Example:
-        >>> pipeline = RAGWire("config.yaml")
-        >>> pipeline.ingest_documents(["doc1.pdf", "doc2.pdf"])
-        >>> results = pipeline.retrieve("What is Amazon's revenue?")
+        >>> rag = RAGWire("config.yaml")
+        >>> rag.ingest_documents(["doc1.pdf", "doc2.pdf"])
+        >>> results = rag.retrieve("What is Amazon's revenue?")
     """
 
     def __init__(self, config_path: str):
@@ -222,7 +222,7 @@ class RAGWire:
             Dictionary with ingestion statistics
 
         Example:
-            >>> stats = pipeline.ingest_documents(["doc1.pdf", "doc2.pdf"])
+            >>> stats = rag.ingest_documents(["doc1.pdf", "doc2.pdf"])
             >>> print(f"Processed {stats['processed']} documents")
         """
         stats = {
@@ -306,7 +306,7 @@ class RAGWire:
             Dictionary with ingestion statistics
 
         Example:
-            >>> stats = pipeline.ingest_directory("data/", recursive=True)
+            >>> stats = rag.ingest_directory("data/", recursive=True)
         """
         dir_path = Path(directory)
         if not dir_path.is_dir():
@@ -408,7 +408,7 @@ class RAGWire:
             List of retrieved documents
 
         Example:
-            >>> results = pipeline.retrieve("Amazon Q1 2024 revenue")
+            >>> results = rag.retrieve("Amazon Q1 2024 revenue")
             >>> for doc in results:
             ...     print(doc.page_content)
         """

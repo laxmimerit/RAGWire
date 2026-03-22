@@ -12,9 +12,9 @@ A clean, installable Python toolkit providing:
 Example:
     >>> from ragwire import RAGWire
     >>>
-    >>> pipeline = RAGWire("config.yaml")
-    >>> stats = pipeline.ingest_documents(["doc.pdf"])
-    >>> results = pipeline.retrieve("What is the revenue?")
+    >>> rag = RAGWire("config.yaml")
+    >>> stats = rag.ingest_documents(["doc.pdf"])
+    >>> results = rag.retrieve("What is the revenue?")
     >>> for doc in results:
     ...     print(doc.page_content)
 
