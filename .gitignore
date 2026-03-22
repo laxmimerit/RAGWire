@@ -44,7 +44,6 @@ logs/
 *.log
 
 # Data
-data/
 models/
 qdrant_storage/
 
