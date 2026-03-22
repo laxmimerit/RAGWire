@@ -8,7 +8,13 @@ from ragwire import RAGPipeline, MarkItDownLoader, get_embedding, QdrantStore, .
 
 ---
 
-## RAGPipeline
+## Core API
+
+These are the primary user-facing APIs. Most applications only need these.
+
+---
+
+### RAGPipeline
 
 The main orchestrator. Handles the full pipeline from config loading to ingestion and retrieval.
 
@@ -16,9 +22,7 @@ The main orchestrator. Handles the full pipeline from config loading to ingestio
 from ragwire import RAGPipeline
 ```
 
----
-
-### `RAGPipeline(config_path)`
+#### `RAGPipeline(config_path)`
 
 Initialize the pipeline from a YAML config file.
 
@@ -37,7 +41,7 @@ pipeline = RAGPipeline("config.yaml")
 
 ---
 
-### `pipeline.ingest_documents(file_paths)`
+#### `pipeline.ingest_documents(file_paths)`
 
 Ingest a list of documents into the vector store. Skips files already ingested (SHA256 deduplication).
 
@@ -68,7 +72,7 @@ print(f"Processed: {stats['processed']}, Chunks: {stats['chunks_created']}")
 
 ---
 
-### `pipeline.retrieve(query, top_k, filters)`
+#### `pipeline.retrieve(query, top_k, filters)`
 
 Retrieve the most relevant chunks for a query.
 
@@ -103,7 +107,7 @@ for doc in results:
 
 ---
 
-### `pipeline.hybrid_search(query, k, filters)`
+#### `pipeline.hybrid_search(query, k, filters)`
 
 Perform hybrid search combining dense (semantic) and sparse (keyword) vectors. Requires `use_sparse: true` in config.
 
@@ -125,7 +129,7 @@ results = pipeline.hybrid_search(
 
 ---
 
-### `pipeline.get_stats()`
+#### `pipeline.get_stats()`
 
 Get statistics about the current collection.
 
@@ -147,7 +151,7 @@ print(f"Collection: {stats['collection_name']}, Chunks: {stats['total_documents'
 
 ---
 
-## MarkItDownLoader
+### MarkItDownLoader
 
 Converts documents (PDF, DOCX, XLSX, PPTX, TXT, MD) to markdown text.
 
@@ -155,7 +159,7 @@ Converts documents (PDF, DOCX, XLSX, PPTX, TXT, MD) to markdown text.
 from ragwire import MarkItDownLoader
 ```
 
-### `MarkItDownLoader.load(file_path)`
+#### `MarkItDownLoader.load(file_path)`
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
@@ -185,7 +189,7 @@ else:
 
 ---
 
-## Text Splitters
+### Text Splitters
 
 ```python
 from ragwire import get_splitter, get_markdown_splitter, get_code_splitter
@@ -193,7 +197,7 @@ from ragwire import get_splitter, get_markdown_splitter, get_code_splitter
 
 All splitters return a `RecursiveCharacterTextSplitter` instance with a `.split_text(text)` method.
 
-### `get_markdown_splitter(chunk_size, chunk_overlap)`
+#### `get_markdown_splitter(chunk_size, chunk_overlap)`
 
 Splits on markdown headers first (`##`, `###`, `####`), then paragraphs. Best for PDF/DOCX converted via MarkItDown.
 
@@ -208,7 +212,7 @@ chunks = splitter.split_text(text)
 print(f"{len(chunks)} chunks")
 ```
 
-### `get_splitter(chunk_size, chunk_overlap, separators)`
+#### `get_splitter(chunk_size, chunk_overlap, separators)`
 
 Generic recursive splitter. Splits on `\n\n` → `\n` → ` ` → `""`.
 
@@ -223,7 +227,7 @@ splitter = get_splitter(chunk_size=5000, chunk_overlap=500)
 chunks = splitter.split_text(text)
 ```
 
-### `get_code_splitter(chunk_size, chunk_overlap)`
+#### `get_code_splitter(chunk_size, chunk_overlap)`
 
 Splits on code structure: `class`, `def`, comments. Best for source code files.
 
@@ -234,23 +238,23 @@ chunks = splitter.split_text(source_code)
 
 ---
 
-## Embeddings
+### get_embedding
+
+Factory function — returns an embedding model instance for the configured provider.
 
 ```python
 from ragwire import get_embedding
 ```
 
-### `get_embedding(config)`
-
-Factory function — returns an embedding model instance for the configured provider.
+#### `get_embedding(config)`
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
-| `config` | `dict` | Yes | Provider config dict |
+| `config` | `dict` | Yes | Provider config dict with `provider` key |
 
 **Supported providers:** `ollama`, `openai`, `huggingface`, `google`, `fastembed`
 
-**Returns:** Embedding model instance with `.embed_query(text)` and `.embed_documents(texts)` methods.
+**Returns:** Embedding model with `.embed_query(text)` and `.embed_documents(texts)` methods.
 
 ```python
 # Ollama
@@ -279,49 +283,7 @@ print(f"Dimension: {len(vector)}")
 
 ---
 
-## QdrantStore
-
-Low-level Qdrant wrapper for collection management.
-
-```python
-from ragwire import QdrantStore
-```
-
-### `QdrantStore(config, embedding, collection_name)`
-
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `config` | `dict` | Yes | Vectorstore config (`url`, `api_key`) |
-| `embedding` | `Any` | Yes | Embedding model instance |
-| `collection_name` | `str` | No | Collection name |
-
-### Methods
-
-| Method | Returns | Description |
-|---|---|---|
-| `set_collection(name)` | `None` | Set active collection |
-| `get_store(use_sparse)` | `QdrantVectorStore` | Get LangChain vectorstore instance |
-| `create_collection(use_sparse)` | `None` | Create a new collection |
-| `delete_collection()` | `None` | Delete the collection |
-| `collection_exists()` | `bool` | Check if collection exists |
-| `file_hash_exists(file_hash)` | `bool` | Check if file already ingested |
-| `get_collection_info()` | `dict` | Get Qdrant collection metadata |
-
-```python
-store = QdrantStore(
-    config={"url": "http://localhost:6333"},
-    embedding=embedding,
-    collection_name="my_docs",
-)
-store.create_collection(use_sparse=True)
-vectorstore = store.get_store(use_sparse=True)
-
-docs = vectorstore.similarity_search("revenue", k=5)
-```
-
----
-
-## MetadataExtractor
+### MetadataExtractor
 
 Extract structured metadata from document text using an LLM.
 
@@ -329,14 +291,14 @@ Extract structured metadata from document text using an LLM.
 from ragwire import MetadataExtractor
 ```
 
-### `MetadataExtractor(llm, prompt_template)`
+#### `MetadataExtractor(llm, prompt_template)`
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `llm` | `Any` | Yes | LangChain chat model instance |
 | `prompt_template` | `str` | No | Custom prompt (uses financial default if not set) |
 
-### `extractor.extract(text)`
+#### `extractor.extract(text)`
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
@@ -363,9 +325,7 @@ metadata = extractor.extract(document_text)
 print(metadata)
 ```
 
-### `extractor.extract_batch(texts)`
-
-Extract metadata from multiple documents at once.
+#### `extractor.extract_batch(texts)`
 
 | Parameter | Type | Description |
 |---|---|---|
@@ -375,125 +335,15 @@ Extract metadata from multiple documents at once.
 
 ---
 
-## Retrieval Functions
-
-```python
-from ragwire import get_retriever, hybrid_search, mmr_search
-```
-
-### `get_retriever(vectorstore, top_k, search_type)`
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `vectorstore` | `QdrantVectorStore` | — | Vector store instance |
-| `top_k` | `int` | `5` | Number of results |
-| `search_type` | `str` | `"similarity"` | `"similarity"`, `"mmr"`, `"hybrid"` |
-
-**Returns:** LangChain retriever with `.invoke(query)` method.
-
-### `hybrid_search(vectorstore, query, k, filters)`
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `vectorstore` | `QdrantVectorStore` | — | Vector store instance |
-| `query` | `str` | — | Search query |
-| `k` | `int` | `5` | Number of results |
-| `filters` | `dict` | `None` | Metadata filters |
-
-**Returns:** `list[Document]`
-
-### `mmr_search(vectorstore, query, k, fetch_k, lambda_mult, filters)`
-
-Maximal Marginal Relevance — retrieves diverse, non-redundant results.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `vectorstore` | `QdrantVectorStore` | — | Vector store instance |
-| `query` | `str` | — | Search query |
-| `k` | `int` | `5` | Number of results to return |
-| `fetch_k` | `int` | `20` | Candidates fetched before MMR selection |
-| `lambda_mult` | `float` | `0.5` | Diversity (`0.0` = max diverse, `1.0` = max relevant) |
-| `filters` | `dict` | `None` | Metadata filters |
-
-**Returns:** `list[Document]`
-
-```python
-results = mmr_search(
-    vectorstore,
-    "Apple revenue and earnings",
-    k=5,
-    fetch_k=20,
-    lambda_mult=0.7,   # Favour diversity
-)
-```
-
----
-
-## Hashing Utilities
-
-```python
-from ragwire import sha256_text, sha256_file_from_path, sha256_chunk
-```
-
-| Function | Parameters | Returns | Description |
-|---|---|---|---|
-| `sha256_text(text)` | `text: str` | `str` | SHA256 of a text string |
-| `sha256_file_from_path(path)` | `path: str \| Path` | `str` | SHA256 of a file (streamed, memory-efficient) |
-| `sha256_chunk(chunk_id, content)` | `chunk_id: str, content: str` | `str` | SHA256 of a chunk (id + content combined) |
-
-```python
-from ragwire import sha256_file_from_path
-
-file_hash = sha256_file_from_path("data/Apple_10k_2025.pdf")
-print(file_hash)  # e.g. "a1b2c3d4..."
-```
-
----
-
-## Logging
-
-```python
-from ragwire import setup_logging, get_logger
-```
-
-### `setup_logging(log_level, log_file, console_output, format_string)`
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `log_level` | `str` | `"INFO"` | `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` |
-| `log_file` | `str` | `None` | Optional path to write logs to file |
-| `console_output` | `bool` | `True` | Print logs to stdout |
-| `format_string` | `str` | `None` | Custom log format string |
-
-**Returns:** `logging.Logger`
-
-```python
-from ragwire import setup_logging
-
-logger = setup_logging(log_level="DEBUG", log_file="logs/rag.log")
-logger.info("Pipeline started")
-```
-
-### `get_logger(name)`
-
-Get a child logger under the `ragwire` namespace.
-
-```python
-from ragwire import get_logger
-
-logger = get_logger(__name__)
-logger.info("Custom module log")
-```
-
----
-
-## DocumentMetadata
+### DocumentMetadata
 
 Pydantic schema for chunk metadata. Useful for type-checking or building typed wrappers.
 
 ```python
 from ragwire import DocumentMetadata
+```
 
+```python
 meta = DocumentMetadata(
     company_name="apple",
     doc_type="10-k",
@@ -511,3 +361,169 @@ print(meta.model_dump())
 ```
 
 See [Metadata & Filtering](metadata.md) for the full field reference.
+
+---
+
+### setup_logging
+
+Configure logging for the pipeline.
+
+```python
+from ragwire import setup_logging
+```
+
+#### `setup_logging(log_level, log_file, console_output, format_string)`
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `log_level` | `str` | `"INFO"` | `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` |
+| `log_file` | `str` | `None` | Optional path to write logs to file |
+| `console_output` | `bool` | `True` | Print logs to stdout |
+| `format_string` | `str` | `None` | Custom log format string |
+
+**Returns:** `logging.Logger`
+
+```python
+logger = setup_logging(log_level="DEBUG", log_file="logs/rag.log")
+logger.info("Pipeline started")
+```
+
+---
+
+## Low-level / Advanced API
+
+These APIs are exported for advanced use cases — custom pipelines, direct vector store access, or building on top of RAGWire internals. Most users will not need these directly.
+
+---
+
+### QdrantStore
+
+Direct Qdrant collection management. Use this when you need fine-grained control over the vector store outside of `RAGPipeline`.
+
+```python
+from ragwire import QdrantStore
+```
+
+#### `QdrantStore(config, embedding, collection_name)`
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `config` | `dict` | Yes | Vectorstore config (`url`, `api_key`) |
+| `embedding` | `Any` | Yes | Embedding model instance |
+| `collection_name` | `str` | No | Collection name |
+
+#### Methods
+
+| Method | Returns | Description |
+|---|---|---|
+| `set_collection(name)` | `None` | Set active collection |
+| `get_store(use_sparse)` | `QdrantVectorStore` | Get LangChain vectorstore instance |
+| `create_collection(use_sparse)` | `None` | Create a new collection |
+| `delete_collection()` | `None` | Delete the collection |
+| `collection_exists()` | `bool` | Check if collection exists |
+| `file_hash_exists(file_hash)` | `bool` | Check if file already ingested |
+| `get_collection_info()` | `CollectionInfo` | Get Qdrant collection metadata |
+
+```python
+store = QdrantStore(
+    config={"url": "http://localhost:6333"},
+    embedding=embedding,
+    collection_name="my_docs",
+)
+store.create_collection(use_sparse=True)
+vectorstore = store.get_store(use_sparse=True)
+
+docs = vectorstore.similarity_search("revenue", k=5)
+```
+
+---
+
+### Retrieval Functions
+
+Use these when building a custom retrieval layer outside of `RAGPipeline`.
+
+```python
+from ragwire import get_retriever, hybrid_search, mmr_search
+```
+
+#### `get_retriever(vectorstore, top_k, search_type)`
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `vectorstore` | `QdrantVectorStore` | — | Vector store instance |
+| `top_k` | `int` | `5` | Number of results |
+| `search_type` | `str` | `"similarity"` | `"similarity"`, `"mmr"`, `"hybrid"` |
+
+**Returns:** LangChain retriever with `.invoke(query)` method.
+
+#### `hybrid_search(vectorstore, query, k, filters)`
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `vectorstore` | `QdrantVectorStore` | — | Vector store instance |
+| `query` | `str` | — | Search query |
+| `k` | `int` | `5` | Number of results |
+| `filters` | `dict` | `None` | Qdrant `Filter` object |
+
+**Returns:** `list[Document]`
+
+#### `mmr_search(vectorstore, query, k, fetch_k, lambda_mult, filters)`
+
+Maximal Marginal Relevance — retrieves diverse, non-redundant results.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `vectorstore` | `QdrantVectorStore` | — | Vector store instance |
+| `query` | `str` | — | Search query |
+| `k` | `int` | `5` | Number of results to return |
+| `fetch_k` | `int` | `20` | Candidates fetched before MMR selection |
+| `lambda_mult` | `float` | `0.5` | Diversity (`0.0` = max diverse, `1.0` = max relevant) |
+| `filters` | `dict` | `None` | Qdrant `Filter` object |
+
+**Returns:** `list[Document]`
+
+```python
+results = mmr_search(
+    vectorstore,
+    "Apple revenue and earnings",
+    k=5,
+    fetch_k=20,
+    lambda_mult=0.7,
+)
+```
+
+---
+
+### Hashing Utilities
+
+Used internally by the pipeline for SHA256 deduplication. Exposed for custom ingestion workflows.
+
+```python
+from ragwire import sha256_text, sha256_file_from_path, sha256_chunk
+```
+
+| Function | Parameters | Returns | Description |
+|---|---|---|---|
+| `sha256_text(text)` | `text: str` | `str` | SHA256 of a text string |
+| `sha256_file_from_path(path)` | `path: str \| Path` | `str` | SHA256 of a file (streamed, memory-efficient) |
+| `sha256_chunk(chunk_id, content)` | `chunk_id: str, content: str` | `str` | SHA256 of a chunk (id + content combined) |
+
+```python
+from ragwire import sha256_file_from_path
+
+file_hash = sha256_file_from_path("data/Apple_10k_2025.pdf")
+print(file_hash)  # "a1b2c3d4..."
+```
+
+---
+
+### get_logger
+
+Get a child logger under the `ragwire` namespace. Used internally by all modules.
+
+```python
+from ragwire import get_logger
+
+logger = get_logger(__name__)
+logger.info("Custom module log")
+```
