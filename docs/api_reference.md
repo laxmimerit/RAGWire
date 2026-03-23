@@ -116,16 +116,21 @@ Each `Document` has:
 - `doc.page_content` — the chunk text
 - `doc.metadata` — dict with all metadata fields (see [Metadata Schema](metadata.md#metadata-schema))
 
-```python
-# Basic retrieval
-results = rag.retrieve("What is the total revenue?", top_k=5)
+**Filter behaviour:**
 
-# With filters
+- If `filters` is passed → used as-is, no LLM call
+- If `filters` is not passed → LLM automatically extracts filters from the query
+
+```python
+# Explicit filters — LLM extraction skipped
 results = rag.retrieve(
     "What is the net income?",
     top_k=5,
     filters={"company_name": "apple", "fiscal_year": 2025}
 )
+
+# No filters passed — LLM extracts {"company_name": "apple", "fiscal_year": 2025} from the query
+results = rag.retrieve("What is Apple's net income for 2025?")
 
 for doc in results:
     print(doc.metadata.get("company_name"))
@@ -368,7 +373,7 @@ extractor = MetadataExtractor.from_yaml(llm, "metadata.yaml")
 metadata = extractor.extract(document_text)
 ```
 
-See [Custom Metadata via YAML](metadata.md#custom-metadata-via-yaml-file) for the YAML format.
+See [Custom Metadata via YAML](custom_metadata.md#custom-metadata-via-yaml-file) for the YAML format.
 
 ---
 

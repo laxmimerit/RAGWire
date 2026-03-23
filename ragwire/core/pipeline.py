@@ -164,8 +164,16 @@ class RAGWire:
         if metadata_yaml:
             self.metadata_extractor = MetadataExtractor.from_yaml(llm, metadata_yaml)
             logger.info(f"Metadata extractor loaded from: {metadata_yaml}")
+            # Derive filterable field names from the custom YAML
+            import yaml as _yaml
+            with open(metadata_yaml, "r", encoding="utf-8") as _f:
+                _meta_cfg = _yaml.safe_load(_f)
+            self._filter_fields = [
+                f["name"] for f in _meta_cfg.get("fields", [])
+            ] or ["company_name", "doc_type", "fiscal_quarter", "fiscal_year"]
         else:
             self.metadata_extractor = MetadataExtractor(llm)
+            self._filter_fields = ["company_name", "doc_type", "fiscal_quarter", "fiscal_year"]
         logger.info(f"LLM initialized for metadata extraction (provider={provider}, model={model})")
 
     def _initialize_vectorstore(self) -> None:
@@ -203,7 +211,6 @@ class RAGWire:
         retriever_config = self.config.get("retriever", {})
         search_type = retriever_config.get("search_type", "hybrid")
         top_k = retriever_config.get("top_k", 5)
-
         self.retriever = get_retriever(
             self.vectorstore, top_k=top_k, search_type=search_type
         )
@@ -390,6 +397,35 @@ class RAGWire:
 
         return documents
 
+    def _extract_filters_from_query(self, query: str) -> Optional[Dict[str, Any]]:
+        """Use the configured LLM to extract metadata filters from a natural language query."""
+        import json
+        from langchain_core.prompts import ChatPromptTemplate
+
+        fields_desc = ", ".join(self._filter_fields)
+        prompt_template = (
+            "Extract metadata filters as JSON from the user query.\n"
+            "Only include fields that are clearly mentioned. Return {{}} if no filters apply.\n\n"
+            f"Available fields: {fields_desc}\n\n"
+            "User query: {query}\n\n"
+            "Filters (JSON only):"
+        )
+
+        try:
+            chain = ChatPromptTemplate.from_template(prompt_template) | self.metadata_extractor.llm
+            response = chain.invoke({"query": query})
+            text = response.content if hasattr(response, "content") else str(response)
+            text = text.strip()
+            start, end = text.find("{"), text.rfind("}") + 1
+            if start != -1 and end > start:
+                filters = json.loads(text[start:end])
+                if filters:
+                    logger.info(f"Auto-extracted filters from query: {filters}")
+                    return filters
+        except Exception as e:
+            logger.warning(f"Auto filter extraction failed: {e}")
+        return None
+
     def retrieve(
         self,
         query: str,
@@ -414,6 +450,9 @@ class RAGWire:
         """
         if top_k is None:
             top_k = self.config.get("retriever", {}).get("top_k", 5)
+
+        if filters is None:
+            filters = self._extract_filters_from_query(query)
 
         # Build search kwargs without mutating the shared retriever
         search_kwargs = {**self.retriever.search_kwargs, "k": top_k}
@@ -443,6 +482,8 @@ class RAGWire:
         Returns:
             List of retrieved documents
         """
+        if filters is None:
+            filters = self._extract_filters_from_query(query)
         qdrant_filter = self._build_qdrant_filter(filters) if filters else None
         return hybrid_search(self.vectorstore, query, k=k, filters=qdrant_filter)
 
