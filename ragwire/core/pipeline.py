@@ -283,8 +283,8 @@ class RAGWire:
 
         # Create payload indexes for all metadata fields so facet API works
         if stats["processed"] > 0:
-            index_fields = self._filter_fields + ["file_name", "file_type"]
-            self.vectorstore_wrapper.create_payload_indexes(index_fields)
+            all_fields = self.vectorstore_wrapper.get_metadata_keys()
+            self.vectorstore_wrapper.create_payload_indexes(all_fields)
 
         logger.info(
             f"Ingestion complete: {stats['processed']}/{stats['total']} documents"
