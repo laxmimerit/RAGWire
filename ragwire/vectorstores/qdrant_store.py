@@ -259,3 +259,71 @@ class QdrantStore:
             raise ValueError("Collection name must be provided")
 
         return self.client.get_collection(name)
+
+    def get_metadata_keys(self) -> List[str]:
+        """
+        Scroll one point and return all metadata payload keys present in the collection.
+
+        Returns:
+            List of metadata field names, or empty list if collection is empty
+        """
+        results, _ = self.client.scroll(
+            collection_name=self.collection_name,
+            limit=1,
+            with_payload=True,
+            with_vectors=False,
+        )
+        if not results:
+            return []
+        payload = results[0].payload or {}
+        metadata = payload.get("metadata", {})
+        return list(metadata.keys())
+
+    def create_payload_indexes(self, fields: List[str]) -> None:
+        """
+        Create keyword payload indexes for a list of metadata fields.
+
+        Required by Qdrant's facet API. Safe to call multiple times —
+        silently skips fields that are already indexed.
+
+        Args:
+            fields: List of metadata field names (without the 'metadata.' prefix)
+        """
+        from qdrant_client.http import models as rest
+
+        for field in fields:
+            try:
+                self.client.create_payload_index(
+                    collection_name=self.collection_name,
+                    field_name=f"metadata.{field}",
+                    field_schema=rest.PayloadSchemaType.KEYWORD,
+                )
+                logger.debug(f"Payload index created for field: {field}")
+            except Exception:
+                pass  # Already exists — safe to ignore
+
+    def get_field_values(self, fields: List[str], limit: int = 50) -> dict:
+        """
+        Return unique values for each requested field using Qdrant's facet API.
+
+        Args:
+            fields: List of metadata field names (without the 'metadata.' prefix)
+            limit: Max unique values to return per field
+
+        Returns:
+            Dict mapping field name → list of unique values
+        """
+        result = {}
+        for field in fields:
+            try:
+                facet_result = self.client.facet(
+                    collection_name=self.collection_name,
+                    key=f"metadata.{field}",
+                    limit=limit,
+                )
+                result[field] = [hit.value for hit in facet_result.hits]
+            except Exception as e:
+                logger.warning(f"Could not get values for field '{field}': {e}")
+                result[field] = []
+
+        return result

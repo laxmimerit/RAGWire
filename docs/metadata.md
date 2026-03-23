@@ -75,6 +75,49 @@ Example output:
 
 ---
 
+## Discovering Available Fields and Values
+
+If you don't know what metadata fields or values are in your collection, use these two methods:
+
+```python
+# Step 1 — what fields exist? (scrolls 1 point, very fast)
+fields = rag.discover_metadata_fields()
+# → ['company_name', 'doc_type', 'fiscal_year', 'file_name', ...]
+
+# Step 2 — what values are stored? (uses Qdrant facet API, returns top 50 by frequency)
+rag.get_field_values("company_name")
+# → ['apple', 'microsoft', 'google']
+
+rag.get_field_values(["company_name", "doc_type"])
+# → {'company_name': ['apple', 'microsoft', 'google'], 'doc_type': ['10-k', '10-q']}
+
+# Raise the limit for high-cardinality fields
+rag.get_field_values("file_name", limit=200)
+# → ['Apple_10k_2025.pdf', 'Microsoft_10k_2025.pdf', ...]
+```
+
+Results are ordered by frequency — most common values first. The default `limit=50` covers most use cases. Increase it for high-cardinality fields like `file_name`.
+
+This is especially useful when building an LLM agent — pass the discovered fields and values into the system prompt so the agent knows exactly what to filter by:
+
+```python
+fields = rag.discover_metadata_fields()
+values = rag.get_field_values(["company_name", "doc_type", "fiscal_year"])
+
+SYSTEM_PROMPT = f"""
+You have access to a financial document RAG pipeline.
+
+Available metadata fields and values:
+- company_name: {values['company_name']}
+- doc_type: {values['doc_type']}
+- fiscal_year: {values['fiscal_year']}
+
+Use these to apply precise filters when answering questions.
+"""
+```
+
+---
+
 ## Filtering at Query Time
 
 RAGWire applies filters in two ways:

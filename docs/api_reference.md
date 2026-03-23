@@ -161,6 +161,55 @@ results = rag.hybrid_search(
 
 ---
 
+#### `rag.discover_metadata_fields()`
+
+Return all metadata field names present in the collection. Scrolls one point — fast regardless of collection size.
+
+**Returns:** `list[str]`
+
+```python
+fields = rag.discover_metadata_fields()
+print(fields)
+# ['company_name', 'doc_type', 'fiscal_year', 'fiscal_quarter',
+#  'file_name', 'file_type', 'file_hash', 'chunk_id', 'chunk_index', ...]
+```
+
+---
+
+#### `rag.get_field_values(fields, limit)`
+
+Return unique values for one or more metadata fields using Qdrant's facet API. Results are ordered by frequency (most common values first).
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `fields` | `str \| list[str]` | Yes | — | Field name or list of field names |
+| `limit` | `int` | No | `50` | Max unique values to return per field. Increase for high-cardinality fields (e.g. `file_name`). |
+
+**Returns:**
+- `list` — if `fields` is a `str`
+- `dict[str, list]` — if `fields` is a `list`
+
+```python
+# Single field — returns a list of up to 50 unique values
+rag.get_field_values("company_name")
+# → ['apple', 'microsoft', 'google']
+
+# Multiple fields — returns a dict
+rag.get_field_values(["company_name", "doc_type"])
+# → {'company_name': ['apple', 'microsoft', 'google'], 'doc_type': ['10-k', '10-q']}
+
+# High-cardinality field — raise the limit
+rag.get_field_values("file_name", limit=200)
+# → ['Apple_10k_2025.pdf', 'Microsoft_10k_2025.pdf', ...]
+
+# Typical agent workflow
+fields = rag.discover_metadata_fields()
+values = rag.get_field_values(["company_name", "doc_type"])
+results = rag.retrieve("revenue", filters={"company_name": values["company_name"][0]})
+```
+
+---
+
 #### `rag.get_stats()`
 
 Get statistics about the current collection.

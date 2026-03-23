@@ -288,6 +288,11 @@ class RAGWire:
                 stats["errors"].append({"file": file_path, "error": str(e)})
                 logger.error(f"Error processing {file_path}: {e}", exc_info=True)
 
+        # Create payload indexes for all metadata fields so facet API works
+        if stats["processed"] > 0:
+            index_fields = self._filter_fields + ["file_name", "file_type"]
+            self.vectorstore_wrapper.create_payload_indexes(index_fields)
+
         logger.info(
             f"Ingestion complete: {stats['processed']}/{stats['total']} documents"
         )
@@ -508,6 +513,54 @@ class RAGWire:
                     )
                 )
         return rest.Filter(must=conditions)
+
+    def discover_metadata_fields(self) -> List[str]:
+        """
+        Return all metadata field names present in the collection.
+
+        Scrolls a single point from Qdrant to inspect its payload keys.
+        Fast — one network call regardless of collection size.
+
+        Returns:
+            List of metadata field names, or empty list if collection is empty
+
+        Example:
+            >>> fields = rag.discover_metadata_fields()
+            >>> print(fields)
+            ['company_name', 'doc_type', 'fiscal_year', 'file_name', ...]
+        """
+        return self.vectorstore_wrapper.get_metadata_keys()
+
+    def get_field_values(
+        self,
+        fields: Any,
+        limit: int = 50,
+    ) -> Any:
+        """
+        Return unique values for one or more metadata fields.
+
+        Uses Qdrant's facet API — fast and exact regardless of collection size.
+        Creates a payload index on each field automatically if one doesn't exist.
+
+        Args:
+            fields: A field name (str) or list of field names
+            limit: Max unique values to return per field (default: 20)
+
+        Returns:
+            - If fields is a str: list of unique values for that field
+            - If fields is a list: dict mapping field name → list of unique values
+
+        Example:
+            >>> rag.get_field_values("company_name")
+            ['apple', 'microsoft', 'google']
+
+            >>> rag.get_field_values(["company_name", "doc_type"])
+            {'company_name': ['apple', 'microsoft'], 'doc_type': ['10-k', '10-q']}
+        """
+        single = isinstance(fields, str)
+        field_list = [fields] if single else fields
+        result = self.vectorstore_wrapper.get_field_values(field_list, limit=limit)
+        return result[fields] if single else result
 
     def get_stats(self) -> Dict[str, Any]:
         """
