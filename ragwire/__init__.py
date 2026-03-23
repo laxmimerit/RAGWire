@@ -41,7 +41,7 @@ from .processing.hashing import sha256_text, sha256_file_from_path, sha256_chunk
 from .embeddings.factory import get_embedding
 from .vectorstores.qdrant_store import QdrantStore
 from .retriever.hybrid import get_retriever, hybrid_search, mmr_search
-from .utils.logging import setup_logging, get_logger
+from .utils.logging import setup_logging, setup_colored_logging, get_logger
 
 __all__ = [
     # Core
@@ -69,5 +69,6 @@ __all__ = [
     "mmr_search",
     # Utilities
     "setup_logging",
+    "setup_colored_logging",
     "get_logger",
 ]
