@@ -128,7 +128,7 @@ class QdrantStore:
         )
 
     def create_collection(
-        self, collection_name: Optional[str] = None, use_sparse: bool = True, **kwargs
+        self, collection_name: Optional[str] = None, use_sparse: bool = True
     ) -> None:
         """
         Create a new Qdrant collection.
@@ -136,7 +136,6 @@ class QdrantStore:
         Args:
             collection_name: Name of collection (uses current if not provided)
             use_sparse: Whether to enable sparse vectors for hybrid search
-            **kwargs: Additional collection creation parameters
         """
         name = collection_name or self.collection_name
 
@@ -223,9 +222,6 @@ class QdrantStore:
             True if at least one chunk with this file_hash exists in the collection
         """
         from qdrant_client.http import models as rest
-
-        if not self.collection_name or not self.collection_exists():
-            return False
 
         results, _ = self.client.scroll(
             collection_name=self.collection_name,

@@ -56,20 +56,12 @@ Extracted Metadata (JSON only):
             llm: Language model instance (e.g., ChatGoogleGenerativeAI, ChatOpenAI)
             prompt_template: Optional custom prompt template
         """
+        from langchain_core.prompts import ChatPromptTemplate
+
         self.llm = llm
         self.prompt_template = prompt_template or self.PROMPT_TEMPLATE
-
-        # Create prompt chain if langchain is available
-        try:
-            from langchain_core.prompts import ChatPromptTemplate
-
-            self.prompt = ChatPromptTemplate.from_template(self.prompt_template)
-            self.has_langchain = True
-        except ImportError:
-            self.has_langchain = False
-            logger.warning(
-                "LangChain not available. Using basic template substitution."
-            )
+        self.prompt = ChatPromptTemplate.from_template(self.prompt_template)
+        self.fields: Optional[List[str]] = None
 
     def extract(self, text: str) -> Dict[str, Any]:
         """
@@ -84,21 +76,9 @@ Extracted Metadata (JSON only):
         Raises:
             ValueError: If LLM response is not valid JSON
         """
-        # Prepare the prompt
-        if self.has_langchain:
-            # Use langchain prompt template
-            chain = self.prompt | self.llm
-            response = chain.invoke({"content": text[:10000]})
-            response_text = (
-                response.content if hasattr(response, "content") else str(response)
-            )
-        else:
-            # Fallback to simple template substitution
-            prompt = self.prompt_template.format(content=text[:10000])
-            response = self.llm.invoke(prompt)
-            response_text = (
-                response.content if hasattr(response, "content") else str(response)
-            )
+        chain = self.prompt | self.llm
+        response = chain.invoke({"content": text[:10000]})
+        response_text = response.content if hasattr(response, "content") else str(response)
 
         # Parse JSON response
         try:
@@ -214,7 +194,10 @@ Extracted Metadata (JSON only):
             prompt_template = cls.build_prompt_from_fields(fields)
             logger.debug(f"Built metadata prompt from {len(fields)} field definitions")
 
-        return cls(llm, prompt_template=prompt_template)
+        instance = cls(llm, prompt_template=prompt_template)
+        if fields:
+            instance.fields = [f["name"] for f in fields]
+        return instance
 
     def extract_batch(self, texts: list) -> list:
         """
@@ -233,12 +216,5 @@ Extracted Metadata (JSON only):
                 results.append(metadata)
             except Exception as e:
                 logger.error(f"Failed to extract metadata: {e}")
-                results.append(
-                    {
-                        "company_name": None,
-                        "doc_type": None,
-                        "fiscal_quarter": None,
-                        "fiscal_year": [],
-                    }
-                )
+                results.append({})
         return results
