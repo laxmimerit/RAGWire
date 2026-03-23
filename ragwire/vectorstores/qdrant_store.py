@@ -223,6 +223,9 @@ class QdrantStore:
         """
         from qdrant_client.http import models as rest
 
+        if not self.collection_name or not self.collection_exists():
+            return False
+
         results, _ = self.client.scroll(
             collection_name=self.collection_name,
             scroll_filter=rest.Filter(
