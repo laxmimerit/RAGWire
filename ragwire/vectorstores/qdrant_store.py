@@ -278,10 +278,15 @@ class QdrantStore:
         metadata = payload.get("metadata", {})
         return list(metadata.keys())
 
+    # Fields stored as integers in the RAGWire schema (chunk_index, total_chunks
+    # are int; fiscal_year is List[int]). Everything else is indexed as KEYWORD.
+    _INTEGER_FIELDS = {"chunk_index", "total_chunks", "fiscal_year"}
+
     def create_payload_indexes(self, fields: List[str]) -> None:
         """
-        Create keyword payload indexes for a list of metadata fields.
+        Create payload indexes for a list of metadata fields.
 
+        Uses INTEGER index for known numeric fields, KEYWORD for everything else.
         Required by Qdrant's facet API. Safe to call multiple times —
         silently skips fields that are already indexed.
 
@@ -291,13 +296,18 @@ class QdrantStore:
         from qdrant_client.http import models as rest
 
         for field in fields:
+            schema = (
+                rest.PayloadSchemaType.INTEGER
+                if field in self._INTEGER_FIELDS
+                else rest.PayloadSchemaType.KEYWORD
+            )
             try:
                 self.client.create_payload_index(
                     collection_name=self.collection_name,
                     field_name=f"metadata.{field}",
-                    field_schema=rest.PayloadSchemaType.KEYWORD,
+                    field_schema=schema,
                 )
-                logger.debug(f"Payload index created for field: {field}")
+                logger.debug(f"Payload index created for field '{field}' (type={schema})")
             except Exception:
                 pass  # Already exists — safe to ignore
 
@@ -312,6 +322,7 @@ class QdrantStore:
         Returns:
             Dict mapping field name → list of unique values
         """
+        self.create_payload_indexes(fields)
         result = {}
         for field in fields:
             try:
