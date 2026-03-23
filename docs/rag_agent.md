@@ -74,7 +74,7 @@ def search_documents(query: str) -> str:
     from langchain.agents import create_agent
     from langchain_openai import ChatOpenAI
 
-    model = ChatOpenAI(model="gpt-5.4-nano", temperature=0)
+    model = ChatOpenAI(model="gpt-5.4-nano")
 
     agent = create_agent(
         model=model,
@@ -93,7 +93,7 @@ def search_documents(query: str) -> str:
     from langchain.agents import create_agent
     from langchain_ollama import ChatOllama
 
-    model = ChatOllama(model="qwen3.5:9b", temperature=0)
+    model = ChatOllama(model="qwen3.5:9b")
 
     agent = create_agent(
         model=model,
@@ -112,7 +112,7 @@ def search_documents(query: str) -> str:
     from langchain.agents import create_agent
     from langchain_groq import ChatGroq
 
-    model = ChatGroq(model="qwen/qwen3-32b", temperature=0)
+    model = ChatGroq(model="qwen/qwen3-32b")
 
     agent = create_agent(
         model=model,
@@ -131,7 +131,7 @@ def search_documents(query: str) -> str:
     from langchain.agents import create_agent
     from langchain_anthropic import ChatAnthropic
 
-    model = ChatAnthropic(model="claude-sonnet-4-6", temperature=0)
+    model = ChatAnthropic(model="claude-sonnet-4-6")
 
     agent = create_agent(
         model=model,
@@ -166,7 +166,7 @@ from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import InMemorySaver
 
-model = ChatOpenAI(model="gpt-5.4-nano", temperature=0)
+model = ChatOpenAI(model="gpt-5.4-nano")
 checkpointer = InMemorySaver()
 
 agent = create_agent(
@@ -218,7 +218,7 @@ class RAGResponse:
     sources: list[str]
     confidence: str  # "high" | "medium" | "low"
 
-model = ChatOpenAI(model="gpt-5.4-nano", temperature=0)
+model = ChatOpenAI(model="gpt-5.4-nano")
 
 agent = create_agent(
     model=model,
@@ -312,7 +312,7 @@ def search_documents(query: str) -> str:
 # ------------------------------------------------------------------ #
 # 3. Agent with memory
 # ------------------------------------------------------------------ #
-model = ChatOpenAI(model="gpt-5.4-nano", temperature=0)
+model = ChatOpenAI(model="gpt-5.4-nano")
 checkpointer = InMemorySaver()
 
 agent = create_agent(

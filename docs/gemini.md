@@ -42,7 +42,6 @@ llm:
   provider: "google"
   model: "gemini-2.5-flash"              # Best price/performance
   # model: "gemini-2.5-pro"             # Most advanced, deep reasoning
-  temperature: 0.0
 
 vectorstore:
   url: "http://localhost:6333"

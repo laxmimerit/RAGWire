@@ -84,7 +84,6 @@ llm:
   provider: "ollama"
   model: "qwen3.5:9b"
   base_url: "http://localhost:11434"
-  temperature: 0.0
   num_ctx: 16384
 
 vectorstore:
@@ -280,7 +279,7 @@ Switching providers only requires changing `config.yaml` — no code changes nee
 
     llm:
       provider: "openai"
-      model: "gpt-4o-mini"
+      model: "gpt-5.4-nano"
     ```
 
 === "Gemini"

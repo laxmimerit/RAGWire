@@ -63,7 +63,7 @@ def search_documents(query: str) -> str:
 # ------------------------------------------------------------------ #
 # 3. Agent with memory
 # ------------------------------------------------------------------ #
-model = ChatOpenAI(model="gpt-5.4-nano", temperature=0)
+model = ChatOpenAI(model="gpt-5.4-nano")
 checkpointer = InMemorySaver()
 
 agent = create_agent(

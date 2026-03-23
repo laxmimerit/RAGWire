@@ -53,7 +53,6 @@ llm:
   model: "claude-haiku-4-5-20251001"   # Fastest, cheapest — ideal for extraction
   # model: "claude-sonnet-4-6"         # Best speed/intelligence balance
   # model: "claude-opus-4-6"           # Most intelligent
-  temperature: 0.0
 
 vectorstore:
   url: "http://localhost:6333"
@@ -76,7 +75,6 @@ embeddings:
 llm:
   provider: "anthropic"
   model: "claude-haiku-4-5-20251001"   # 200K context, $1/$5 per MTok
-  temperature: 0.0
 
 vectorstore:
   url: "http://localhost:6333"

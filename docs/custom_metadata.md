@@ -91,7 +91,7 @@ Document Text:
 Extracted Metadata (JSON only):
 """
 
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.0)
+llm = ChatOpenAI(model="gpt-5.4-nano")
 extractor = MetadataExtractor(llm, prompt_template=custom_prompt)
 
 metadata = extractor.extract(document_text)
@@ -142,7 +142,6 @@ embeddings:
 llm:
   provider: "openai"
   model: "gpt-5.4-nano"
-  temperature: 0.0
 
 metadata:
   config_file: "metadata.yaml"   # ← point to your custom fields

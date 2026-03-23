@@ -208,7 +208,7 @@ from langchain_core.prompts import ChatPromptTemplate
 import json
 
 rag = RAGWire("config.yaml")
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.0)
+llm = ChatOpenAI(model="gpt-5.4-nano")
 
 FILTER_PROMPT = """
 Given the user query below, extract metadata filters as JSON.

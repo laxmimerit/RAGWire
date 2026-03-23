@@ -52,7 +52,6 @@ llm:
   provider: "groq"
   model: "qwen/qwen3-32b"            # Latest — strong quality, thinking mode support
   # model: "llama-3.3-70b-versatile" # High quality alternative
-  temperature: 0.0
 
 vectorstore:
   url: "http://localhost:6333"
@@ -75,7 +74,6 @@ embeddings:
 llm:
   provider: "groq"
   model: "qwen/qwen3-32b"            # 131K context, thinking mode support
-  temperature: 0.0
 
 vectorstore:
   url: "http://localhost:6333"

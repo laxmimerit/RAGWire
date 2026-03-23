@@ -62,7 +62,6 @@ llm:
   provider: "ollama"
   model: "qwen3.5:9b"
   base_url: "http://localhost:11434"
-  temperature: 0.0
   num_ctx: 16384
 
 vectorstore:
@@ -125,7 +124,7 @@ def search_documents(query: str) -> str:
     )
 
 agent = create_agent(
-    model=ChatOllama(model="qwen3.5:9b", temperature=0),
+    model=ChatOllama(model="qwen3.5:9b"),
     tools=[search_documents],
     system_prompt="You are a helpful document assistant. Use search_documents to answer questions.",
     checkpointer=InMemorySaver(),
