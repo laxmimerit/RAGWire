@@ -351,7 +351,7 @@ from ragwire import MetadataExtractor
 from langchain_openai import ChatOpenAI
 from ragwire import MetadataExtractor
 
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.0)
+llm = ChatOpenAI(model="gpt-5.4-nano")
 extractor = MetadataExtractor(llm)
 metadata = extractor.extract(document_text)
 print(metadata)

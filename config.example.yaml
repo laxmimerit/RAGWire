@@ -45,12 +45,11 @@ llm:
   provider: "ollama"
   model: "qwen3.5:9b"
   base_url: "http://localhost:11434"
-  temperature: 0.0       # Low temperature for deterministic JSON output
   num_ctx: 16384         # Context window — must fit your largest chunk
 
   # --- OpenAI ---
   # provider: "openai"
-  # model: "gpt-4o-mini"
+  # model: "gpt-5.4-nano"
 
 # =================================================================
 # Metadata Extraction (optional)

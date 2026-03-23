@@ -90,7 +90,7 @@ vectorstore:
 
 llm:
   provider: "openai"
-  model: "gpt-4o-mini"
+  model: "gpt-5.4-nano"
   api_key: "${OPENAI_API_KEY}"
 ```
 

@@ -68,7 +68,7 @@ vectorstore:
 
 llm:
   provider: "openai"
-  model: "gpt-4o-mini"
+  model: "gpt-5.4-nano"
   api_key: "${OPENAI_API_KEY}"
 ```
 
@@ -83,7 +83,6 @@ embeddings:
 llm:
   provider: "ollama"
   model: "qwen3.5:9b"
-  temperature: 0.0
   num_ctx: 16384
 
 vectorstore:

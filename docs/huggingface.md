@@ -39,7 +39,6 @@ llm:
   provider: "ollama"
   model: "qwen3.5:9b"
   base_url: "http://localhost:11434"
-  temperature: 0.0
   num_ctx: 16384
 
 vectorstore:
@@ -64,8 +63,7 @@ embeddings:
 
 llm:
   provider: "openai"
-  model: "gpt-4o-mini"
-  temperature: 0.0
+  model: "gpt-5.4-nano"
 
 vectorstore:
   url: "http://localhost:6333"

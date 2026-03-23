@@ -43,7 +43,6 @@ llm:
   provider: "openai"
   model: "gpt-5.4-nano"             # Latest — fast, affordable, good for metadata extraction
   # model: "gpt-4o-mini"            # Previous generation
-  temperature: 0.0
 
 vectorstore:
   url: "http://localhost:6333"
@@ -113,7 +112,7 @@ def search_documents(query: str) -> str:
     )
 
 agent = create_agent(
-    model=ChatOpenAI(model="gpt-5.4-nano", temperature=0),
+    model=ChatOpenAI(model="gpt-5.4-nano"),
     tools=[search_documents],
     system_prompt="You are a helpful document assistant. Use search_documents to answer questions.",
     checkpointer=InMemorySaver(),

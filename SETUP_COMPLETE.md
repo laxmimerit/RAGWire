@@ -101,7 +101,6 @@ embeddings:
 llm:
   provider: "ollama"
   model: "qwen3.5:9b"
-  temperature: 0.0
   num_ctx: 16384
 
 vectorstore:
