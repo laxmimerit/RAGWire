@@ -59,7 +59,6 @@ nav:
     - Metadata & Filtering: metadata.md
     - Custom Metadata: custom_metadata.md
     - RAG Agent: rag_agent.md
-  - Cookbook: cookbook.md
   - Providers:
     - Ollama (Local): ollama.md
     - OpenAI: openai.md
@@ -68,6 +67,17 @@ nav:
     - Anthropic: anthropic.md
     - HuggingFace: huggingface.md
     - FastEmbed: fastembed.md
+  - Cookbook:
+    - Switch Providers: cookbook/switch_providers.md
+    - Local File Storage: cookbook/local_storage.md
+    - Multi-Collection Setup: cookbook/multi_collection.md
+    - Update Documents: cookbook/update_documents.md
+    - Tune Retrieval Quality: cookbook/tune_retrieval.md
+    - Inspect Your Collection: cookbook/inspect_collection.md
+    - Diverse Results (MMR): cookbook/mmr.md
+    - Preview Documents: cookbook/preview_documents.md
+    - Logging Setup: cookbook/logging.md
+    - Metadata-Aware Chatbot: cookbook/filtered_chatbot.md
   - API Reference: api_reference.md
 
 extra:
