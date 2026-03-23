@@ -10,10 +10,13 @@ Coordinates all components of the RAG system:
 - Hybrid retrieval
 """
 
+import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, List, Dict, Any
+
+from langchain_core.prompts import ChatPromptTemplate
 
 # Import pipeline components
 from .config import Config
@@ -369,7 +372,7 @@ class RAGWire:
         llm_metadata = {}
         if chunk_texts:
             try:
-                llm_metadata = self.metadata_extractor.extract(chunk_texts[0])
+                llm_metadata = self.extract_metadata(chunk_texts[0])
                 logger.debug(f"LLM metadata for {file_name}: {llm_metadata}")
             except Exception as e:
                 logger.warning(f"LLM metadata extraction failed for {file_name}: {e}")
@@ -396,21 +399,22 @@ class RAGWire:
 
         return documents
 
+    @property
+    def _stored_values(self) -> Dict[str, Any]:
+        """Return cached stored filter values, fetching from Qdrant if needed."""
+        if self._stored_values_cache is None:
+            self._stored_values_cache = self.vectorstore_wrapper.get_field_values(
+                self._filter_fields, limit=50
+            )
+        return self._stored_values_cache
+
     def _extract_filters_from_query(self, query: str) -> Optional[Dict[str, Any]]:
         """Use the configured LLM to extract metadata filters from a natural language query.
 
         Passes actual stored values to the LLM so it can match exactly what's in
         the collection — avoids mismatches like 'apple' vs 'apple inc.'.
         """
-        import json
-        from langchain_core.prompts import ChatPromptTemplate
-
-        # Use cached stored values — refreshed after each ingestion run
-        if self._stored_values_cache is None:
-            self._stored_values_cache = self.vectorstore_wrapper.get_field_values(
-                self._filter_fields, limit=50
-            )
-        stored_values = self._stored_values_cache
+        stored_values = self._stored_values
         fields_desc = "\n".join(
             f"  {field}: {stored_values.get(field, [])}"
             for field in self._filter_fields
@@ -583,6 +587,27 @@ class RAGWire:
         field_list = [fields] if single else fields
         result = self.vectorstore_wrapper.get_field_values(field_list, limit=limit)
         return result[fields] if single else result
+
+    def extract_metadata(self, text: str) -> Dict[str, Any]:
+        """
+        Extract metadata from text using the configured LLM.
+
+        Automatically passes stored collection values so the LLM reuses
+        existing entity names (e.g. 'apple inc.') instead of extracting
+        inconsistent variants ('apple', 'Apple Inc.').
+
+        Args:
+            text: Document text to extract metadata from
+
+        Returns:
+            Dictionary of extracted metadata fields
+
+        Example:
+            >>> metadata = rag.extract_metadata(open("report.pdf.txt").read())
+            >>> print(metadata)
+            {'company_name': 'apple inc.', 'doc_type': '10-k', 'fiscal_year': [2025]}
+        """
+        return self.metadata_extractor.extract(text, stored_values=self._stored_values)
 
     def get_stats(self) -> Dict[str, Any]:
         """

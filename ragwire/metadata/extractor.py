@@ -63,12 +63,16 @@ Extracted Metadata (JSON only):
         self.prompt = ChatPromptTemplate.from_template(self.prompt_template)
         self.fields: Optional[List[str]] = None
 
-    def extract(self, text: str) -> Dict[str, Any]:
+    def extract(self, text: str, stored_values: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Extract metadata from document text.
 
         Args:
             text: Document content to extract metadata from
+            stored_values: Existing field values from the collection. When provided,
+                the LLM is instructed to reuse a stored value if the document refers
+                to the same entity — preventing 'apple' and 'apple inc.' being stored
+                as separate values for the same company.
 
         Returns:
             Dictionary containing extracted metadata
@@ -76,13 +80,29 @@ Extracted Metadata (JSON only):
         Raises:
             ValueError: If LLM response is not valid JSON
         """
+        if stored_values:
+            existing = "\n".join(
+                f"  {k}: {v}" for k, v in stored_values.items() if v
+            )
+            grounding = (
+                f"Existing values already stored in the collection:\n{existing}\n"
+                "If this document refers to the same entity as a stored value, "
+                "use the stored value exactly.\n\n"
+            )
+        else:
+            grounding = ""
+
         chain = self.prompt | self.llm
-        response = chain.invoke({"content": text[:10000]})
+        response = chain.invoke({"content": grounding + text[:10000]})
         response_text = response.content if hasattr(response, "content") else str(response)
 
         # Parse JSON response
         try:
             metadata = self._parse_json_response(response_text)
+            metadata = {
+                k: v.lower().strip() if isinstance(v, str) else v
+                for k, v in metadata.items()
+            }
             logger.debug(f"Extracted metadata: {metadata}")
             return metadata
         except json.JSONDecodeError as e:
@@ -184,9 +204,9 @@ Extracted Metadata (JSON only):
         with open(path, "r", encoding="utf-8") as f:
             meta_config = yaml.safe_load(f)
 
+        fields = meta_config.get("fields")
         prompt_template = meta_config.get("prompt_template")
         if not prompt_template:
-            fields = meta_config.get("fields")
             if not fields:
                 raise ValueError(
                     f"Metadata config '{yaml_path}' must define either 'fields' or 'prompt_template'"
@@ -199,12 +219,13 @@ Extracted Metadata (JSON only):
             instance.fields = [f["name"] for f in fields]
         return instance
 
-    def extract_batch(self, texts: list) -> list:
+    def extract_batch(self, texts: list, stored_values: Optional[Dict[str, Any]] = None) -> list:
         """
         Extract metadata from multiple documents.
 
         Args:
             texts: List of document texts
+            stored_values: Existing field values from the collection (see extract())
 
         Returns:
             List of metadata dictionaries
@@ -212,7 +233,7 @@ Extracted Metadata (JSON only):
         results = []
         for text in texts:
             try:
-                metadata = self.extract(text)
+                metadata = self.extract(text, stored_values=stored_values)
                 results.append(metadata)
             except Exception as e:
                 logger.error(f"Failed to extract metadata: {e}")
