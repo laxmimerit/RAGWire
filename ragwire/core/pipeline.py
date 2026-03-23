@@ -282,9 +282,8 @@ class RAGWire:
                 logger.error(f"Error processing {file_path}: {e}", exc_info=True)
 
         # Create payload indexes for all metadata fields so facet API works
-        if stats["processed"] > 0:
-            all_fields = self.vectorstore_wrapper.get_metadata_keys()
-            self.vectorstore_wrapper.create_payload_indexes(all_fields)
+        all_fields = self.vectorstore_wrapper.get_metadata_keys()
+        self.vectorstore_wrapper.create_payload_indexes(all_fields)
 
         logger.info(
             f"Ingestion complete: {stats['processed']}/{stats['total']} documents"
