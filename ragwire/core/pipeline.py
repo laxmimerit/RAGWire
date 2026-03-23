@@ -524,13 +524,19 @@ class RAGWire:
         conditions = []
         for key, value in filters.items():
             if isinstance(value, list):
-                for v in value:
-                    conditions.append(
-                        rest.FieldCondition(
-                            key=f"metadata.{key}",
-                            match=rest.MatchValue(value=v),
-                        )
+                # OR logic within a field: doc must match any one of the values
+                # (e.g. fiscal_year [2023, 2024] → year is 2023 OR 2024)
+                conditions.append(
+                    rest.Filter(
+                        should=[
+                            rest.FieldCondition(
+                                key=f"metadata.{key}",
+                                match=rest.MatchValue(value=v),
+                            )
+                            for v in value
+                        ]
                     )
+                )
             else:
                 conditions.append(
                     rest.FieldCondition(

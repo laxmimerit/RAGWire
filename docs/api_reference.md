@@ -212,6 +212,26 @@ results = rag.retrieve("revenue", filters={"company_name": values["company_name"
 
 ---
 
+#### `rag.extract_metadata(text)`
+
+Extract structured metadata from text using the configured LLM.
+
+Automatically passes stored collection values so the LLM reuses existing entity names (e.g. `"apple inc."`) rather than extracting inconsistent variants (`"apple"`, `"Apple Inc."`). This grounding is applied transparently — you do not need to pass stored values manually.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `text` | `str` | Yes | Document text to extract metadata from (first 10,000 chars used) |
+
+**Returns:** `dict`
+
+```python
+metadata = rag.extract_metadata(open("report.txt").read())
+print(metadata)
+# {'company_name': 'apple inc.', 'doc_type': '10-k', 'fiscal_quarter': None, 'fiscal_year': [2025]}
+```
+
+---
+
 #### `rag.get_stats()`
 
 Get statistics about the current collection.
@@ -429,17 +449,18 @@ from ragwire import MetadataExtractor
 | `llm` | `Any` | Yes | LangChain chat model instance |
 | `prompt_template` | `str` | No | Custom prompt (uses financial default if not set) |
 
-#### `extractor.extract(text)`
+#### `extractor.extract(text, stored_values)`
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `text` | `str` | Yes | Document text (first 10,000 chars used) |
+| `stored_values` | `dict` | No | Existing field values from the collection. When provided, the LLM reuses stored names (e.g. `"apple inc."`) instead of extracting inconsistent variants. Pass `rag.get_field_values(fields)` or use `rag.extract_metadata()` which injects this automatically. |
 
 **Returns:** `dict`
 
 ```python
 {
-    "company_name": "apple",
+    "company_name": "apple inc.",
     "doc_type": "10-k",
     "fiscal_quarter": None,
     "fiscal_year": [2025]
@@ -452,7 +473,13 @@ from ragwire import MetadataExtractor
 
 llm = ChatOpenAI(model="gpt-5.4-nano")
 extractor = MetadataExtractor(llm)
+
+# Basic extraction (no grounding)
 metadata = extractor.extract(document_text)
+
+# With grounding — LLM reuses stored entity names
+stored = rag.get_field_values(["company_name", "doc_type"])
+metadata = extractor.extract(document_text, stored_values=stored)
 print(metadata)
 ```
 
@@ -702,7 +729,7 @@ from ragwire import get_retriever, hybrid_search, mmr_search
 | `vectorstore` | `QdrantVectorStore` | — | Vector store instance |
 | `query` | `str` | — | Search query |
 | `k` | `int` | `5` | Number of results |
-| `filters` | `dict` | `None` | Qdrant `Filter` object |
+| `filters` | `dict` | `None` | Plain metadata filter dict (same format as `rag.retrieve()` filters) |
 
 **Returns:** `list[Document]`
 
@@ -719,7 +746,7 @@ Maximal Marginal Relevance — retrieves diverse, non-redundant results. Use thi
 | `k` | `int` | `5` | Number of results to return |
 | `fetch_k` | `int` | `20` | Candidates fetched before MMR selection |
 | `lambda_mult` | `float` | `0.5` | Diversity (`0.0` = max diverse, `1.0` = max relevant) |
-| `filters` | `dict` | `None` | Qdrant `Filter` object |
+| `filters` | `dict` | `None` | Plain metadata filter dict (same format as `rag.retrieve()` filters) |
 
 **Returns:** `list[Document]`
 

@@ -160,11 +160,18 @@ results = rag.retrieve(
 ### Filter by fiscal year
 
 ```python
-# fiscal_year is stored as a list — pass the year as an int
+# Single year — pass as int
 results = rag.retrieve(
     "What is the net income?",
     top_k=5,
     filters={"fiscal_year": 2025}
+)
+
+# Multiple years — pass as list; matches documents covering ANY of the years (OR logic)
+results = rag.retrieve(
+    "Compare net income across 2023 and 2024",
+    top_k=10,
+    filters={"fiscal_year": [2023, 2024]}
 )
 ```
 
