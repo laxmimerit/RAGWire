@@ -2,13 +2,14 @@
 Metadata extraction using LLM.
 
 Extracts structured metadata from document content using language models.
-Extracts structured metadata from documents using a language model.
 """
 
 import json
 import logging
 from pathlib import Path
 from typing import Optional, Dict, Any, List
+
+from langchain_core.prompts import ChatPromptTemplate
 
 logger = logging.getLogger(__name__)
 
@@ -56,8 +57,6 @@ Extracted Metadata (JSON only):
             llm: Language model instance (e.g., ChatGoogleGenerativeAI, ChatOpenAI)
             prompt_template: Optional custom prompt template
         """
-        from langchain_core.prompts import ChatPromptTemplate
-
         self.llm = llm
         self.prompt_template = prompt_template or self.PROMPT_TEMPLATE
         self.prompt = ChatPromptTemplate.from_template(self.prompt_template)
@@ -80,20 +79,26 @@ Extracted Metadata (JSON only):
         Raises:
             ValueError: If LLM response is not valid JSON
         """
-        if stored_values:
-            existing = "\n".join(
-                f"  {k}: {v}" for k, v in stored_values.items() if v
-            )
+        existing = "\n".join(
+            f"  {k}: {v}" for k, v in (stored_values or {}).items() if v
+        )
+        if existing:
             grounding = (
                 f"Existing values already stored in the collection:\n{existing}\n"
                 "If this document refers to the same entity as a stored value, "
                 "use the stored value exactly.\n\n"
             )
+            # Insert before "Document Text:" so instructions appear before content,
+            # not after the output marker where the LLM starts generating.
+            injected = self.prompt_template.replace(
+                "Document Text:", grounding + "Document Text:", 1
+            )
+            prompt = ChatPromptTemplate.from_template(injected)
         else:
-            grounding = ""
+            prompt = self.prompt
 
-        chain = self.prompt | self.llm
-        response = chain.invoke({"content": grounding + text[:10000]})
+        chain = prompt | self.llm
+        response = chain.invoke({"content": text[:10000]})
         response_text = response.content if hasattr(response, "content") else str(response)
 
         # Parse JSON response

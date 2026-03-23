@@ -75,14 +75,14 @@ def hybrid_search(
         ...     filters={"company_name": "amazon"}
         ... )
     """
+    search_kwargs: Dict[str, Any] = {"k": k}
+    if filters:
+        search_kwargs["filter"] = filters
+
     retriever = vectorstore.as_retriever(
         search_type="similarity",
-        search_kwargs={"k": k},
+        search_kwargs=search_kwargs,
     )
-
-    if filters:
-        retriever.search_kwargs["filter"] = filters
-
     return retriever.invoke(query)
 
 
@@ -119,12 +119,12 @@ def mmr_search(
         ...     lambda_mult=0.7  # More diverse results
         ... )
     """
+    search_kwargs: Dict[str, Any] = {"k": k, "fetch_k": fetch_k, "lambda_mult": lambda_mult}
+    if filters:
+        search_kwargs["filter"] = filters
+
     retriever = vectorstore.as_retriever(
         search_type="mmr",
-        search_kwargs={"k": k, "fetch_k": fetch_k, "lambda_mult": lambda_mult},
+        search_kwargs=search_kwargs,
     )
-
-    if filters:
-        retriever.search_kwargs["filter"] = filters
-
     return retriever.invoke(query)
