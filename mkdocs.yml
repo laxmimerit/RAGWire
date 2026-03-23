@@ -70,6 +70,7 @@ nav:
   - Cookbook:
     - Switch Providers: cookbook/switch_providers.md
     - Local File Storage: cookbook/local_storage.md
+    - Qdrant Cloud (Free Tier): cookbook/qdrant_cloud.md
     - Multi-Collection Setup: cookbook/multi_collection.md
     - Update Documents: cookbook/update_documents.md
     - Tune Retrieval Quality: cookbook/tune_retrieval.md
