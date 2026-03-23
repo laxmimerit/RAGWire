@@ -66,7 +66,48 @@ def search_documents(query: str) -> str:
 
 ---
 
-## 3. Create the Agent
+## 3. Give the Agent Metadata Awareness (Optional but Recommended)
+
+By default the agent doesn't know what companies, document types, or years are in your collection. Without this, it may hallucinate filter values or skip filtering entirely.
+
+Use `discover_metadata_fields()` and `get_field_values()` to build a metadata-aware system prompt:
+
+```python
+# Discover what fields exist in the collection
+fields = rag.discover_metadata_fields()
+# → ['company_name', 'doc_type', 'fiscal_year', 'fiscal_quarter', 'file_name', ...]
+
+# Get actual values for the filterable fields
+values = rag.get_field_values(["company_name", "doc_type", "fiscal_year"])
+# → {
+#     'company_name': ['apple', 'microsoft', 'google'],
+#     'doc_type':     ['10-k', '10-q'],
+#     'fiscal_year':  ['2024', '2025'],
+# }
+
+SYSTEM_PROMPT = f"""
+You are a helpful financial document assistant.
+Use the search_documents tool to retrieve relevant information before answering.
+Always cite the source document in your answer.
+
+The knowledge base contains documents with the following metadata:
+- company_name: {values['company_name']}
+- doc_type: {values['doc_type']}
+- fiscal_year: {values['fiscal_year']}
+
+When the user mentions a specific company, year, or document type, the retrieval
+tool will automatically apply the right filters. You do not need to pass filters
+manually — just ask a natural language question.
+"""
+```
+
+This prompt tells the agent exactly what data is available, so it can ask precise questions like "What is Apple's revenue for 2025?" and the auto-filter will correctly extract `{"company_name": "apple", "fiscal_year": 2025}`.
+
+---
+
+## 4. Create the Agent
+
+Pass the metadata-aware `SYSTEM_PROMPT` from the previous step so the agent knows what's in the knowledge base.
 
 === "OpenAI"
 
@@ -79,11 +120,7 @@ def search_documents(query: str) -> str:
     agent = create_agent(
         model=model,
         tools=[search_documents],
-        system_prompt=(
-            "You are a helpful document assistant. "
-            "Use the search_documents tool to find relevant information "
-            "before answering questions. Always cite the source document."
-        ),
+        system_prompt=SYSTEM_PROMPT,
     )
     ```
 
@@ -98,11 +135,7 @@ def search_documents(query: str) -> str:
     agent = create_agent(
         model=model,
         tools=[search_documents],
-        system_prompt=(
-            "You are a helpful document assistant. "
-            "Use the search_documents tool to find relevant information "
-            "before answering questions. Always cite the source document."
-        ),
+        system_prompt=SYSTEM_PROMPT,
     )
     ```
 
@@ -117,11 +150,7 @@ def search_documents(query: str) -> str:
     agent = create_agent(
         model=model,
         tools=[search_documents],
-        system_prompt=(
-            "You are a helpful document assistant. "
-            "Use the search_documents tool to find relevant information "
-            "before answering questions. Always cite the source document."
-        ),
+        system_prompt=SYSTEM_PROMPT,
     )
     ```
 
@@ -136,17 +165,13 @@ def search_documents(query: str) -> str:
     agent = create_agent(
         model=model,
         tools=[search_documents],
-        system_prompt=(
-            "You are a helpful document assistant. "
-            "Use the search_documents tool to find relevant information "
-            "before answering questions. Always cite the source document."
-        ),
+        system_prompt=SYSTEM_PROMPT,
     )
     ```
 
 ---
 
-## 4. Ask a Question
+## 5. Ask a Question
 
 ```python
 response = agent.invoke({
@@ -157,7 +182,7 @@ print(response["messages"][-1].content)
 
 ---
 
-## 5. Multi-Turn Conversation (Memory)
+## 6. Multi-Turn Conversation (Memory)
 
 Add `InMemorySaver` to give the agent memory across turns within a session:
 
@@ -201,7 +226,7 @@ print(response["messages"][-1].content)
 
 ---
 
-## 6. Structured Output
+## 7. Structured Output
 
 Get a typed response with answer, sources, and confidence:
 
@@ -238,7 +263,7 @@ print(f"Confidence: {result.confidence}")
 
 ---
 
-## Full Working Example
+## 8. Full Working Example
 
 Save as `examples/rag_agent.py` and run:
 

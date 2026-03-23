@@ -632,6 +632,41 @@ vectorstore = store.get_store(use_sparse=True)
 docs = vectorstore.similarity_search("revenue", k=5)
 ```
 
+#### `store.get_metadata_keys()`
+
+Scrolls one point from the collection and returns all metadata field names present. Use this when you don't know what fields were stored — e.g. inspecting a collection built by someone else, or verifying custom metadata was extracted correctly.
+
+```python
+fields = store.get_metadata_keys()
+# → ['company_name', 'doc_type', 'fiscal_year', 'file_name', 'chunk_index', ...]
+```
+
+#### `store.get_field_values(fields, limit)`
+
+Returns unique values for each requested field using Qdrant's facet API. Requires payload indexes on those fields — call `create_payload_indexes()` first if you haven't ingested via `RAGWire` (which does this automatically).
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `fields` | `list[str]` | — | Field names (without `metadata.` prefix) |
+| `limit` | `int` | `50` | Max unique values per field |
+
+**Returns:** `dict[str, list]`
+
+```python
+# Discover fields first, then get values for the ones you care about
+fields = store.get_metadata_keys()
+# → ['company_name', 'doc_type', 'fiscal_year', ...]
+
+values = store.get_field_values(["company_name", "doc_type"])
+# → {'company_name': ['apple', 'microsoft'], 'doc_type': ['10-k', '10-q']}
+
+# High-cardinality field — raise the limit
+values = store.get_field_values(["file_name"], limit=200)
+```
+
+!!! note "Using `RAGWire` instead?"
+    If you're using `RAGWire`, prefer `rag.discover_metadata_fields()` and `rag.get_field_values()` — they are thin wrappers over these same methods and don't require you to manage the `QdrantStore` instance directly.
+
 ---
 
 ### Retrieval Functions
