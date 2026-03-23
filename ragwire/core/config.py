@@ -109,24 +109,6 @@ class Config:
             return re.sub(r"\$\{([^}]+)\}", _replacer, obj)
         return obj
 
-    def get_env_override(self, key: str, env_var: str, default: Any = None) -> Any:
-        """
-        Get configuration value with environment variable override.
-
-        Args:
-            key: Configuration key
-            env_var: Environment variable name
-            default: Default value if neither config nor env var exists
-
-        Returns:
-            Value from env var, config, or default
-        """
-        env_value = os.getenv(env_var)
-        if env_value is not None:
-            return env_value
-
-        return self.get(key, default)
-
     def __getitem__(self, key: str) -> Any:
         """Allow dictionary-style access with dot notation."""
         return self.get(key)

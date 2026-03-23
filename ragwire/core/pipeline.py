@@ -63,8 +63,7 @@ class RAGWire:
         logger.info(f"Loading configuration from {config_path}")
 
         # Load configuration
-        self.config_obj = Config(config_path)
-        self.config = self.config_obj.config
+        self.config = Config(config_path).config
 
         # Initialize components
         self._initialize_logging()
@@ -162,13 +161,7 @@ class RAGWire:
         if metadata_yaml:
             self.metadata_extractor = MetadataExtractor.from_yaml(llm, metadata_yaml)
             logger.info(f"Metadata extractor loaded from: {metadata_yaml}")
-            # Derive filterable field names from the custom YAML
-            import yaml as _yaml
-            with open(metadata_yaml, "r", encoding="utf-8") as _f:
-                _meta_cfg = _yaml.safe_load(_f)
-            self._filter_fields = [
-                f["name"] for f in _meta_cfg.get("fields", [])
-            ] or ["company_name", "doc_type", "fiscal_quarter", "fiscal_year"]
+            self._filter_fields = self.metadata_extractor.fields or ["company_name", "doc_type", "fiscal_quarter", "fiscal_year"]
         else:
             self.metadata_extractor = MetadataExtractor(llm)
             self._filter_fields = ["company_name", "doc_type", "fiscal_quarter", "fiscal_year"]
