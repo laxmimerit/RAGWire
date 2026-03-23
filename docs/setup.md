@@ -152,6 +152,6 @@ examples/
 |---|---|
 | Qdrant connection refused | `docker run -p 6333:6333 qdrant/qdrant` |
 | `markitdown[pdf]` missing | `pip install "markitdown[pdf]"` |
-| Embedding dimension mismatch | Set `force_recreate: true` in config once, then back to `false` |
-| Collection has no sparse vectors | Set `force_recreate: true` in config once, then back to `false` |
+| Embedding dimension mismatch | Set `force_recreate: true` in config once, then back to `false`. This happens when you switch embedding models — the new model produces a different vector size than what the collection was created with. |
+| Collection has no sparse vectors | Set `force_recreate: true` in config once, then back to `false`. This happens when you change `use_sparse: false` → `true` on an existing collection. |
 | `fastembed` missing | `pip install fastembed` |

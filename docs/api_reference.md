@@ -121,6 +121,8 @@ Each `Document` has:
 - If `filters` is passed → used as-is, no LLM call
 - If `filters` is not passed → LLM automatically extracts filters from the query
 
+**When to use auto-filter vs explicit filters:** Use explicit filters in programmatic pipelines where you control the inputs (faster, zero LLM overhead). Use auto-filter in user-facing chatbots where the user types natural language queries and you want the system to figure out the right filters automatically.
+
 ```python
 # Explicit filters — LLM extraction skipped
 results = rag.retrieve(
@@ -240,6 +242,8 @@ Converts documents (PDF, DOCX, XLSX, PPTX, TXT, MD) to markdown text.
 from ragwire import MarkItDownLoader
 ```
 
+**When to use `MarkItDownLoader` directly:** Use it when you need to convert documents to text before passing them to a custom pipeline, or when you want to inspect/transform the text before ingestion.
+
 #### `MarkItDownLoader.load(file_path)`
 
 | Parameter | Type | Required | Description |
@@ -268,6 +272,45 @@ else:
     print(f"Error: {result['error']}")
 ```
 
+#### `loader.load_batch(file_paths)`
+
+Load multiple documents in one call. Returns results in the same order as the input list.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `file_paths` | `list[str]` | Yes | List of file paths to load |
+
+**Returns:** `list[dict]` — same structure as `load()` for each file.
+
+```python
+loader = MarkItDownLoader()
+results = loader.load_batch(["doc1.pdf", "doc2.pdf", "doc3.docx"])
+
+for result in results:
+    if result["success"]:
+        print(f"{result['file_name']}: {len(result['text_content'])} chars")
+    else:
+        print(f"{result['file_name']}: {result['error']}")
+```
+
+#### `loader.load_directory(directory, extensions, recursive)`
+
+Load all supported documents from a directory.
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `directory` | `str` | Yes | — | Path to directory |
+| `extensions` | `list[str]` | No | all supported | File extensions to include |
+| `recursive` | `bool` | No | `False` | Scan subdirectories |
+
+**Returns:** `list[dict]`
+
+```python
+loader = MarkItDownLoader()
+results = loader.load_directory("data/", extensions=[".pdf", ".docx"], recursive=True)
+texts = [r["text_content"] for r in results if r["success"]]
+```
+
 ---
 
 ### Text Splitters
@@ -277,6 +320,13 @@ from ragwire import get_splitter, get_markdown_splitter, get_code_splitter
 ```
 
 All splitters return a `RecursiveCharacterTextSplitter` instance with a `.split_text(text)` method.
+
+**Choosing a splitter:**
+- `get_markdown_splitter` — best for PDF/DOCX/reports (converted to markdown by MarkItDown); respects document structure
+- `get_splitter` — best for plain text, HTML, or any content without markdown headers
+- `get_code_splitter` — best for source code files; splits on class/function boundaries
+
+**Chunk size guidance:** Larger chunks (8k–12k chars) preserve more context per chunk — good for long-form financial/legal docs. Smaller chunks (500–2k chars) give more precise retrieval — good for FAQ-style content. `chunk_overlap` prevents context being cut mid-sentence; 20% of chunk size is a sensible default.
 
 #### `get_markdown_splitter(chunk_size, chunk_overlap)`
 
@@ -477,13 +527,13 @@ See [Metadata & Filtering](metadata.md) for the full field reference.
 
 ---
 
-### setup_logging
-
-Configure logging for the rag.
+### Logging
 
 ```python
-from ragwire import setup_logging
+from ragwire import setup_logging, setup_colored_logging
 ```
+
+Use `setup_logging` for plain text logs (production, log files). Use `setup_colored_logging` during development — color-codes log levels so warnings and errors stand out at a glance.
 
 #### `setup_logging(log_level, log_file, console_output, format_string)`
 
@@ -499,6 +549,36 @@ from ragwire import setup_logging
 ```python
 logger = setup_logging(log_level="DEBUG", log_file="logs/rag.log")
 logger.info("Pipeline started")
+```
+
+#### `setup_colored_logging(log_level, log_file)`
+
+Same as `setup_logging` but with colored console output — errors in red, warnings in yellow, info in green. Useful during development to spot issues quickly.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `log_level` | `str` | `"INFO"` | `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` |
+| `log_file` | `str` | `None` | Optional path to write plain-text logs to file |
+
+**Returns:** `logging.Logger`
+
+```python
+from ragwire import setup_colored_logging
+
+logger = setup_colored_logging(log_level="DEBUG")
+logger.info("Pipeline started")   # green
+logger.warning("Slow response")   # yellow
+logger.error("LLM call failed")   # red
+```
+
+You can also enable colored logging from `config.yaml` — no code change needed:
+
+```yaml
+logging:
+  level: "INFO"
+  colored: true
+  console_output: true
+  # log_file: "logs/rag.log"   # uncomment to also write to file
 ```
 
 ---
@@ -536,6 +616,9 @@ from ragwire import QdrantStore
 | `collection_exists()` | `bool` | Check if collection exists |
 | `file_hash_exists(file_hash)` | `bool` | Check if file already ingested |
 | `get_collection_info()` | `CollectionInfo` | Get Qdrant collection metadata |
+| `get_metadata_keys()` | `list[str]` | Scroll one point, return all metadata field names |
+| `get_field_values(fields, limit)` | `dict` | Unique values per field via Qdrant facet API |
+| `create_payload_indexes(fields)` | `None` | Create keyword indexes for facet API (auto-called during ingestion) |
 
 ```python
 store = QdrantStore(
@@ -558,6 +641,14 @@ Use these when building a custom retrieval layer outside of `RAGWire`.
 ```python
 from ragwire import get_retriever, hybrid_search, mmr_search
 ```
+
+**Choosing a search strategy:**
+
+| Strategy | Use when |
+|---|---|
+| `similarity` | General semantic search; fast, good default |
+| `hybrid` | Queries mix semantic meaning with exact keywords (e.g. ticker symbols, product names, IDs) |
+| `mmr` | You want diverse results — avoids returning 5 nearly identical chunks from the same page |
 
 #### `get_retriever(vectorstore, top_k, search_type)`
 
@@ -582,7 +673,9 @@ from ragwire import get_retriever, hybrid_search, mmr_search
 
 #### `mmr_search(vectorstore, query, k, fetch_k, lambda_mult, filters)`
 
-Maximal Marginal Relevance — retrieves diverse, non-redundant results.
+Maximal Marginal Relevance — retrieves diverse, non-redundant results. Use this when a regular similarity search returns several near-identical chunks from the same section of a document, and you want results spread across different parts.
+
+`fetch_k` controls how many candidates are retrieved first, then MMR selects the most diverse `k` from them. A larger `fetch_k` gives MMR more candidates to choose from. `lambda_mult` controls the balance: `0.0` = maximise diversity, `1.0` = maximise relevance (same as similarity search), `0.5` = balanced default.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -596,13 +689,11 @@ Maximal Marginal Relevance — retrieves diverse, non-redundant results.
 **Returns:** `list[Document]`
 
 ```python
-results = mmr_search(
-    vectorstore,
-    "Apple revenue and earnings",
-    k=5,
-    fetch_k=20,
-    lambda_mult=0.7,
-)
+# Balanced — good default
+results = mmr_search(vectorstore, "Apple revenue and earnings", k=5)
+
+# More diverse — useful when documents are long and repetitive
+results = mmr_search(vectorstore, "Apple revenue and earnings", k=5, lambda_mult=0.3)
 ```
 
 ---
@@ -610,6 +701,8 @@ results = mmr_search(
 ### Hashing Utilities
 
 Used internally by the pipeline for SHA256 deduplication. Exposed for custom ingestion workflows.
+
+**Why deduplication matters:** Without it, re-running ingestion on the same files doubles the chunks in Qdrant, degrading retrieval quality and wasting storage. RAGWire checks `file_hash` before ingesting — if a file with the same hash already exists in the collection, the file is skipped entirely.
 
 ```python
 from ragwire import sha256_text, sha256_file_from_path, sha256_chunk
