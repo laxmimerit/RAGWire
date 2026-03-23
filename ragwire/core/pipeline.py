@@ -65,6 +65,9 @@ class RAGWire:
         # Load configuration
         self.config = Config(config_path).config
 
+        # Cache for stored filter values — populated on first query, invalidated after ingestion
+        self._stored_values_cache: Optional[Dict[str, Any]] = None
+
         # Initialize components
         self._initialize_logging()
         self._initialize_loader()
@@ -284,6 +287,7 @@ class RAGWire:
         # Create payload indexes for all metadata fields so facet API works
         all_fields = self.vectorstore_wrapper.get_metadata_keys()
         self.vectorstore_wrapper.create_payload_indexes(all_fields)
+        self._stored_values_cache = None  # invalidate after ingestion
 
         logger.info(
             f"Ingestion complete: {stats['processed']}/{stats['total']} documents"
@@ -393,17 +397,39 @@ class RAGWire:
         return documents
 
     def _extract_filters_from_query(self, query: str) -> Optional[Dict[str, Any]]:
-        """Use the configured LLM to extract metadata filters from a natural language query."""
+        """Use the configured LLM to extract metadata filters from a natural language query.
+
+        Passes actual stored values to the LLM so it can match exactly what's in
+        the collection — avoids mismatches like 'apple' vs 'apple inc.'.
+        """
         import json
         from langchain_core.prompts import ChatPromptTemplate
 
-        fields_desc = ", ".join(self._filter_fields)
+        # Use cached stored values — refreshed after each ingestion run
+        if self._stored_values_cache is None:
+            self._stored_values_cache = self.vectorstore_wrapper.get_field_values(
+                self._filter_fields, limit=50
+            )
+        stored_values = self._stored_values_cache
+        fields_desc = "\n".join(
+            f"  {field}: {stored_values.get(field, [])}"
+            for field in self._filter_fields
+        )
+
         prompt_template = (
-            "Extract metadata filters as JSON from the user query.\n"
-            "Only include fields that are clearly mentioned. Return {{}} if no filters apply.\n\n"
-            f"Available fields: {fields_desc}\n\n"
-            "User query: {query}\n\n"
-            "Filters (JSON only):"
+            "You are a metadata filter extractor.\n\n"
+            "## Task\n"
+            "Extract metadata filters as a JSON object from the user query.\n\n"
+            "## Rules\n"
+            "- Only include a field if the query clearly refers to one of its stored values.\n"
+            "- Match stored values case-insensitively (e.g. 'Apple' matches 'apple inc.').\n"
+            "- If the query mentions an entity NOT present in the stored values, omit that field.\n"
+            "- Return {{}} if no stored values match.\n\n"
+            "## Available Fields and Stored Values\n"
+            f"{fields_desc}\n\n"
+            "## User Query\n"
+            "{query}\n\n"
+            "## Output (JSON only, no explanation)\n"
         )
 
         try:
@@ -415,6 +441,10 @@ class RAGWire:
             if start != -1 and end > start:
                 filters = json.loads(text[start:end])
                 if filters:
+                    filters = {
+                        k: v.lower() if isinstance(v, str) else v
+                        for k, v in filters.items()
+                    }
                     logger.info(f"Auto-extracted filters from query: {filters}")
                     return filters
         except Exception as e:
