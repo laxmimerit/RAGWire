@@ -59,6 +59,7 @@ nav:
     - Metadata & Filtering: metadata.md
     - Custom Metadata: custom_metadata.md
     - RAG Agent: rag_agent.md
+  - Cookbook: cookbook.md
   - Providers:
     - Ollama (Local): ollama.md
     - OpenAI: openai.md
