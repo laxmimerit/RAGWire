@@ -115,8 +115,11 @@ def _get_ollama_embeddings(config: dict, **kwargs) -> Any:
 
     model = config.get("model", "nomic-embed-text")
     base_url = config.get("base_url", "http://localhost:11434")
+    extra = {}
+    if "num_ctx" in config:
+        extra["num_ctx"] = config["num_ctx"]
 
-    return OllamaEmbeddings(model=model, base_url=base_url, **kwargs)
+    return OllamaEmbeddings(model=model, base_url=base_url, **extra, **kwargs)
 
 
 def _get_google_embeddings(config: dict, **kwargs) -> Any:

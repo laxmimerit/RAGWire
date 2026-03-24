@@ -78,9 +78,9 @@ embeddings:
 # =================================================================
 llm:
   provider: "ollama"
-  model: "llama3.2"
+  model: "qwen3.5:9b"
   base_url: "http://localhost:11434"
-  num_ctx: 16384         # Context window — must fit your largest chunk
+  num_ctx: 65536         # optional — override context window if chunks are large
 
 # =================================================================
 # Metadata Extraction (optional)

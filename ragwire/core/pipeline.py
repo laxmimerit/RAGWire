@@ -144,8 +144,10 @@ class RAGWire:
 
         if provider == "ollama":
             from langchain_ollama import ChatOllama
-            num_ctx = llm_config.get("num_ctx", 16384)
-            llm = ChatOllama(model=model, base_url=base_url, num_ctx=num_ctx)
+            extra = {}
+            if "num_ctx" in llm_config:
+                extra["num_ctx"] = llm_config["num_ctx"]
+            llm = ChatOllama(model=model, base_url=base_url, **extra)
         elif provider == "openai":
             from langchain_openai import ChatOpenAI
             llm = ChatOpenAI(model=model)
