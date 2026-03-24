@@ -45,16 +45,3 @@ logging:
 | `WARNING` | Minimal — only problems and skipped files |
 | `ERROR` | Errors only |
 
-## Silence Third-Party Noise
-
-Some providers (HuggingFace, fastembed) emit verbose logs. Silence them while keeping RAGWire logs:
-
-```python
-import logging
-
-logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
-logging.getLogger("fastembed").setLevel(logging.WARNING)
-
-from ragwire import setup_logging
-logger = setup_logging(log_level="INFO")
-```

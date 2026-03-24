@@ -90,9 +90,16 @@ Extracted Metadata (JSON only):
             )
             # Insert before "Document Text:" so instructions appear before content,
             # not after the output marker where the LLM starts generating.
-            injected = self.prompt_template.replace(
-                "Document Text:", grounding + "Document Text:", 1
-            )
+            # Fall back to inserting before {content} for custom prompt templates
+            # that use different wording.
+            if "Document Text:" in self.prompt_template:
+                injected = self.prompt_template.replace(
+                    "Document Text:", grounding + "Document Text:", 1
+                )
+            else:
+                injected = self.prompt_template.replace(
+                    "{content}", grounding + "{content}", 1
+                )
             prompt = ChatPromptTemplate.from_template(injected)
         else:
             prompt = self.prompt

@@ -6,7 +6,7 @@ Supports finance-specific metadata and general document properties.
 """
 
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 
 
@@ -56,7 +56,7 @@ class DocumentMetadata(BaseModel):
 
     # Timestamps
     created_at: Optional[str] = Field(
-        default_factory=lambda: datetime.utcnow().isoformat(),
+        default_factory=lambda: datetime.now(timezone.utc).isoformat(),
         description="ISO format timestamp of ingestion",
     )
 
