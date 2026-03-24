@@ -7,9 +7,11 @@ console and file handlers, log levels, and formatting.
 
 import logging
 import sys
+import warnings
 from pathlib import Path
 from typing import Optional
-from datetime import datetime
+
+warnings.filterwarnings("ignore")
 
 
 def setup_logging(
