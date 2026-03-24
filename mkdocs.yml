@@ -34,6 +34,7 @@ theme:
 
 plugins:
   - search
+  - mermaid2
 
 markdown_extensions:
   - admonition
@@ -79,6 +80,12 @@ nav:
     - Preview Documents: cookbook/preview_documents.md
     - Logging Setup: cookbook/logging.md
     - Metadata-Aware Chatbot: cookbook/filtered_chatbot.md
+  - Architecture:
+    - System Overview: architecture/overview.md
+    - Ingestion Pipeline: architecture/ingestion_pipeline.md
+    - Retrieval Pipeline: architecture/retrieval_pipeline.md
+    - Metadata Extraction: architecture/metadata_extraction.md
+    - Component Map: architecture/component_map.md
   - API Reference: api_reference.md
 
 extra:
