@@ -18,7 +18,7 @@ RAGWire handles the full RAG pipeline — from loading raw documents to storing 
 
 ---
 
-![RAGWire Architecture](../assets/RAGWire-block-diagram.png)
+![RAGWire Architecture](assets/RAGWire-block-diagram.png)
 
 ---
 
