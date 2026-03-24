@@ -153,7 +153,31 @@ Perform hybrid search combining dense (semantic) and sparse (keyword) vectors. R
 
 **Returns:** `list[Document]`
 
+!!! warning "Hybrid search requires sparse vectors"
+    `hybrid_search()` only performs true hybrid (dense + sparse) search when **both** conditions are met:
+
+    1. `use_sparse: true` in `config.yaml` — collection must be created with sparse vector support
+    2. `pip install fastembed` — required for sparse encoding
+
+    If either is missing, the call silently falls back to **dense-only similarity search**. There is no error raised.
+    If your collection was created with `use_sparse: false`, you must set `force_recreate: true` and re-ingest to enable hybrid search.
+
+**`retrieve()` vs `hybrid_search()` — when to use which:**
+
+| | `retrieve()` | `hybrid_search()` |
+|---|---|---|
+| Search type | Whatever is set in `config.yaml` (`similarity`, `mmr`, or `hybrid`) | Always hybrid (dense + sparse), regardless of config |
+| Auto-filter | Yes — LLM extracts filters from query | Yes — same LLM extraction |
+| `top_k` default | From `config.yaml` | `k=5` parameter |
+| Typical use | Primary method for all RAG flows | Override to force hybrid on a single call |
+
+If your `config.yaml` already has `search_type: "hybrid"`, both methods produce identical results. Use `hybrid_search()` only when your config is set to `similarity` or `mmr` and you want to force hybrid for a specific call.
+
 ```python
+# Use retrieve() in most cases — honours config search type
+results = rag.retrieve("Apple revenue fiscal 2025", top_k=5)
+
+# Use hybrid_search() to force hybrid regardless of config
 results = rag.hybrid_search(
     "Apple revenue fiscal 2025",
     k=5,
@@ -250,6 +274,124 @@ Get statistics about the current collection.
 ```python
 stats = rag.get_stats()
 print(f"Collection: {stats['collection_name']}, Chunks: {stats['total_documents']}")
+```
+
+---
+
+---
+
+## Config Reference — `llm` and `embeddings`
+
+All parameters below are set in `config.yaml` and read automatically by `RAGWire` at startup.
+
+---
+
+### `llm` section
+
+Controls the LLM used for metadata extraction (and filter extraction during retrieval).
+
+| Key | Required | Default | Description |
+|---|---|---|---|
+| `provider` | Yes | — | `ollama`, `openai`, `google`, `groq`, `anthropic` |
+| `model` | Yes | — | Model name (e.g. `qwen3.5:9b`, `gpt-4o-mini`) |
+| `base_url` | Ollama only | `http://localhost:11434` | Ollama server URL |
+| `num_ctx` | Ollama only | LangChain default | Context window size — only set this if you need to override the default |
+| `api_key` | Google / Groq / Anthropic | — | API key (or use `${ENV_VAR}` syntax) |
+
+!!! note "OpenAI"
+    OpenAI reads `OPENAI_API_KEY` from the environment automatically — no `api_key` field needed in config.
+
+```yaml
+# Ollama
+llm:
+  provider: "ollama"
+  model: "qwen3.5:9b"
+  base_url: "http://localhost:11434"
+  num_ctx: 16384
+
+# OpenAI
+llm:
+  provider: "openai"
+  model: "gpt-4o-mini"
+
+# Google Gemini
+llm:
+  provider: "google"
+  model: "gemini-2.5-flash"
+  api_key: "${GOOGLE_API_KEY}"
+
+# Groq
+llm:
+  provider: "groq"
+  model: "llama-3.3-70b-versatile"
+  api_key: "${GROQ_API_KEY}"
+
+# Anthropic
+llm:
+  provider: "anthropic"
+  model: "claude-haiku-4-5-20251001"
+  api_key: "${ANTHROPIC_API_KEY}"
+```
+
+---
+
+### `embeddings` section
+
+Controls the embedding model used to encode documents and queries into vectors.
+
+| Key | Required | Default | Description |
+|---|---|---|---|
+| `provider` | Yes | — | `ollama`, `openai`, `google`, `huggingface`, `fastembed` |
+| `model` | Most providers | provider default | Embedding model name |
+| `base_url` | Ollama only | `http://localhost:11434` | Ollama server URL |
+| `num_ctx` | Ollama only | LangChain default | Context window size — only set this if you need to override the default |
+| `api_key` | Google only | — | API key (or use `${ENV_VAR}` syntax) |
+| `model_name` | HuggingFace / FastEmbed only | see below | Model identifier (uses `model_name` key, not `model`) |
+| `model_kwargs` | HuggingFace only | `{}` | Passed to the HuggingFace model constructor (e.g. `{"device": "cpu"}`) |
+| `encode_kwargs` | HuggingFace only | `{}` | Passed to the encode call (e.g. `{"normalize_embeddings": true}`) |
+
+**Default models per provider:**
+
+| Provider | Default model |
+|---|---|
+| `ollama` | `nomic-embed-text` |
+| `openai` | `text-embedding-3-small` |
+| `google` | `models/embedding-001` |
+| `huggingface` | `sentence-transformers/all-MiniLM-L6-v2` |
+| `fastembed` | `BAAI/bge-small-en-v1.5` |
+
+```yaml
+# Ollama
+embeddings:
+  provider: "ollama"
+  model: "nomic-embed-text"
+  base_url: "http://localhost:11434"
+  num_ctx: 16384
+
+# OpenAI
+embeddings:
+  provider: "openai"
+  model: "text-embedding-3-small"
+
+# Google Gemini
+embeddings:
+  provider: "google"
+  model: "models/gemini-embedding-001"
+  api_key: "${GOOGLE_API_KEY}"
+
+# HuggingFace (local)
+embeddings:
+  provider: "huggingface"
+  model_name: "sentence-transformers/all-MiniLM-L6-v2"
+  model_kwargs:
+    device: "cpu"
+  encode_kwargs:
+    normalize_embeddings: true
+
+# FastEmbed (local, sparse-capable)
+embeddings:
+  provider: "fastembed"
+  model_name: "BAAI/bge-small-en-v1.5"
 ```
 
 ---

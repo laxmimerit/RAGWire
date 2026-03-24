@@ -11,6 +11,10 @@ Every chunk stored in Qdrant carries the following metadata fields:
 ### LLM-Extracted Fields
 These are extracted once per document from the first chunk using your configured LLM.
 
+!!! note "Default schema — Finance"
+    The fields below (`company_name`, `doc_type`, `fiscal_quarter`, `fiscal_year`) are the **default** metadata schema, designed for financial documents. You are not locked into these fields.
+    RAGWire lets you define any fields you need — product names, departments, case IDs, languages, or anything else — via a simple YAML file. See [Custom Metadata](custom_metadata.md) for details.
+
 | Field | Type | Example | Description |
 |---|---|---|---|
 | `company_name` | `str` | `"apple"` | Company name, normalized to lowercase |
@@ -133,7 +137,7 @@ results = rag.retrieve("What is the revenue?", filters={"company_name": "apple"}
 results = rag.retrieve("What is Apple's revenue for 2025?")
 ```
 
-The available filter fields match your metadata schema — financial defaults (`company_name`, `doc_type`, `fiscal_quarter`, `fiscal_year`) or your custom fields from `metadata.yaml`.
+The available filter fields match your metadata schema. By default these are `company_name`, `doc_type`, `fiscal_quarter`, and `fiscal_year`. If you've configured [custom metadata](custom_metadata.md), auto-filter will use your custom fields instead.
 
 ---
 
@@ -218,38 +222,37 @@ results = rag.hybrid_search(
 
 When building a RAG chatbot, pass the schema to your LLM so it can decide what filters to apply before querying.
 
+Instead of hardcoding field names and values in your system prompt, build it dynamically from the collection. This way the prompt is always accurate and works for any metadata schema:
+
 ```python
-METADATA_SCHEMA = """
-Available metadata fields for filtering RAG queries:
+from ragwire import RAGWire
 
-LLM-extracted (from document content):
-- company_name (str): Company name in lowercase. Example: "apple", "microsoft"
-- doc_type (str): Document type. Values: "10-k", "10-q", "8-k"
-- fiscal_quarter (str or null): Quarter. Values: "q1", "q2", "q3", "q4"
-- fiscal_year (list[int]): Fiscal year(s). Example: [2025]
+rag = RAGWire("config.yaml")
 
-File-level:
-- file_name (str): Original filename. Example: "Apple_10k_2025.pdf"
-- file_type (str): File extension. Example: "pdf"
-- chunk_index (int): Chunk position within the document (0-based)
-- total_chunks (int): Total chunks in the document
+# Pull actual fields and values from the collection
+fields = rag.discover_metadata_fields()
+values = rag.get_field_values(fields)
 
-Use these fields to filter retrieved chunks when the user query specifies
-a particular company, document type, or time period.
-"""
+field_descriptions = "\n".join(
+    f"- {field}: {values[field]}" if values.get(field) else f"- {field}"
+    for field in fields
+)
 
 SYSTEM_PROMPT = f"""
-You are a financial document assistant.
-You have access to a RAG pipeline with the following metadata schema:
+You are a document assistant with access to a RAG pipeline.
 
-{METADATA_SCHEMA}
+Available metadata fields and known values:
+{field_descriptions}
 
-When answering questions, extract any filters from the user query
-(e.g. company name, year, document type) and apply them.
+When answering questions, extract any filters from the user query and apply them.
 """
 ```
 
+This generates a prompt grounded in real data — no hardcoded assumptions about field names, types, or allowed values.
+
 ### Full example — LLM-driven filter extraction
+
+The prompt is built **dynamically** from what is actually in your collection — no hardcoded field names, types, or values. This works identically whether you use the default finance schema or [custom metadata](custom_metadata.md).
 
 ```python
 from ragwire import RAGWire
@@ -260,19 +263,30 @@ import json
 rag = RAGWire("config.yaml")
 llm = ChatOpenAI(model="gpt-5.4-nano")
 
-FILTER_PROMPT = """
+# Discover fields and their current values directly from the collection
+fields = rag.discover_metadata_fields()
+values = rag.get_field_values(fields)
+
+# Build the filter prompt dynamically — works for any schema
+field_descriptions = "\n".join(
+    f"- {field}: {values[field]}" if values.get(field) else f"- {field}"
+    for field in fields
+)
+
+FILTER_PROMPT = f"""
 Given the user query below, extract metadata filters as JSON.
-Only include fields if clearly mentioned. Return {} if no filters apply.
+Only include fields if clearly mentioned in the query. Return {{}} if no filters apply.
 
-Available fields: company_name (str), doc_type (str), fiscal_year (int), fiscal_quarter (str)
+Available metadata fields and known values:
+{field_descriptions}
 
-User query: {query}
+User query: {{query}}
 
 Filters (JSON only):
 """
 
 def query_with_filters(user_query: str, top_k: int = 5):
-    # Step 1: Ask LLM to extract filters from the query
+    # Step 1: LLM extracts filters from the query using the dynamic prompt
     prompt = ChatPromptTemplate.from_template(FILTER_PROMPT)
     chain = prompt | llm
     response = chain.invoke({"query": user_query})
@@ -284,20 +298,33 @@ def query_with_filters(user_query: str, top_k: int = 5):
 
     print(f"Extracted filters: {filters}")
 
-    # Step 2: Retrieve with filters
+    # Step 2: Retrieve with extracted filters
     results = rag.retrieve(user_query, top_k=top_k, filters=filters or None)
-
     return results
 
 
-# Example usage
+# Works for any domain — finance, legal, medical, HR, etc.
 results = query_with_filters("What is Apple's revenue for fiscal year 2025?")
 for doc in results:
-    print(doc.metadata.get("company_name"), doc.metadata.get("fiscal_year"))
+    print(doc.metadata)
     print(doc.page_content[:200])
     print()
 ```
 
+The prompt RAGWire sends to the LLM will look like this at runtime (example with default finance schema):
+
+```
+Available metadata fields and known values:
+- company_name: ['apple', 'microsoft', 'google']
+- doc_type: ['10-k', '10-q']
+- fiscal_year: [2023, 2024, 2025]
+- fiscal_quarter: ['q1', 'q2', 'q3', 'q4']
+- file_name: ['Apple_10k_2025.pdf', 'Microsoft_10k_2025.pdf']
+...
+```
+
+The LLM sees the actual values in your collection, so it can match them precisely instead of guessing.
+
 ---
 
-For custom metadata fields (legal, HR, or any non-financial domain), see [Custom Metadata](custom_metadata.md).
+For custom metadata fields (legal, HR, medical, or any non-financial domain), see [Custom Metadata](custom_metadata.md).
