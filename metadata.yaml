@@ -1,0 +1,31 @@
+fields:
+  - name: title
+    description: "Full title of the research paper"
+
+  - name: authors
+    description: "List of full author names as they appear in the paper (e.g. [John Smith, Emily Johnson, Wei Lee])"
+
+  - name: contact_info
+    description: "All available contact details from the paper as a single string — include any combination of email, website, university/institution, department, and address that are present. Return null if none found"
+
+  - name: publication_year
+    description: "Year the paper was published, as integer"
+
+  - name: supplement_types
+    description: "List of all supplements studied in lowercase-hyphenated format. Not limited to the examples — extract any supplement mentioned in the paper"
+    values: ["protein", "creatine", "caffeine", "vitamin-d", "omega-3", "bcaa", "ashwagandha", "magnesium", "beta-alanine"]
+
+  - name: research_focus
+    description: "List of all research topics covered in lowercase-hyphenated format. Not limited to the examples — extract any focus area mentioned"
+    values: ["muscle-growth", "recovery", "performance", "endurance", "cognitive-function", "fat-loss", "safety", "hormonal"]
+
+  - name: study_type
+    description: "Type of research design — pick the closest match"
+    values: ["systematic-review", "meta-analysis", "controlled-trial", "observational", "narrative-review"]
+
+  - name: effectiveness_score
+    description: "Overall effectiveness conclusion based on study findings, or null if the paper does not draw a direct effectiveness conclusion"
+    values: ["highly-effective", "moderately-effective", "insufficient-evidence"]
+
+  - name: key_takeaway
+    description: "Single most important conclusion from the paper in plain English, maximum 200 characters"

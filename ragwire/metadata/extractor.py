@@ -182,7 +182,7 @@ Extracted Metadata (JSON only):
             else:
                 json_lines.append(f'  "{name}": ...  // {desc}')
 
-        json_block = "{\n" + ",\n".join(json_lines) + "\n}"
+        json_block = "{{\n" + ",\n".join(json_lines) + "\n}}"
 
         return (
             "Extract metadata from the following document. Return ONLY valid JSON:\n"
