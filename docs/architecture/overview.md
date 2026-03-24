@@ -10,40 +10,47 @@ RAGWire is a production-grade RAG (Retrieval-Augmented Generation) toolkit. It h
 graph TB
     User(["User / Application"])
 
-    subgraph RAGWire ["RAGWire — Core Orchestrator (pipeline.py)"]
+    subgraph Core ["RAGWire — pipeline.py"]
+        direction LR
         Ingest["ingest_documents()"]
         Retrieve["retrieve()"]
     end
 
-    subgraph Components ["Internal Components"]
-        Loader["MarkItDownLoader\nDocument → Markdown"]
+    subgraph DocProc ["① Document Processing"]
+        direction LR
+        Loader["MarkItDownLoader\nFile → Markdown"]
         Splitter["Text Splitter\nMarkdown / Recursive"]
         Hasher["SHA256 Hasher\nDeduplication"]
+    end
+
+    subgraph AI ["② Intelligence Layer"]
+        direction LR
         Extractor["MetadataExtractor\nLLM → structured JSON"]
         Embedder["Embedding Model\nText → Dense Vector"]
+    end
+
+    subgraph StorageLayer ["③ Storage & Retrieval"]
+        direction LR
         VectorStore["QdrantStore\nDense + Sparse Vectors"]
         Retriever["Retriever\nSimilarity / MMR / Hybrid"]
     end
 
     subgraph External ["External Services"]
-        LLM["LLM Provider\nOllama / OpenAI / Gemini\nGroq / Anthropic"]
-        EmbedProvider["Embedding Provider\nOllama / OpenAI\nHuggingFace / Google\nFastEmbed"]
-        QdrantDB[("Qdrant\nVector Database")]
+        direction LR
+        LLM["LLM Provider\nOllama · OpenAI · Gemini\nGroq · Anthropic"]
+        EmbedProvider["Embedding Provider\nOllama · OpenAI · HuggingFace\nGoogle · FastEmbed"]
+        QdrantDB[("Qdrant\nVector DB")]
     end
 
-    User -->|"ingest_documents(files)"| Ingest
-    User -->|"retrieve(query)"| Retrieve
+    User -->|"ingest_documents()"| Ingest
+    User -->|"retrieve()"| Retrieve
 
-    Ingest --> Loader
-    Ingest --> Hasher
-    Ingest --> Splitter
-    Ingest --> Extractor
-    Ingest --> Embedder
-    Ingest --> VectorStore
+    Ingest --> DocProc
+    Ingest --> AI
+    Ingest --> StorageLayer
 
-    Retrieve --> Extractor
-    Retrieve --> Embedder
-    Retrieve --> Retriever
+    Retrieve --> AI
+    Retrieve --> StorageLayer
 
     Extractor <-->|"prompt / response"| LLM
     Embedder <-->|"text / vector"| EmbedProvider
