@@ -65,6 +65,7 @@ classDiagram
         +hybrid_search(query, k, filters) List[Document]
         +extract_metadata(text) dict
         +get_field_values(fields, limit) dict
+        +filter_fields List[str]
         +discover_metadata_fields() List[str]
         +get_stats() dict
 

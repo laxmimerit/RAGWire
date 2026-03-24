@@ -70,19 +70,16 @@ def search_documents(query: str) -> str:
 
 By default the agent doesn't know what companies, document types, or years are in your collection. Without this, it may hallucinate filter values or skip filtering entirely.
 
-Use `discover_metadata_fields()` and `get_field_values()` to build a metadata-aware system prompt:
+Use `filter_fields` and `get_field_values()` to build a metadata-aware system prompt dynamically from what's actually in your collection:
 
 ```python
-# Discover what fields exist in the collection
-fields = rag.discover_metadata_fields()
-# → ['company_name', 'doc_type', 'fiscal_year', 'fiscal_quarter', 'file_name', ...]
-
-# Get actual values for the filterable fields
-values = rag.get_field_values(["company_name", "doc_type", "fiscal_year"])
+# filter_fields returns only semantic/filterable fields — excludes system fields
+# like file_hash, chunk_id, source that are not useful for filtering
+values = rag.get_field_values(rag.filter_fields)
 # → {
 #     'company_name': ['apple', 'microsoft', 'google'],
 #     'doc_type':     ['10-k', '10-q'],
-#     'fiscal_year':  ['2024', '2025'],
+#     'fiscal_year':  [2024, 2025],
 # }
 
 SYSTEM_PROMPT = f"""

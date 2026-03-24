@@ -247,9 +247,8 @@ rag.get_field_values(["company_name", "doc_type"])
 rag.get_field_values("file_name", limit=200)
 # → ['Apple_10k_2025.pdf', 'Microsoft_10k_2025.pdf', ...]
 
-# Typical agent workflow
-fields = rag.discover_metadata_fields()
-values = rag.get_field_values(["company_name", "doc_type"])
+# Typical agent workflow — use filter_fields, not discover_metadata_fields()
+values = rag.get_field_values(rag.filter_fields)
 results = rag.retrieve("revenue", filters={"company_name": values["company_name"][0]})
 ```
 
@@ -853,7 +852,7 @@ values = store.get_field_values(["file_name"], limit=200)
 ```
 
 !!! note "Using `RAGWire` instead?"
-    If you're using `RAGWire`, prefer `rag.discover_metadata_fields()` and `rag.get_field_values()` — they are thin wrappers over these same methods and don't require you to manage the `QdrantStore` instance directly.
+    If you're using `RAGWire`, prefer `rag.filter_fields` + `rag.get_field_values()` for filter prompts, and `rag.discover_metadata_fields()` for collection inspection — they are thin wrappers over these same methods and don't require you to manage the `QdrantStore` instance directly.
 
 ---
 

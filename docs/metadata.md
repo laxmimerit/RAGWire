@@ -111,8 +111,7 @@ Results are ordered by frequency — most common values first. The default `limi
 This is especially useful when building an LLM agent — pass the filterable fields and values into the system prompt so the agent knows exactly what to filter by:
 
 ```python
-fields = rag.discover_metadata_fields()
-values = rag.get_field_values(["company_name", "doc_type", "fiscal_year"])
+values = rag.get_field_values(rag.filter_fields)
 
 SYSTEM_PROMPT = f"""
 You have access to a financial document RAG pipeline.
