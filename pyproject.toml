@@ -108,7 +108,6 @@ dev = [
     "mypy>=1.0.0",
     "pre-commit>=3.0.0",
     "mkdocs-material>=9.0.0",
-    "mkdocs-mermaid2-plugin>=1.0.0",
 ]
 
 # All dependencies
