@@ -25,6 +25,12 @@
 - **Directory Ingestion** — ingest an entire folder with one call, with optional recursive scan
 - **Env Var Substitution** — use `${VAR}` in `config.yaml` for secrets
 
+## Architecture
+
+<p align="center">
+  <img src="assets/RAGWire-block-diagram.png" alt="RAGWire Architecture" width="100%"/>
+</p>
+
 ## Installation
 
 ```bash
