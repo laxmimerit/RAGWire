@@ -3,20 +3,24 @@ fields:
     description: "Full title of the research paper"
 
   - name: authors
-    description: "List of full author names as they appear in the paper (e.g. [John Smith, Emily Johnson, Wei Lee])"
+    description: "List of full author names as they appear in the paper"
+    type: list
 
   - name: contact_info
     description: "All available contact details from the paper as a single string — include any combination of email, website, university/institution, department, and address that are present. Return null if none found"
 
   - name: publication_year
-    description: "Year the paper was published, as integer"
+    description: "Year the paper was published"
+    type: integer
 
   - name: supplement_types
-    description: "List of all supplements studied in lowercase-hyphenated format. Not limited to the examples — extract any supplement mentioned in the paper"
+    description: "List of all supplements studied in lowercase-hyphenated format. Not limited to the examples — extract any supplement mentioned in the paper. Return empty list if none"
+    type: list
     values: ["protein", "creatine", "caffeine", "vitamin-d", "omega-3", "bcaa", "ashwagandha", "magnesium", "beta-alanine"]
 
   - name: research_focus
     description: "List of all research topics covered in lowercase-hyphenated format. Not limited to the examples — extract any focus area mentioned"
+    type: list
     values: ["muscle-growth", "recovery", "performance", "endurance", "cognitive-function", "fat-loss", "safety", "hormonal"]
 
   - name: study_type
