@@ -187,9 +187,28 @@ results = rag.hybrid_search(
 
 ---
 
+#### `rag.filter_fields`
+
+Property. Returns the metadata fields used for filtering and auto-filter extraction — the semantic/LLM-extracted fields only. System fields like `file_hash`, `chunk_id`, `source`, `chunk_index`, `created_at` are excluded.
+
+Use this when building dynamic filter prompts for an LLM agent. Using `discover_metadata_fields()` instead would include system fields that have no value as filters.
+
+```python
+fields = rag.filter_fields
+# Default: ['company_name', 'doc_type', 'fiscal_quarter', 'fiscal_year']
+# Custom:  whatever fields are defined in your metadata.yaml
+
+values = rag.get_field_values(fields)
+# → {'company_name': ['apple', 'microsoft'], 'doc_type': ['10-k'], ...}
+```
+
+---
+
 #### `rag.discover_metadata_fields()`
 
-Return all metadata field names present in the collection. Scrolls one point — fast regardless of collection size.
+Return **all** metadata field names present in the collection, including system fields. Scrolls one point — fast regardless of collection size.
+
+Use this for collection inspection or debugging. For building filter prompts, use `rag.filter_fields` instead.
 
 **Returns:** `list[str]`
 

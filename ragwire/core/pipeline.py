@@ -402,6 +402,16 @@ class RAGWire:
         return documents
 
     @property
+    def filter_fields(self) -> List[str]:
+        """Return the metadata fields used for filtering and auto-filter extraction.
+
+        These are the semantic/LLM-extracted fields only (e.g. company_name, doc_type,
+        fiscal_year). System fields like file_hash, chunk_id, source are excluded.
+        Use this instead of discover_metadata_fields() when building filter prompts.
+        """
+        return self._filter_fields
+
+    @property
     def _stored_values(self) -> Dict[str, Any]:
         """Return cached stored filter values, fetching from Qdrant if needed."""
         if self._stored_values_cache is None:

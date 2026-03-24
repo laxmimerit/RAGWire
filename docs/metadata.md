@@ -81,19 +81,25 @@ Example output:
 
 ## Discovering Available Fields and Values
 
-If you don't know what metadata fields or values are in your collection, use these two methods:
+RAGWire provides two ways to inspect fields — use the right one for your purpose:
+
+| Method | Returns | Use for |
+|---|---|---|
+| `rag.filter_fields` | Semantic/LLM-extracted fields only | Building filter prompts, agent system prompts |
+| `rag.discover_metadata_fields()` | All fields including system fields | Collection inspection, debugging |
 
 ```python
-# Step 1 — what fields exist? (scrolls 1 point, very fast)
-fields = rag.discover_metadata_fields()
-# → ['company_name', 'doc_type', 'fiscal_year', 'file_name', ...]
+# Filterable fields only — use these for filter prompts
+rag.filter_fields
+# → ['company_name', 'doc_type', 'fiscal_quarter', 'fiscal_year']
 
-# Step 2 — what values are stored? (uses Qdrant facet API, returns top 50 by frequency)
-rag.get_field_values("company_name")
-# → ['apple', 'microsoft', 'google']
+# All fields — includes file_hash, chunk_id, source, created_at, etc.
+rag.discover_metadata_fields()
+# → ['company_name', 'doc_type', 'fiscal_year', 'file_name', 'file_hash', 'chunk_id', ...]
 
-rag.get_field_values(["company_name", "doc_type"])
-# → {'company_name': ['apple', 'microsoft', 'google'], 'doc_type': ['10-k', '10-q']}
+# Get values for filterable fields
+rag.get_field_values(rag.filter_fields)
+# → {'company_name': ['apple', 'microsoft'], 'doc_type': ['10-k', '10-q'], ...}
 
 # Raise the limit for high-cardinality fields
 rag.get_field_values("file_name", limit=200)
@@ -102,7 +108,7 @@ rag.get_field_values("file_name", limit=200)
 
 Results are ordered by frequency — most common values first. The default `limit=50` covers most use cases. Increase it for high-cardinality fields like `file_name`.
 
-This is especially useful when building an LLM agent — pass the discovered fields and values into the system prompt so the agent knows exactly what to filter by:
+This is especially useful when building an LLM agent — pass the filterable fields and values into the system prompt so the agent knows exactly what to filter by:
 
 ```python
 fields = rag.discover_metadata_fields()
@@ -229,8 +235,10 @@ from ragwire import RAGWire
 
 rag = RAGWire("config.yaml")
 
-# Pull actual fields and values from the collection
-fields = rag.discover_metadata_fields()
+# filter_fields returns only semantic/filterable fields (e.g. company_name, doc_type)
+# Use this instead of discover_metadata_fields() which includes system fields
+# like file_hash, chunk_id, source that are not useful for filtering
+fields = rag.filter_fields
 values = rag.get_field_values(fields)
 
 field_descriptions = "\n".join(
@@ -263,8 +271,9 @@ import json
 rag = RAGWire("config.yaml")
 llm = ChatOpenAI(model="gpt-5.4-nano")
 
-# Discover fields and their current values directly from the collection
-fields = rag.discover_metadata_fields()
+# filter_fields returns only the semantic fields used for filtering
+# (excludes system fields like file_hash, chunk_id, source, created_at)
+fields = rag.filter_fields
 values = rag.get_field_values(fields)
 
 # Build the filter prompt dynamically — works for any schema
