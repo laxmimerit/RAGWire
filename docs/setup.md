@@ -132,3 +132,16 @@ llm:
 ```
 
 RAGWire resolves these at startup via `python-dotenv`. If a variable is not set, the placeholder is kept and a warning is logged.
+
+### LangSmith tracing (optional)
+
+To enable LLM call tracing via [LangSmith](https://smith.langchain.com), add these to your `.env` file:
+
+```env
+LANGSMITH_API_KEY=your_api_key_here
+LANGSMITH_PROJECT=RAGWire
+LANGSMITH_ENDPOINT=https://api.smith.langchain.com
+LANGCHAIN_TRACING_V2=true
+```
+
+No code changes needed — RAGWire uses LangChain internally so all LLM calls are traced automatically. See [LangSmith Tracing](cookbook/langsmith.md) for details.

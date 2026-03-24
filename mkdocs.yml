@@ -82,6 +82,7 @@ nav:
     - Diverse Results (MMR): cookbook/mmr.md
     - Preview Documents: cookbook/preview_documents.md
     - Logging Setup: cookbook/logging.md
+    - LangSmith Tracing: cookbook/langsmith.md
     - Metadata-Aware Chatbot: cookbook/filtered_chatbot.md
   - Architecture:
     - System Overview: architecture/overview.md
