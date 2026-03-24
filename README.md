@@ -28,7 +28,7 @@
 ## Architecture
 
 <p align="center">
-  <img src="assets/RAGWire-block-diagram.png" alt="RAGWire Architecture" width="100%"/>
+  <img src="https://raw.githubusercontent.com/laxmimerit/RAGWire/main/assets/RAGWire-block-diagram.png" alt="RAGWire Architecture" width="100%"/>
 </p>
 
 ## Installation
