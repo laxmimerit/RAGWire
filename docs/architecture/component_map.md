@@ -7,97 +7,39 @@ How all modules in the RAGWire package relate to each other — who owns what, w
 ## Module Dependency Graph
 
 ```mermaid
-graph TB
-    INIT["ragwire/__init__.py\nPublic exports"]
+graph TD
+    INIT["ragwire/__init__.py\nPublic API — exports all symbols"]
+    INIT --> PIPE
 
-    subgraph Core ["Core"]
-        direction LR
-        PIPE["pipeline.py\nRAGWire orchestrator"]
-        CFG["config.py\nYAML + env vars"]
-    end
+    PIPE["core/pipeline.py\nRAGWire — main orchestrator"]
 
-    subgraph DocProc ["Document Processing"]
-        direction LR
-        LOAD["markitdown_loader.py"] --- SPLIT["splitter.py"] --- HASH["hashing.py"]
-    end
-
-    subgraph Intel ["Intelligence"]
-        direction LR
-        EXT["extractor.py\nMetadataExtractor"] --- SCH["schema.py\nDocumentMetadata"]
-    end
-
-    subgraph Store ["Storage"]
-        direction LR
-        EMB["factory.py\nget_embedding"] --- QS["qdrant_store.py\nQdrantStore"]
-    end
-
-    subgraph RetUtil ["Retrieval & Utilities"]
-        direction LR
-        HYB["hybrid.py"] --- LOG["logging.py"]
-    end
-
-    INIT --> Core
-    INIT --> DocProc
-    INIT --> Intel
-    INIT --> Store
-    INIT --> RetUtil
-
-    PIPE --> CFG
-    PIPE --> DocProc
-    PIPE --> Intel
-    PIPE --> Store
-    PIPE --> HYB
-    PIPE --> LOG
+    PIPE --> CFG["core/config.py\nConfig"]
+    PIPE --> LOAD["loaders/markitdown_loader.py\nMarkItDownLoader"]
+    PIPE --> SPLIT["processing/splitter.py\nText Splitters"]
+    PIPE --> HASH["processing/hashing.py\nSHA256 Hashing"]
+    PIPE --> EXT["metadata/extractor.py\nMetadataExtractor"]
+    PIPE --> SCH["metadata/schema.py\nDocumentMetadata"]
+    PIPE --> EMB["embeddings/factory.py\nget_embedding"]
+    PIPE --> QS["vectorstores/qdrant_store.py\nQdrantStore"]
+    PIPE --> HYB["retriever/hybrid.py\nget_retriever / hybrid_search"]
+    PIPE --> LOG["utils/logging.py\nsetup_logging"]
 ```
 
 ---
 
 ## External Library Mapping
 
-```mermaid
-graph TB
-    subgraph RAGWire ["RAGWire Modules"]
-        direction LR
-        LOAD["MarkItDownLoader"] --- SPLIT["Text Splitters"]
-        EXT["MetadataExtractor"] --- EMB["get_embedding"]
-        QS["QdrantStore"] --- HYB["hybrid_search"]
-        CFG["Config"] --- LOG["logging.py"]
-    end
-
-    subgraph CoreLibs ["Core Libraries"]
-        direction LR
-        MID["markitdown"] --- LTS["langchain-text-splitters"]
-        LCC["langchain-core"] --- QC["qdrant-client"]
-        LQ["langchain-qdrant"] --- FE["fastembed"]
-        YML["pyyaml"] --- DOT["python-dotenv"]
-    end
-
-    subgraph EmbedProviders ["Embedding Providers (lazy)"]
-        direction LR
-        OAI["langchain-openai"] --- HF["langchain-huggingface"]
-        OLL["langchain-ollama"] --- GGL["langchain-google-genai"]
-    end
-
-    subgraph LLMProviders ["LLM Providers (lazy)"]
-        direction LR
-        OAI2["langchain-openai"] --- OLL2["langchain-ollama"]
-        GGL2["langchain-google-genai"] --- GRQ["langchain-groq"] --- ANT["langchain-anthropic"]
-    end
-
-    LOAD --> MID
-    SPLIT --> LTS
-    EXT --> LCC
-    CFG --> YML
-    CFG --> DOT
-    QS --> QC
-    QS --> LQ
-    QS --> FE
-    HYB --> LQ
-    EMB -.-> EmbedProviders
-    EXT -.-> LLMProviders
-```
-
-Dashed lines = lazy imports (only loaded when that provider is configured).
+| RAGWire Module | Third-Party Libraries | Notes |
+|---|---|---|
+| `markitdown_loader.py` | `markitdown` | Document → Markdown conversion |
+| `splitter.py` | `langchain-text-splitters` | Markdown + recursive splitting |
+| `extractor.py` | `langchain-core` (ChatPromptTemplate) | Prompt building + LLM chain |
+| `schema.py` | `pydantic` | Metadata schema validation |
+| `factory.py` (embeddings) | `langchain-openai` · `langchain-ollama` · `langchain-huggingface` · `langchain-google-genai` | Lazy import — only the configured provider is loaded |
+| `qdrant_store.py` | `qdrant-client` · `langchain-qdrant` · `fastembed` | `fastembed` only needed for hybrid search |
+| `hybrid.py` | `langchain-qdrant` (QdrantVectorStore) | Similarity / MMR / hybrid retrieval |
+| `config.py` | `pyyaml` · `python-dotenv` | YAML loading + env var resolution |
+| `pipeline.py` (LLM) | `langchain-openai` · `langchain-ollama` · `langchain-google-genai` · `langchain-groq` · `langchain-anthropic` | Lazy import — only the configured provider is loaded |
 
 ---
 
