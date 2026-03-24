@@ -7,49 +7,45 @@ How all modules in the RAGWire package relate to each other — who owns what, w
 ## Module Dependency Graph
 
 ```mermaid
-graph TD
-    subgraph Public API
-        INIT["ragwire/__init__.py\nExports all public symbols"]
+graph TB
+    INIT["ragwire/__init__.py\nPublic exports"]
+
+    subgraph Core ["Core"]
+        direction LR
+        PIPE["pipeline.py\nRAGWire orchestrator"]
+        CFG["config.py\nYAML + env vars"]
     end
 
-    subgraph Core
-        PIPE["core/pipeline.py\nRAGWire — main orchestrator"]
-        CFG["core/config.py\nConfig — YAML loader + env var resolver"]
+    subgraph DocProc ["Document Processing"]
+        direction LR
+        LOAD["markitdown_loader.py"] --- SPLIT["splitter.py"] --- HASH["hashing.py"]
     end
 
-    subgraph Processing
-        LOAD["loaders/markitdown_loader.py\nMarkItDownLoader"]
-        SPLIT["processing/splitter.py\nget_splitter / get_markdown_splitter"]
-        HASH["processing/hashing.py\nsha256_file_from_path / sha256_chunk"]
+    subgraph Intel ["Intelligence"]
+        direction LR
+        EXT["extractor.py\nMetadataExtractor"] --- SCH["schema.py\nDocumentMetadata"]
     end
 
-    subgraph Intelligence
-        EXT["metadata/extractor.py\nMetadataExtractor"]
-        SCH["metadata/schema.py\nDocumentMetadata (Pydantic)"]
+    subgraph Store ["Storage"]
+        direction LR
+        EMB["factory.py\nget_embedding"] --- QS["qdrant_store.py\nQdrantStore"]
     end
 
-    subgraph Storage
-        EMB["embeddings/factory.py\nget_embedding"]
-        QS["vectorstores/qdrant_store.py\nQdrantStore"]
+    subgraph RetUtil ["Retrieval & Utilities"]
+        direction LR
+        HYB["hybrid.py"] --- LOG["logging.py"]
     end
 
-    subgraph Retrieval
-        HYB["retriever/hybrid.py\nget_retriever / hybrid_search / mmr_search"]
-    end
-
-    subgraph Utilities
-        LOG["utils/logging.py\nsetup_logging / setup_colored_logging"]
-    end
-
-    INIT --> PIPE & CFG & LOAD & SPLIT & HASH & EXT & SCH & EMB & QS & HYB & LOG
+    INIT --> Core
+    INIT --> DocProc
+    INIT --> Intel
+    INIT --> Store
+    INIT --> RetUtil
 
     PIPE --> CFG
-    PIPE --> LOAD
-    PIPE --> SPLIT
-    PIPE --> HASH
-    PIPE --> EXT
-    PIPE --> EMB
-    PIPE --> QS
+    PIPE --> DocProc
+    PIPE --> Intel
+    PIPE --> Store
     PIPE --> HYB
     PIPE --> LOG
 ```
@@ -59,45 +55,46 @@ graph TD
 ## External Library Mapping
 
 ```mermaid
-graph LR
-    subgraph ragwire
-        LOAD["MarkItDownLoader"]
-        SPLIT["Text Splitters"]
-        EXT["MetadataExtractor"]
-        EMB["get_embedding"]
-        QS["QdrantStore"]
-        HYB["hybrid_search / mmr_search"]
-        CFG["Config"]
-        LOG["logging.py"]
+graph TB
+    subgraph RAGWire ["RAGWire Modules"]
+        direction LR
+        LOAD["MarkItDownLoader"] --- SPLIT["Text Splitters"]
+        EXT["MetadataExtractor"] --- EMB["get_embedding"]
+        QS["QdrantStore"] --- HYB["hybrid_search"]
+        CFG["Config"] --- LOG["logging.py"]
     end
 
-    subgraph "Third-Party Libraries"
-        MID["markitdown"]
-        LTS["langchain-text-splitters"]
-        LCC["langchain-core\n(ChatPromptTemplate, Document)"]
-        QC["qdrant-client"]
-        LQ["langchain-qdrant\n(QdrantVectorStore, RetrievalMode)"]
-        FE["fastembed\n(FastEmbedSparse)"]
-        YML["pyyaml"]
-        DOT["python-dotenv"]
-        PYD["pydantic"]
+    subgraph CoreLibs ["Core Libraries"]
+        direction LR
+        MID["markitdown"] --- LTS["langchain-text-splitters"]
+        LCC["langchain-core"] --- QC["qdrant-client"]
+        LQ["langchain-qdrant"] --- FE["fastembed"]
+        YML["pyyaml"] --- DOT["python-dotenv"]
+    end
 
-        OAI["langchain-openai"]
-        HF["langchain-huggingface"]
-        OLL["langchain-ollama"]
-        GGL["langchain-google-genai"]
-        GRQ["langchain-groq"]
-        ANT["langchain-anthropic"]
+    subgraph EmbedProviders ["Embedding Providers (lazy)"]
+        direction LR
+        OAI["langchain-openai"] --- HF["langchain-huggingface"]
+        OLL["langchain-ollama"] --- GGL["langchain-google-genai"]
+    end
+
+    subgraph LLMProviders ["LLM Providers (lazy)"]
+        direction LR
+        OAI2["langchain-openai"] --- OLL2["langchain-ollama"]
+        GGL2["langchain-google-genai"] --- GRQ["langchain-groq"] --- ANT["langchain-anthropic"]
     end
 
     LOAD --> MID
     SPLIT --> LTS
     EXT --> LCC
-    CFG --> YML & DOT
-    QS --> QC & LQ & FE
+    CFG --> YML
+    CFG --> DOT
+    QS --> QC
+    QS --> LQ
+    QS --> FE
     HYB --> LQ
-    EMB --> OAI & HF & OLL & GGL
-    EXT -.->|"provider-specific"| OAI & OLL & GGL & GRQ & ANT
+    EMB -.-> EmbedProviders
+    EXT -.-> LLMProviders
 ```
 
 Dashed lines = lazy imports (only loaded when that provider is configured).
