@@ -602,12 +602,36 @@ Extract structured metadata from document text using an LLM.
 from ragwire import MetadataExtractor
 ```
 
-#### `MetadataExtractor(llm, prompt_template)`
+#### `MetadataExtractor(llm, schema_model)`
+
+Uses `with_structured_output` with a Pydantic model for reliable, type-safe extraction — no manual JSON parsing.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `llm` | `Any` | Yes | LangChain chat model instance |
-| `prompt_template` | `str` | No | Custom prompt (uses financial default if not set) |
+| `schema_model` | `BaseModel` | No | Pydantic model defining fields and types. Defaults to `FinancialMetadata` |
+
+```python
+from ragwire import MetadataExtractor, FinancialMetadata
+from langchain_openai import ChatOpenAI
+
+llm = ChatOpenAI(model="gpt-5.4-nano")
+
+# Default — uses FinancialMetadata schema (company_name, doc_type, fiscal_quarter, fiscal_year)
+extractor = MetadataExtractor(llm)
+
+# Custom Pydantic schema
+from pydantic import BaseModel, Field
+from typing import Optional, List
+
+class MySchema(BaseModel):
+    organization: Optional[str] = Field(None, description="Organization name in lowercase")
+    doc_type: Optional[str] = Field(None, description="contract | policy | report")
+    effective_year: Optional[int] = Field(None, description="Year the document is effective")
+    tags: Optional[List[str]] = Field(None, description="List of topic tags")
+
+extractor = MetadataExtractor(llm, schema_model=MySchema)
+```
 
 #### `extractor.extract(text, stored_values)`
 
@@ -628,24 +652,18 @@ from ragwire import MetadataExtractor
 ```
 
 ```python
-from langchain_openai import ChatOpenAI
-from ragwire import MetadataExtractor
-
-llm = ChatOpenAI(model="gpt-5.4-nano")
-extractor = MetadataExtractor(llm)
-
-# Basic extraction (no grounding)
+# Basic extraction
 metadata = extractor.extract(document_text)
 
 # With grounding — LLM reuses stored entity names
-stored = rag.get_field_values(["company_name", "doc_type"])
+stored = rag.get_field_values(rag.filter_fields)
 metadata = extractor.extract(document_text, stored_values=stored)
 print(metadata)
 ```
 
 #### `MetadataExtractor.from_yaml(llm, yaml_path)`
 
-Create an extractor configured from a YAML file. The YAML defines fields (auto-builds the prompt) or a full `prompt_template`.
+Create an extractor from a YAML file. Builds a Pydantic model dynamically from the field definitions.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
@@ -659,19 +677,7 @@ extractor = MetadataExtractor.from_yaml(llm, "metadata.yaml")
 metadata = extractor.extract(document_text)
 ```
 
-See [Custom Metadata via YAML](custom_metadata.md#custom-metadata-via-yaml-file) for the YAML format.
-
----
-
-#### `MetadataExtractor.build_prompt_from_fields(fields)`
-
-Build a JSON extraction prompt from a list of field definitions. Called automatically by `from_yaml()`.
-
-| Parameter | Type | Description |
-|---|---|---|
-| `fields` | `list[dict]` | Each dict: `name` (str), `description` (str), `values` (list, optional) |
-
-**Returns:** `str` — prompt template with `{content}` placeholder.
+See [Custom Metadata](custom_metadata.md) for the YAML format including `type` and `values` field options.
 
 ---
 

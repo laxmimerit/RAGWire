@@ -120,7 +120,7 @@ flowchart TD
 
     BP --> PT["Custom prompt template\nwith {content} placeholder"]
 
-    PT --> ME["MetadataExtractor(llm, prompt_template)\nSame extraction logic\nDifferent fields"]
+    PT --> ME["MetadataExtractor(llm, schema_model)\nSame extraction logic\nDifferent fields"]
 ```
 
 The `from_yaml()` classmethod handles this automatically — no code change needed, just point `metadata.config_file` to your YAML.

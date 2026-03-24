@@ -84,7 +84,7 @@ classDiagram
 
     class MetadataExtractor {
         +llm: ChatModel
-        +prompt_template: str
+        +schema_model: BaseModel
         +prompt: ChatPromptTemplate
         +fields: List[str] or None
 
