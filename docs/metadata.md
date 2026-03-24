@@ -283,7 +283,7 @@ field_descriptions = "\n".join(
 
 FILTER_PROMPT = f"""
 Given the user query below, extract metadata filters as JSON.
-Only include fields if clearly mentioned in the query. Return {{}} if no filters apply.
+Only include fields if clearly mentioned in the query. Return {{{{}}}} if no filters apply.
 
 Available metadata fields and known values:
 {field_descriptions}
