@@ -29,28 +29,22 @@ class FinancialMetadata(BaseModel):
     doc_type: Optional[str] = Field(
         None,
         description=(
-            "SEC filing type. Must be one of: '10-k' (annual report), '10-q' (quarterly report), "
-            "'8-k' (current report / material event). "
-            "Look for 'Form 10-K', 'Annual Report', 'Form 10-Q', 'Quarterly Report', 'Form 8-K' in the document header or cover page."
+            "Best-fit SEC filing type in lowercase: '10-k', '10-q', or '8-k'. "
+            "Pick the single best match. Null if the document is not an SEC filing."
         ),
     )
     fiscal_quarter: Optional[str] = Field(
         None,
         description=(
-            "Fiscal quarter covered by the document. Must be lowercase: 'q1', 'q2', 'q3', or 'q4'. "
-            "Only populate for 10-Q filings. Leave null for 10-K (annual) and 8-K filings. "
-            "Determine the quarter from the document itself — look for 'first quarter', 'second quarter', 'Q1', 'Q2', etc. "
-            "Do not infer the quarter from calendar months, as fiscal years vary by company."
+            "Fiscal quarter in lowercase: 'q1', 'q2', 'q3', or 'q4'. "
+            "Read directly from the document (e.g. 'Q2', 'second quarter'). Null if not stated."
         ),
     )
     fiscal_year: Optional[List[int]] = Field(
         None,
         description=(
-            "List of fiscal year(s) covered by the document as 4-digit integers. "
-            "For a 10-K, this is typically one year (e.g. [2024]). "
-            "For a 10-Q or 8-K that spans a year boundary, include both (e.g. [2023, 2024]). "
-            "Look for 'fiscal year ended', 'year ended', or the filing date year on the cover page. "
-            "Examples: 'Annual Report 2024' → [2024], 'Quarter ended March 31, 2025' → [2025]."
+            "Fiscal year(s) as a list of 4-digit integers (e.g. [2024]). "
+            "Include multiple years only if the document explicitly covers more than one. Null if not stated."
         ),
     )
 
