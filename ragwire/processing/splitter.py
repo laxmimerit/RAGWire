@@ -13,8 +13,8 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
 def get_splitter(
-    chunk_size: int = 1000,
-    chunk_overlap: int = 200,
+    chunk_size: int = 10000,
+    chunk_overlap: int = 2000,
     separators: List[str] = None,
 ) -> RecursiveCharacterTextSplitter:
     """
@@ -24,8 +24,8 @@ def get_splitter(
     by trying different separators in order until chunk size is achieved.
 
     Args:
-        chunk_size: Maximum size of each chunk (default: 1000)
-        chunk_overlap: Number of characters to overlap between chunks (default: 200)
+        chunk_size: Maximum size of each chunk (default: 10000)
+        chunk_overlap: Number of characters to overlap between chunks (default: 2000, 20%)
         separators: List of separators to try in order. If None, uses default:
                    ["\\n\\n", "\\n", " ", ""]
 
@@ -56,8 +56,8 @@ def get_splitter(
 
 
 def get_markdown_splitter(
-    chunk_size: int = 1000,
-    chunk_overlap: int = 200,
+    chunk_size: int = 10000,
+    chunk_overlap: int = 2000,
 ) -> RecursiveCharacterTextSplitter:
     """
     Get a RecursiveCharacterTextSplitter optimized for markdown documents.
@@ -66,8 +66,8 @@ def get_markdown_splitter(
     document hierarchy and context.
 
     Args:
-        chunk_size: Maximum size of each chunk (default: 1000)
-        chunk_overlap: Number of characters to overlap (default: 200)
+        chunk_size: Maximum size of each chunk (default: 10000)
+        chunk_overlap: Number of characters to overlap (default: 2000, 20%)
 
     Returns:
         Markdown-optimized RecursiveCharacterTextSplitter
@@ -97,8 +97,8 @@ def get_markdown_splitter(
 
 
 def get_code_splitter(
-    chunk_size: int = 2000,
-    chunk_overlap: int = 200,
+    chunk_size: int = 10000,
+    chunk_overlap: int = 2000,
 ) -> RecursiveCharacterTextSplitter:
     """
     Get a RecursiveCharacterTextSplitter optimized for code documents.
@@ -107,8 +107,8 @@ def get_code_splitter(
     to preserve code structure and context.
 
     Args:
-        chunk_size: Maximum size of each chunk (default: 2000)
-        chunk_overlap: Number of characters to overlap (default: 200)
+        chunk_size: Maximum size of each chunk (default: 10000)
+        chunk_overlap: Number of characters to overlap (default: 2000, 20%)
 
     Returns:
         Code-optimized RecursiveCharacterTextSplitter

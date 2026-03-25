@@ -371,11 +371,12 @@ class RAGWire:
         # Split first so we can pass the first chunk to the LLM
         chunk_texts = self.splitter.split_text(text)
 
-        # Extract metadata once from the first chunk using LLM
+        # Extract metadata once from the full document text (capped at 10k chars in extract())
+        # Using chunk_texts[0] (~1000 chars) was too little context to reliably find all fields
         llm_metadata = {}
         if chunk_texts:
             try:
-                llm_metadata = self.extract_metadata(chunk_texts[0])
+                llm_metadata = self.extract_metadata(text)
                 logger.debug(f"LLM metadata for {file_name}: {llm_metadata}")
             except Exception as e:
                 logger.warning(f"LLM metadata extraction failed for {file_name}: {e}")
@@ -543,7 +544,8 @@ class RAGWire:
                 filters = json.loads(text[start:end])
                 if filters:
                     filters = {
-                        k: v.lower() if isinstance(v, str) else v
+                        k: [i.lower() if isinstance(i, str) else i for i in v] if isinstance(v, list)
+                           else v.lower() if isinstance(v, str) else v
                         for k, v in filters.items()
                     }
                     logger.info(f"Auto-extracted filters from query: {filters}")

@@ -99,7 +99,7 @@ class MetadataExtractor:
                 "If this document refers to the same entity as a stored value, "
                 "use the stored value exactly.\n\n"
             )
-            injected = self.prompt_template.replace("Document Text:", grounding + "Document Text:", 1)
+            injected = self.prompt_template.replace("## Document Text\n", grounding + "## Document Text\n", 1)
             prompt = ChatPromptTemplate.from_template(injected)
         else:
             prompt = self.prompt
