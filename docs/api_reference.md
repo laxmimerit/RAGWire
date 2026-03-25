@@ -231,8 +231,8 @@ Build a ready-made markdown prompt block for an agent — contains available met
 **Returns:** `str` — formatted markdown block ready to inject into an agent prompt.
 
 ```python
-context = rag.get_filter_context("muscle building studies from 2023")
-agent_prompt = context + "\n\n" + your_task_prompt
+filter_context = rag.get_filter_context("muscle building studies from 2023")
+agent_prompt = filter_context + "\n\n" + your_task_prompt
 ```
 
 The returned block looks like:

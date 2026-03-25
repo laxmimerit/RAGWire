@@ -37,19 +37,41 @@ print(f"Ingested {stats['processed']} docs, {stats['chunks_created']} chunks")
 
 ---
 
-## 2. Define the Retrieval Tool
+## 2. Define Two Tools
+
+The agent gets two tools with clear separation of concerns:
+
+- **`get_filter_context`** — call when metadata awareness is needed. Returns available fields, stored values, extracted filter suggestions, and instructions. Always fresh from Qdrant — safe to call multiple times in multi-query flows.
+- **`search_documents`** — pure retrieval. Accepts explicit filters the agent decided from the context.
 
 ```python
 from langchain.tools import tool
+from typing import Optional
 
 @tool
-def search_documents(query: str) -> str:
+def get_filter_context(query: str) -> str:
+    """Get available metadata fields, stored values, and filter suggestions for a query.
+
+    Call this before search_documents when the query may involve specific metadata
+    (e.g. a company, year, document type, author). The returned context shows what
+    filters are available and what was extracted from your query — use it to decide
+    what filters to pass to search_documents.
+
+    Skip this tool for purely semantic queries with no metadata intent.
+    """
+    return rag.get_filter_context(query)
+
+
+@tool
+def search_documents(query: str, filters: Optional[dict] = None) -> str:
     """Search the document knowledge base for relevant information.
 
-    Use this whenever the user asks a question that may be answered
-    by the ingested documents.
+    Args:
+        query: The search query
+        filters: Optional metadata filters decided from get_filter_context.
+                 Pass {} or omit to search without filtering.
     """
-    results = rag.retrieve(query, top_k=5)
+    results = rag.retrieve(query, top_k=5, filters=filters or None)
     if not results:
         return "No relevant documents found."
 
@@ -64,70 +86,27 @@ def search_documents(query: str) -> str:
     return "\n\n---\n\n".join(chunks)
 ```
 
----
+**Agent reasoning flow:**
 
-## 3. Give the Agent Metadata Awareness (Optional but Recommended)
+```
+User: "creatine studies from 2023"
 
-By default the agent doesn't know what companies, document types, or years are in your collection. Without this, it may hallucinate filter values or skip filtering entirely.
+1. Agent calls get_filter_context("creatine studies from 2023")
+   → sees research_focus values, publication_year: [2022, 2023, 2024]
+   → extracted: research_focus: "creatine", publication_year: 2023
+   → decides: {"publication_year": 2023}  (research_focus exact match uncertain)
 
-### Option A — `get_filter_context()` (recommended for agents)
-
-The simplest approach. Call `get_filter_context(query)` per query and prepend it to the agent prompt. The agent sees available fields, stored values, extracted filters, and instructions — and decides what filters to pass to the retrieval tool:
-
-```python
-def search_documents_with_context(query: str) -> str:
-    """Search the document knowledge base for relevant information."""
-    # Give the agent full filter context — it decides what to apply
-    context = rag.get_filter_context(query)
-    filters = rag.extract_filters(query)  # agent can override this
-
-    results = rag.retrieve(query, top_k=5, filters=filters)
-    if not results:
-        return "No relevant documents found."
-
-    chunks = [context]  # prepend filter context so agent can reason about results
-    for doc in results:
-        source = doc.metadata.get("file_name", "unknown")
-        chunks.append(f"[{source}]\n{doc.page_content}")
-    return "\n\n---\n\n".join(chunks)
+2. Agent calls search_documents("creatine studies from 2023", filters={"publication_year": 2023})
+   → clean retrieval with agent-decided filters
 ```
 
-### Option B — Static system prompt from stored values
-
-Build a metadata-aware system prompt once at startup using `filter_fields` and `get_field_values()`:
-
-```python
-# filter_fields returns only semantic/filterable fields — excludes system fields
-# like file_hash, chunk_id, source that are not useful for filtering
-values = rag.get_field_values(rag.filter_fields)
-# → {
-#     'company_name': ['apple', 'microsoft', 'google'],
-#     'doc_type':     ['10-k', '10-q'],
-#     'fiscal_year':  [2024, 2025],
-# }
-
-SYSTEM_PROMPT = f"""
-You are a helpful financial document assistant.
-Use the search_documents tool to retrieve relevant information before answering.
-Always cite the source document in your answer.
-
-The knowledge base contains documents with the following metadata:
-- company_name: {values['company_name']}
-- doc_type: {values['doc_type']}
-- fiscal_year: {values['fiscal_year']}
-
-When calling search_documents, pass explicit filters based on what the user mentions.
-"""
-```
-
-!!! note "auto_filter is off by default"
-    Filters are not automatically extracted from queries unless you set `auto_filter: true` in `config.yaml`. For agents, keep it `false` and use `extract_filters()` or `get_filter_context()` to control filter extraction explicitly.
+For multi-query tasks, the agent calls `get_filter_context` independently per sub-query — always fresh from Qdrant.
 
 ---
 
-## 4. Create the Agent
+## 3. Create the Agent
 
-Pass the metadata-aware `SYSTEM_PROMPT` from the previous step so the agent knows what's in the knowledge base.
+Register both tools and give the agent a minimal system prompt:
 
 === "OpenAI"
 
@@ -139,8 +118,13 @@ Pass the metadata-aware `SYSTEM_PROMPT` from the previous step so the agent know
 
     agent = create_agent(
         model=model,
-        tools=[search_documents],
-        system_prompt=SYSTEM_PROMPT,
+        tools=[get_filter_context, search_documents],
+        system_prompt=(
+            "You are a helpful document assistant. "
+            "Use get_filter_context before search_documents when the query involves "
+            "specific metadata (company, year, document type, etc.). "
+            "Always cite the source document in your answer."
+        ),
     )
     ```
 
@@ -154,8 +138,13 @@ Pass the metadata-aware `SYSTEM_PROMPT` from the previous step so the agent know
 
     agent = create_agent(
         model=model,
-        tools=[search_documents],
-        system_prompt=SYSTEM_PROMPT,
+        tools=[get_filter_context, search_documents],
+        system_prompt=(
+            "You are a helpful document assistant. "
+            "Use get_filter_context before search_documents when the query involves "
+            "specific metadata (company, year, document type, etc.). "
+            "Always cite the source document in your answer."
+        ),
     )
     ```
 
@@ -169,8 +158,13 @@ Pass the metadata-aware `SYSTEM_PROMPT` from the previous step so the agent know
 
     agent = create_agent(
         model=model,
-        tools=[search_documents],
-        system_prompt=SYSTEM_PROMPT,
+        tools=[get_filter_context, search_documents],
+        system_prompt=(
+            "You are a helpful document assistant. "
+            "Use get_filter_context before search_documents when the query involves "
+            "specific metadata (company, year, document type, etc.). "
+            "Always cite the source document in your answer."
+        ),
     )
     ```
 
@@ -184,8 +178,13 @@ Pass the metadata-aware `SYSTEM_PROMPT` from the previous step so the agent know
 
     agent = create_agent(
         model=model,
-        tools=[search_documents],
-        system_prompt=SYSTEM_PROMPT,
+        tools=[get_filter_context, search_documents],
+        system_prompt=(
+            "You are a helpful document assistant. "
+            "Use get_filter_context before search_documents when the query involves "
+            "specific metadata (company, year, document type, etc.). "
+            "Always cite the source document in your answer."
+        ),
     )
     ```
 
@@ -305,6 +304,7 @@ Place PDF files in examples/data/ then run:
 
 import sys
 from pathlib import Path
+from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -330,16 +330,31 @@ logger.info(f"Ingested {stats['processed']} docs, {stats['chunks_created']} chun
 
 
 # ------------------------------------------------------------------ #
-# 2. Retrieval tool
+# 2. Tools
 # ------------------------------------------------------------------ #
 @tool
-def search_documents(query: str) -> str:
+def get_filter_context(query: str) -> str:
+    """Get available metadata fields, stored values, and filter suggestions for a query.
+
+    Call this before search_documents when the query involves specific metadata
+    (company, year, document type, etc.). Use the returned context to decide
+    what filters to pass to search_documents.
+
+    Skip this for purely semantic queries with no metadata intent.
+    """
+    return rag.get_filter_context(query)
+
+
+@tool
+def search_documents(query: str, filters: Optional[dict] = None) -> str:
     """Search the document knowledge base for relevant information.
 
-    Use this whenever the user asks a question that may be answered
-    by the ingested documents.
+    Args:
+        query: The search query
+        filters: Optional metadata filters decided from get_filter_context.
+                 Pass {} or omit to search without filtering.
     """
-    results = rag.retrieve(query, top_k=5)
+    results = rag.retrieve(query, top_k=5, filters=filters or None)
     if not results:
         return "No relevant documents found."
 
@@ -362,11 +377,11 @@ checkpointer = InMemorySaver()
 
 agent = create_agent(
     model=model,
-    tools=[search_documents],
+    tools=[get_filter_context, search_documents],
     system_prompt=(
         "You are a helpful financial document assistant. "
-        "Use the search_documents tool to retrieve relevant information "
-        "from the knowledge base before answering questions. "
+        "Use get_filter_context before search_documents when the query involves "
+        "specific metadata (company, year, document type, etc.). "
         "Always cite the source document in your answer."
     ),
     checkpointer=checkpointer,

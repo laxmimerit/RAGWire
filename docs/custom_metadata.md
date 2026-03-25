@@ -238,6 +238,7 @@ vectorstore:
 retriever:
   search_type: "hybrid"
   top_k: 5
+  auto_filter: false   # keep false for agent use — use get_filter_context() instead
 ```
 
 ### 3. Ingest and retrieve
@@ -264,7 +265,7 @@ print(results[0].metadata)
 
 ### 4. Filter by custom fields
 
-Explicit filters:
+Explicit filters — pass a dict directly, no LLM extraction:
 
 ```python
 results = rag.retrieve(
@@ -278,11 +279,34 @@ results = rag.retrieve(
 )
 ```
 
-Auto-filter (LLM extracts from query):
+Agent-controlled — expose `get_filter_context` and `search_documents` as two separate tools. The agent calls `get_filter_context` first to understand available metadata, then decides what filters to pass to `search_documents`:
 
 ```python
-# LLM extracts {"jurisdiction": "eu", "doc_type": "policy"} automatically
-results = rag.retrieve("What are the EU data protection policies?")
+from typing import Optional
+
+@tool
+def get_filter_context(query: str) -> str:
+    """Get available metadata fields, stored values, and filter suggestions for a query.
+    Call this before search_documents when the query involves specific metadata.
+    """
+    return rag.get_filter_context(query)
+
+@tool
+def search_documents(query: str, filters: Optional[dict] = None) -> str:
+    """Search the document knowledge base with optional filters."""
+    results = rag.retrieve(query, top_k=5, filters=filters or None)
+    if not results:
+        return "No relevant documents found."
+    return "\n\n---\n\n".join(
+        f"[{doc.metadata.get('source', 'unknown')}]\n{doc.page_content}"
+        for doc in results
+    )
+
+# Agent flow:
+# 1. get_filter_context("EU data protection policies")
+#    → sees jurisdiction: ["eu", "us"], doc_type: ["policy", "contract"]
+#    → extracted: {"jurisdiction": "eu", "doc_type": "policy"}
+# 2. search_documents("EU data protection policies", filters={"jurisdiction": "eu", "doc_type": "policy"})
 ```
 
 ### 5. Run the example script
