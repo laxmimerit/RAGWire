@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ragwire"
-version = "1.2.6"
+version = "1.2.7"
 description = "RAGWire — Production-grade RAG toolkit for document ingestion and retrieval with hybrid search support"
 readme = "README.md"
 license = "MIT"
