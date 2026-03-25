@@ -69,11 +69,6 @@ fields:
     description: "Year the paper was published"
     type: integer
 
-  - name: supplement_types
-    description: "List of all supplements studied in lowercase-hyphenated format. Not limited to the examples — extract any supplement mentioned in the paper. Return empty list if none"
-    type: list
-    values: ["protein", "creatine", "caffeine", "vitamin-d", "omega-3", "bcaa", "ashwagandha", "magnesium", "beta-alanine"]
-
   - name: research_focus
     description: "List of all research topics covered in lowercase-hyphenated format. Not limited to the examples — extract any focus area mentioned"
     type: list

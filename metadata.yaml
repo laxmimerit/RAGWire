@@ -1,22 +1,16 @@
 fields:
   - name: title
-    description: "Full title of the research paper"
+    description: "Full title of the research paper exactly as it appears in the document. Do not paraphrase."
 
   - name: authors
-    description: "List of full author names as they appear in the paper"
+    description: "List of full author names exactly as they appear in the paper (e.g. 'John A. Smith'). Extract all authors."
     type: list
 
   - name: publication_year
-    description: "Year the paper was published"
+    description: "Year the paper was published or last revised. Extract the 4-digit year only."
     type: integer
 
-  - name: supplement_types
-    description: "List of all supplements studied in lowercase-hyphenated format. Not limited to the examples — extract any supplement mentioned in the paper. Return empty list if none"
-    type: list
-    values: ["protein", "creatine", "caffeine", "vitamin-d", "omega-3", "bcaa", "ashwagandha", "magnesium", "beta-alanine"]
-
   - name: research_focus
-    description: "List of all research topics covered in lowercase-hyphenated format. Not limited to the examples — extract any focus area mentioned"
+    description: "List of all primary research topics covered, in lowercase-hyphenated format. Not limited to the examples — extract any focus area mentioned in the paper."
     type: list
     values: ["muscle-growth", "recovery", "performance", "endurance", "cognitive-function", "fat-loss", "safety", "hormonal"]
-
