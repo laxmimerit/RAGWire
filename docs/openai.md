@@ -114,7 +114,12 @@ def search_documents(query: str) -> str:
 agent = create_agent(
     model=ChatOpenAI(model="gpt-5.4-nano"),
     tools=[search_documents],
-    system_prompt="You are a helpful document assistant. Use search_documents to answer questions.",
+    system_prompt=(
+        "You are a helpful document assistant. "
+        "Always use search_documents to retrieve information before answering — never answer from general knowledge. "
+        "If no relevant documents are found, say so — do not guess or fabricate an answer. "
+        "Always cite the source document in your answer."
+    ),
     checkpointer=InMemorySaver(),
 )
 

@@ -124,8 +124,9 @@ Register both tools and give the agent a minimal system prompt:
         tools=[get_filter_context, search_documents],
         system_prompt=(
             "You are a helpful document assistant. "
-            "Use get_filter_context before search_documents when the query involves "
-            "specific metadata (company, year, document type, etc.). "
+            "Always use search_documents to retrieve information before answering — never answer from general knowledge. "
+            "Use get_filter_context before search_documents when the query involves specific metadata (company, year, document type, etc.). "
+            "If no relevant documents are found, say so — do not guess or fabricate an answer. "
             "Always cite the source document in your answer."
         ),
     )
@@ -144,8 +145,9 @@ Register both tools and give the agent a minimal system prompt:
         tools=[get_filter_context, search_documents],
         system_prompt=(
             "You are a helpful document assistant. "
-            "Use get_filter_context before search_documents when the query involves "
-            "specific metadata (company, year, document type, etc.). "
+            "Always use search_documents to retrieve information before answering — never answer from general knowledge. "
+            "Use get_filter_context before search_documents when the query involves specific metadata (company, year, document type, etc.). "
+            "If no relevant documents are found, say so — do not guess or fabricate an answer. "
             "Always cite the source document in your answer."
         ),
     )
@@ -164,8 +166,9 @@ Register both tools and give the agent a minimal system prompt:
         tools=[get_filter_context, search_documents],
         system_prompt=(
             "You are a helpful document assistant. "
-            "Use get_filter_context before search_documents when the query involves "
-            "specific metadata (company, year, document type, etc.). "
+            "Always use search_documents to retrieve information before answering — never answer from general knowledge. "
+            "Use get_filter_context before search_documents when the query involves specific metadata (company, year, document type, etc.). "
+            "If no relevant documents are found, say so — do not guess or fabricate an answer. "
             "Always cite the source document in your answer."
         ),
     )
@@ -184,8 +187,9 @@ Register both tools and give the agent a minimal system prompt:
         tools=[get_filter_context, search_documents],
         system_prompt=(
             "You are a helpful document assistant. "
-            "Use get_filter_context before search_documents when the query involves "
-            "specific metadata (company, year, document type, etc.). "
+            "Always use search_documents to retrieve information before answering — never answer from general knowledge. "
+            "Use get_filter_context before search_documents when the query involves specific metadata (company, year, document type, etc.). "
+            "If no relevant documents are found, say so — do not guess or fabricate an answer. "
             "Always cite the source document in your answer."
         ),
     )
@@ -221,7 +225,9 @@ agent = create_agent(
     tools=[search_documents],
     system_prompt=(
         "You are a helpful document assistant. "
-        "Use the search_documents tool to answer questions."
+        "Always use search_documents to retrieve information before answering — never answer from general knowledge. "
+        "If no relevant documents are found, say so — do not guess or fabricate an answer. "
+        "Always cite the source document in your answer."
     ),
     checkpointer=checkpointer,
 )
@@ -270,7 +276,12 @@ model = ChatOpenAI(model="gpt-5.4-nano")
 agent = create_agent(
     model=model,
     tools=[search_documents],
-    system_prompt="You are a helpful document assistant. Use the search_documents tool to answer questions.",
+    system_prompt=(
+        "You are a helpful document assistant. "
+        "Always use search_documents to retrieve information before answering — never answer from general knowledge. "
+        "If no relevant documents are found, say so — do not guess or fabricate an answer. "
+        "Always cite the source document in your answer."
+    ),
     response_format=ToolStrategy(RAGResponse),
 )
 
@@ -386,8 +397,9 @@ agent = create_agent(
     tools=[get_filter_context, search_documents],
     system_prompt=(
         "You are a helpful financial document assistant. "
-        "Use get_filter_context before search_documents when the query involves "
-        "specific metadata (company, year, document type, etc.). "
+        "Always use search_documents to retrieve information before answering — never answer from general knowledge. "
+        "Use get_filter_context before search_documents when the query involves specific metadata (company, year, document type, etc.). "
+        "If no relevant documents are found, say so — do not guess or fabricate an answer. "
         "Always cite the source document in your answer."
     ),
     checkpointer=checkpointer,

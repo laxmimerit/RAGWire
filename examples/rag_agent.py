@@ -74,8 +74,9 @@ agent = create_agent(
     tools=[search_documents],
     system_prompt=(
         "You are a helpful financial document assistant. "
-        "Use the search_documents tool to retrieve relevant information "
-        "from the knowledge base before answering questions. "
+        "Always use search_documents to retrieve information before answering — never answer from general knowledge. "
+        "Use get_filter_context before search_documents when the query involves specific metadata (company, year, document type, etc.). "
+        "If no relevant documents are found, say so — do not guess or fabricate an answer. "
         "Always cite the source document in your answer."
     ),
     checkpointer=checkpointer,

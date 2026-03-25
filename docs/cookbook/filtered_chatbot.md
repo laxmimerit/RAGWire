@@ -15,7 +15,9 @@ values = rag.get_field_values(["company_name", "doc_type", "fiscal_year"])
 
 SYSTEM_PROMPT = f"""
 You are a financial document assistant.
-Use the search_documents tool to answer questions from the knowledge base.
+Always use search_documents to retrieve information before answering — never answer from general knowledge.
+If no relevant documents are found, say so — do not guess or fabricate an answer.
+Always cite the source document in your answer.
 
 Available data:
 - Companies  : {values['company_name']}
