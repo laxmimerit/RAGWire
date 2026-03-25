@@ -40,6 +40,15 @@ See [Domain Examples](#domain-examples) below for ready-to-use schemas for legal
 
 ### Field definitions
 
+**Top-level keys**
+
+| Key | Required | Description |
+|---|---|---|
+| `prompt` | No | Custom extraction prompt. Must contain a `{content}` placeholder. Defaults to the built-in RAGWire prompt if omitted. |
+| `fields` | Yes | List of metadata field definitions (see below) |
+
+**Field definition keys**
+
 | Key | Required | Description |
 |---|---|---|
 | `name` | Yes | Field key stored in metadata |
@@ -58,9 +67,16 @@ By default RAGWire uses a built-in extraction prompt. You can override it per-co
 
 ```yaml
 prompt: |
-  You are a sports science research assistant specializing in supplement studies.
-  Read the document carefully and extract the metadata fields below.
-  Be thorough — do not leave fields empty if the information is present.
+  You are an expert research paper analyst specializing in health, fitness, and sports science.
+  Your task is to extract structured metadata from the research paper below.
+
+  ## Extraction Rules
+  1. **Be thorough**: Extract every field you can find. A field should only be null if the information is completely absent.
+  2. **Be precise**: Extract exactly what is stated. Do not infer, assume, or hallucinate values not present in the document.
+  3. **Lists**: Scan the entire document and extract ALL matching values — not just the first occurrence.
+  4. **Strings**: Normalize to lowercase. Trim extra whitespace.
+  5. **Integers**: Return the numeric value only — no units, symbols, or surrounding text.
+  6. **Null**: Return null only when the field is genuinely not mentioned anywhere in the document.
 
   ## Document
   {content}
@@ -69,20 +85,20 @@ prompt: |
 
 fields:
   - name: title
-    description: "Full title of the research paper"
+    description: "Full title of the research paper exactly as it appears in the document. Do not paraphrase."
 
   - name: authors
-    description: "List of full author names as they appear in the paper"
+    description: "List of full author names exactly as they appear in the paper (e.g. 'John A. Smith'). Extract all authors."
     type: list
 
   - name: publication_year
-    description: "Year the paper was published"
+    description: "Year the paper was published or last revised. Extract the 4-digit year only."
     type: integer
 
   - name: research_focus
-    description: "List of research topics in lowercase-hyphenated format"
+    description: "List of all primary research topics covered, in lowercase-hyphenated format. Not limited to the examples — extract any focus area mentioned in the paper."
     type: list
-    values: ["muscle-growth", "recovery", "performance", "endurance"]
+    values: ["muscle-growth", "recovery", "performance", "endurance", "cognitive-function", "fat-loss", "safety", "hormonal"]
 ```
 
 !!! note
