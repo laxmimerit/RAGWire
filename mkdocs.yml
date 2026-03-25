@@ -62,6 +62,7 @@ nav:
     - Quick Tutorial: tutorial.md
     - Metadata & Filtering: metadata.md
     - Custom Metadata: custom_metadata.md
+    - Metadata Schema Examples: metadata_schemas.md
     - RAG Agent: rag_agent.md
   - Providers:
     - Ollama (Local): ollama.md
