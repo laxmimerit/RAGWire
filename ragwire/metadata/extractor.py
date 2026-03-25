@@ -18,10 +18,41 @@ logger = logging.getLogger(__name__)
 
 # Default Pydantic schema for financial documents
 class FinancialMetadata(BaseModel):
-    company_name: Optional[str] = Field(None, description="Company name in lowercase")
-    doc_type: Optional[str] = Field(None, description="Document type: 10-k | 10-q | 8-k")
-    fiscal_quarter: Optional[str] = Field(None, description="Fiscal quarter: q1 | q2 | q3 | q4, or null")
-    fiscal_year: Optional[List[int]] = Field(None, description="Fiscal year(s) covered by the document")
+    company_name: Optional[str] = Field(
+        None,
+        description=(
+            "Legal or commonly known company name in lowercase. "
+            "Use the full legal name if present, otherwise the trading name. "
+            "Examples: 'alphabet inc.', 'amazon.com inc.', 'apple inc.', 'microsoft corporation', 'tesla inc.'"
+        ),
+    )
+    doc_type: Optional[str] = Field(
+        None,
+        description=(
+            "SEC filing type. Must be one of: '10-k' (annual report), '10-q' (quarterly report), "
+            "'8-k' (current report / material event). "
+            "Look for 'Form 10-K', 'Annual Report', 'Form 10-Q', 'Quarterly Report', 'Form 8-K' in the document header or cover page."
+        ),
+    )
+    fiscal_quarter: Optional[str] = Field(
+        None,
+        description=(
+            "Fiscal quarter covered by the document. Must be lowercase: 'q1', 'q2', 'q3', or 'q4'. "
+            "Only populate for 10-Q filings. Leave null for 10-K (annual) and 8-K filings. "
+            "Determine the quarter from the document itself — look for 'first quarter', 'second quarter', 'Q1', 'Q2', etc. "
+            "Do not infer the quarter from calendar months, as fiscal years vary by company."
+        ),
+    )
+    fiscal_year: Optional[List[int]] = Field(
+        None,
+        description=(
+            "List of fiscal year(s) covered by the document as 4-digit integers. "
+            "For a 10-K, this is typically one year (e.g. [2024]). "
+            "For a 10-Q or 8-K that spans a year boundary, include both (e.g. [2023, 2024]). "
+            "Look for 'fiscal year ended', 'year ended', or the filing date year on the cover page. "
+            "Examples: 'Annual Report 2024' → [2024], 'Quarter ended March 31, 2025' → [2025]."
+        ),
+    )
 
 
 class MetadataExtractor:
