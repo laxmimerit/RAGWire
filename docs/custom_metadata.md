@@ -67,6 +67,30 @@ By default RAGWire uses a built-in extraction prompt. You can override it per-co
 
 ```yaml
 prompt: |
+  You are a <domain> expert. Extract the metadata fields below from the document.
+  Be thorough — only return null if the information is genuinely absent.
+
+  ## Document
+  {content}
+
+  ## Extracted Metadata
+
+fields:
+  - name: my_field
+    description: "What to extract"
+```
+
+!!! note
+    The `prompt` key is optional. When omitted, the default RAGWire extraction prompt is used. Must contain a `{content}` placeholder.
+
+---
+
+## Domain Examples
+
+### Health & Gym Supplement Research Papers
+
+```yaml
+prompt: |
   You are an expert research paper analyst specializing in health, fitness, and sports science.
   Your task is to extract structured metadata from the research paper below.
 
@@ -99,35 +123,6 @@ fields:
     description: "List of all primary research topics covered, in lowercase-hyphenated format. Not limited to the examples — extract any focus area mentioned in the paper."
     type: list
     values: ["muscle-growth", "recovery", "performance", "endurance", "cognitive-function", "fat-loss", "safety", "hormonal"]
-```
-
-!!! note
-    The `prompt` key is optional. When omitted, the default RAGWire extraction prompt is used.
-
----
-
-## Domain Examples
-
-### Health & Gym Supplement Research Papers
-
-```yaml
-fields:
-  - name: title
-    description: "Full title of the research paper exactly as it appears in the document. Do not paraphrase."
-
-  - name: authors
-    description: "List of full author names exactly as they appear in the paper (e.g. 'John A. Smith'). Extract all authors."
-    type: list
-
-  - name: publication_year
-    description: "Year the paper was published or last revised. Extract the 4-digit year only."
-    type: integer
-
-  - name: research_focus
-    description: "List of all primary research topics covered, in lowercase-hyphenated format. Not limited to the examples — extract any focus area mentioned in the paper."
-    type: list
-    values: ["muscle-growth", "recovery", "performance", "endurance", "cognitive-function", "fat-loss", "safety", "hormonal"]
-
 ```
 
 ---
