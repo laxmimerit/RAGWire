@@ -39,9 +39,21 @@ class MetadataExtractor:
     """
 
     EXTRACTION_PROMPT = (
-        "Extract metadata from the following document.\n\n"
-        "Document Text:\n{content}\n\n"
-        "Extracted Metadata:"
+        "You are an expert metadata extraction assistant. Your job is to read the document carefully "
+        "and populate every metadata field in the schema with as much detail as the document provides.\n\n"
+        "## Extraction Rules\n"
+        "1. **Be thorough**: Extract every field you can find. A field should only be null if the "
+        "information is completely absent — not because you are unsure.\n"
+        "2. **Be precise**: Extract exactly what is stated. Do not infer, assume, or hallucinate "
+        "values that are not present in the document.\n"
+        "3. **Lists**: For list fields, scan the entire document and extract ALL matching values — "
+        "not just the first occurrence.\n"
+        "4. **Strings**: Normalize to lowercase. Trim extra whitespace.\n"
+        "5. **Integers**: Return the numeric value only — no units, symbols, or surrounding text.\n"
+        "6. **Null**: Return null only when the field is genuinely not mentioned anywhere in the document.\n\n"
+        "## Document Text\n"
+        "{content}\n\n"
+        "## Extracted Metadata"
     )
 
     def __init__(self, llm, schema_model: Optional[Type[BaseModel]] = None):
