@@ -11,6 +11,12 @@
   <a href="https://youtube.com/kgptalkie"><img src="https://img.shields.io/badge/YouTube-KGP%20Talkie-red" alt="YouTube"/></a>
 </p>
 
+<p align="center">
+  <a href="https://laxmimerit.github.io/RAGWire/">
+    <img src="https://img.shields.io/badge/📖%20Full%20Documentation-laxmimerit.github.io%2FRAGWire-blue?style=for-the-badge&logo=readthedocs&logoColor=white" alt="Documentation"/>
+  </a>
+</p>
+
 ---
 
 ## Features
@@ -186,7 +192,21 @@ MIT © 2026 [KGP Talkie Private Limited](https://kgptalkie.com)
 
 ## Links
 
-- Website: [kgptalkie.com](https://kgptalkie.com)
-- YouTube: [youtube.com/kgptalkie](https://youtube.com/kgptalkie)
-- GitHub: [github.com/laxmimerit/ragwire](https://github.com/laxmimerit/ragwire)
-- Email: udemy@kgptalkie.com
+<p align="center">
+  <a href="https://laxmimerit.github.io/RAGWire/">
+    <img src="https://img.shields.io/badge/📖%20Documentation-Visit%20Docs-2ea44f?style=for-the-badge&logo=gitbook&logoColor=white" alt="Documentation"/>
+  </a>
+  &nbsp;
+  <a href="https://github.com/laxmimerit/ragwire">
+    <img src="https://img.shields.io/badge/⭐%20GitHub-Star%20the%20Repo-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub"/>
+  </a>
+  &nbsp;
+  <a href="https://youtube.com/kgptalkie">
+    <img src="https://img.shields.io/badge/▶%20YouTube-KGP%20Talkie-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="YouTube"/>
+  </a>
+</p>
+
+- 🌐 Website: [kgptalkie.com](https://kgptalkie.com)
+- 📖 Docs: [laxmimerit.github.io/RAGWire](https://laxmimerit.github.io/RAGWire/)
+- 💻 GitHub: [github.com/laxmimerit/ragwire](https://github.com/laxmimerit/ragwire)
+- 📧 Email: udemy@kgptalkie.com
