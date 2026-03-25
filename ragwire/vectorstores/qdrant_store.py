@@ -278,8 +278,8 @@ class QdrantStore:
         metadata = payload.get("metadata", {})
         return list(metadata.keys())
 
-    # Fields stored as integers in the RAGWire schema (chunk_index, total_chunks
-    # are int; fiscal_year is List[int]). Everything else is indexed as KEYWORD.
+    # Fields stored as integers in the RAGWire schema (chunk_index, total_chunks,
+    # fiscal_year are int). Everything else is indexed as KEYWORD.
     _INTEGER_FIELDS = {"chunk_index", "total_chunks", "fiscal_year"}
 
     def create_payload_indexes(self, fields: List[str]) -> None:

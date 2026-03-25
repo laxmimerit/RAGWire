@@ -21,30 +21,35 @@ class FinancialMetadata(BaseModel):
     company_name: Optional[str] = Field(
         None,
         description=(
-            "Legal or commonly known company name in lowercase. "
-            "Use the full legal name if present, otherwise the trading name. "
-            "Examples: 'alphabet inc.', 'amazon.com inc.', 'apple inc.', 'microsoft corporation', 'tesla inc.'"
+            "The company that filed this document in lowercase. "
+            "Scan for 'registrant', the title block, or the company name printed above the form number. "
+            "Use the full legal name. Example: 'AMAZON.COM, INC.' → 'amazon.com inc.'"
         ),
     )
     doc_type: Optional[str] = Field(
         None,
         description=(
-            "Best-fit SEC filing type in lowercase: '10-k', '10-q', or '8-k'. "
-            "Pick the single best match. Null if the document is not an SEC filing."
+            "The SEC form type. Map exactly: "
+            "'Form 10-K' or 'Annual Report on Form 10-K' → '10-k', "
+            "'Form 10-Q' or 'Quarterly Report on Form 10-Q' → '10-q', "
+            "'Form 8-K' or 'Current Report on Form 8-K' → '8-k'. "
+            "Null if none of these appear."
         ),
     )
     fiscal_quarter: Optional[str] = Field(
         None,
         description=(
-            "Fiscal quarter in lowercase: 'q1', 'q2', 'q3', or 'q4'. "
-            "Read directly from the document (e.g. 'Q2', 'second quarter'). Null if not stated."
+            "The quarter this filing covers. Only applies to 10-Q filings — null for 10-K and 8-K. "
+            "Look for 'quarter ended', 'three months ended', or 'Q1/Q2/Q3'. "
+            "Map: first/Q1 → 'q1', second/Q2 → 'q2', third/Q3 → 'q3', fourth/Q4 → 'q4'."
         ),
     )
-    fiscal_year: Optional[List[int]] = Field(
+    fiscal_year: Optional[int] = Field(
         None,
         description=(
-            "Fiscal year(s) as a list of 4-digit integers (e.g. [2024]). "
-            "Include multiple years only if the document explicitly covers more than one. Null if not stated."
+            "The primary year this filing covers as a 4-digit integer. "
+            "Look for 'fiscal year ended', 'year ended', or 'for the year ended'. "
+            "Example: 'Year ended December 31, 2024' → 2024. Null if not stated."
         ),
     )
 

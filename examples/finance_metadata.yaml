@@ -1,0 +1,52 @@
+prompt: |
+  You are parsing an SEC filing. This document IS an SEC filing — treat it as such.
+  Extract the four fields below. All values must be lowercase strings.
+
+  **company_name**: The company that filed this document.
+  Scan for "registrant", the title block, or the company name printed above the form number.
+  Use the full legal name. Example: "AMAZON.COM, INC." → 'amazon.com inc.'
+
+  **doc_type**: The SEC form type. It will appear as one of these — map it exactly:
+  "Form 10-K" or "Annual Report on Form 10-K" → '10-k'
+  "Form 10-Q" or "Quarterly Report on Form 10-Q" → '10-q'
+  "Form 8-K" or "Current Report on Form 8-K" → '8-k'
+
+  **fiscal_year**: The primary year this filing covers.
+  Look for "fiscal year ended", "year ended", "for the year ended", or the period stated on the cover page.
+  Return a single 4-digit integer. Example: "Year ended December 31, 2024" → 2024
+
+  **fiscal_quarter**: The quarter this filing covers. Only applies to 10-Q filings.
+  Look for "quarter ended", "three months ended", or "Q1/Q2/Q3".
+  Map: first/Q1 → 'q1', second/Q2 → 'q2', third/Q3 → 'q3', fourth/Q4 → 'q4'
+  Return null for 10-K and 8-K filings.
+
+  ## Grounding
+  If existing collection values are provided above, reuse the exact stored value when this document refers to the same entity.
+
+  ## Document
+  {content}
+
+  ## Extracted Metadata
+
+fields:
+  - name: company_name
+    description: >
+      Legal or commonly known company name in lowercase.
+      Use the full legal name if present, otherwise the trading name.
+      Examples: 'alphabet inc.', 'amazon.com inc.', 'apple inc.', 'microsoft corporation', 'tesla inc.'
+
+  - name: doc_type
+    description: >
+      Best-fit SEC filing type in lowercase: '10-k', '10-q', or '8-k'.
+      Pick the single best match. Null if the document is not an SEC filing.
+    values: ["10-k", "10-q", "8-k"]
+
+  - name: fiscal_quarter
+    description: >
+      Fiscal quarter in lowercase: 'q1', 'q2', 'q3', or 'q4'.
+      Read directly from the document (e.g. 'Q2', 'second quarter'). Null if not stated.
+    values: ["q1", "q2", "q3", "q4"]
+
+  - name: fiscal_year
+    description: "Primary fiscal year covered by this filing as a 4-digit integer (e.g. 2024). Null if not stated."
+    type: integer
