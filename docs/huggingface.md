@@ -62,8 +62,9 @@ embeddings:
     device: "cpu"
 
 llm:
-  provider: "openai"
-  model: "gpt-5.4-nano"
+  provider: "ollama"
+  model: "qwen3.5:9b"
+  base_url: "http://localhost:11434"
 
 vectorstore:
   url: "http://localhost:6333"

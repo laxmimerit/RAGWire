@@ -9,43 +9,53 @@ Place PDF files in examples/data/ then run:
   python examples/rag_agent.py
 """
 
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
+from typing import Optional
 
 from langchain.agents import create_agent
 from langchain.tools import tool
-from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage
+from langchain_ollama import ChatOllama
 from langgraph.checkpoint.memory import InMemorySaver
 
 from ragwire import RAGWire, setup_logging
 
 logger = setup_logging(log_level="INFO")
 
-CONFIG_PATH = Path(__file__).parent.parent / "config.yaml"
-DATA_DIR = Path(__file__).parent / "data"
-
 
 # ------------------------------------------------------------------ #
 # 1. Pipeline
 # ------------------------------------------------------------------ #
-rag = RAGWire(str(CONFIG_PATH))
-stats = rag.ingest_directory(str(DATA_DIR))
+rag = RAGWire("config.yaml")
+stats = rag.ingest_directory("data/")
 logger.info(f"Ingested {stats['processed']} docs, {stats['chunks_created']} chunks")
 
 
 # ------------------------------------------------------------------ #
-# 2. Retrieval tool
+# 2. Tools
 # ------------------------------------------------------------------ #
 @tool
-def search_documents(query: str) -> str:
+def get_filter_context(query: str) -> str:
+    """Get available metadata fields, stored values, and filter suggestions for a query.
+
+    Call this before search_documents when the query involves specific metadata
+    (company, year, document type, etc.). Use the returned context to decide
+    what filters to pass to search_documents.
+
+    Skip this for purely semantic queries with no metadata intent.
+    """
+    return rag.get_filter_context(query)
+
+
+@tool
+def search_documents(query: str, filters: Optional[dict] = None) -> str:
     """Search the document knowledge base for relevant information.
 
-    Use this whenever the user asks a question that may be answered
-    by the ingested documents.
+    Args:
+        query: The search query
+        filters: Optional metadata filters decided from get_filter_context.
+                 Pass {} or omit to search without filtering.
     """
-    results = rag.retrieve(query, top_k=5)
+    results = rag.retrieve(query, top_k=5, filters=filters)
     if not results:
         return "No relevant documents found."
 
@@ -66,12 +76,12 @@ def search_documents(query: str) -> str:
 # ------------------------------------------------------------------ #
 # 3. Agent with memory
 # ------------------------------------------------------------------ #
-model = ChatOpenAI(model="gpt-5.4-nano")
+model = ChatOllama(model="qwen3.5:9b", base_url="http://localhost:11434")
 checkpointer = InMemorySaver()
 
 agent = create_agent(
     model=model,
-    tools=[search_documents],
+    tools=[get_filter_context, search_documents],
     system_prompt=(
         "You are a helpful financial document assistant. "
         "Always use search_documents to retrieve information before answering — never answer from general knowledge. "
@@ -98,7 +108,7 @@ while True:
         continue
 
     response = agent.invoke(
-        {"messages": [{"role": "user", "content": question}]},
+        {"messages": [HumanMessage(question)]},
         config=config,
     )
     print(f"\nAgent: {response['messages'][-1].content}\n")

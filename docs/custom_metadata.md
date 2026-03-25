@@ -224,8 +224,9 @@ embeddings:
   model: "text-embedding-3-small"
 
 llm:
-  provider: "openai"
-  model: "gpt-5.4-nano"
+  provider: "ollama"
+  model: "qwen3.5:9b"
+  base_url: "http://localhost:11434"
 
 metadata:
   config_file: "metadata.yaml"
@@ -297,10 +298,17 @@ def search_documents(query: str, filters: Optional[dict] = None) -> str:
     results = rag.retrieve(query, top_k=5, filters=filters)
     if not results:
         return "No relevant documents found."
-    return "\n\n---\n\n".join(
-        f"[{doc.metadata.get('source', 'unknown')}]\n{doc.page_content}"
-        for doc in results
-    )
+    chunks = []
+    for doc in results:
+        source = doc.metadata.get("file_name", "unknown")
+        meta_parts = [
+            f"{k}={str(v)[:100]}"
+            for k, v in doc.metadata.items()
+            if k != "file_name" and v not in (None, "", [])
+        ]
+        header = f"[{source}" + (f" | {', '.join(meta_parts)}" if meta_parts else "") + "]"
+        chunks.append(f"{header}\n{doc.page_content}")
+    return "\n\n---\n\n".join(chunks)
 
 # Agent flow:
 # 1. get_filter_context("EU data protection policies")

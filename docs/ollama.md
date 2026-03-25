@@ -105,6 +105,7 @@ Use `create_agent` to wrap the retriever as a tool and build a conversational Q&
 ```python
 from langchain.agents import create_agent
 from langchain.tools import tool
+from langchain_core.messages import HumanMessage
 from langchain_ollama import ChatOllama
 from langgraph.checkpoint.memory import InMemorySaver
 from ragwire import RAGWire
@@ -137,7 +138,7 @@ agent = create_agent(
 
 config = {"configurable": {"thread_id": "session-1"}}
 response = agent.invoke(
-    {"messages": [{"role": "user", "content": "What is the total revenue?"}]},
+    {"messages": [HumanMessage("What is the total revenue?")]},
     config=config,
 )
 print(response["messages"][-1].content)

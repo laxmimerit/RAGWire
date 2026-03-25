@@ -8,11 +8,7 @@ Demonstrates the full RAG rag:
 4. Display results with full metadata
 """
 
-import sys
 from pathlib import Path
-
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from ragwire import RAGWire, setup_logging
 

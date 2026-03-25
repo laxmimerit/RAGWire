@@ -111,13 +111,13 @@ For multi-query tasks, the agent calls `get_filter_context` independently per su
 
 Register both tools and give the agent a minimal system prompt:
 
-=== "OpenAI"
+=== "Ollama (local)"
 
     ```python
     from langchain.agents import create_agent
-    from langchain_openai import ChatOpenAI
+    from langchain_ollama import ChatOllama
 
-    model = ChatOpenAI(model="gpt-5.4-nano")
+    model = ChatOllama(model="qwen3.5:9b", base_url="http://localhost:11434")
 
     agent = create_agent(
         model=model,
@@ -132,13 +132,13 @@ Register both tools and give the agent a minimal system prompt:
     )
     ```
 
-=== "Ollama (local)"
+=== "OpenAI"
 
     ```python
     from langchain.agents import create_agent
-    from langchain_ollama import ChatOllama
+    from langchain_openai import ChatOpenAI
 
-    model = ChatOllama(model="qwen3.5:9b")
+    model = ChatOpenAI(model="gpt-5.4-nano")
 
     agent = create_agent(
         model=model,
@@ -197,27 +197,30 @@ Register both tools and give the agent a minimal system prompt:
 
 ---
 
-## 5. Ask a Question
+## 4. Ask a Question
 
 ```python
+from langchain_core.messages import HumanMessage
+
 response = agent.invoke({
-    "messages": [{"role": "user", "content": "What is Apple's total revenue for 2025?"}]
+    "messages": [HumanMessage("What is Apple's total revenue for 2025?")]
 })
 print(response["messages"][-1].content)
 ```
 
 ---
 
-## 6. Multi-Turn Conversation (Memory)
+## 5. Multi-Turn Conversation (Memory)
 
 Add `InMemorySaver` to give the agent memory across turns within a session:
 
 ```python
 from langchain.agents import create_agent
-from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage
+from langchain_ollama import ChatOllama
 from langgraph.checkpoint.memory import InMemorySaver
 
-model = ChatOpenAI(model="gpt-5.4-nano")
+model = ChatOllama(model="qwen3.5:9b", base_url="http://localhost:11434")
 checkpointer = InMemorySaver()
 
 agent = create_agent(
@@ -236,14 +239,14 @@ config = {"configurable": {"thread_id": "session-1"}}
 
 # Turn 1
 response = agent.invoke(
-    {"messages": [{"role": "user", "content": "What is Apple's revenue?"}]},
+    {"messages": [HumanMessage("What is Apple's revenue?")]},
     config=config,
 )
 print(response["messages"][-1].content)
 
 # Turn 2 — agent remembers the previous question
 response = agent.invoke(
-    {"messages": [{"role": "user", "content": "How does that compare to Microsoft?"}]},
+    {"messages": [HumanMessage("How does that compare to Microsoft?")]},
     config=config,
 )
 print(response["messages"][-1].content)
@@ -254,7 +257,7 @@ print(response["messages"][-1].content)
 
 ---
 
-## 7. Structured Output
+## 6. Structured Output
 
 Get a typed response with answer, sources, and confidence:
 
@@ -262,7 +265,8 @@ Get a typed response with answer, sources, and confidence:
 from dataclasses import dataclass
 from langchain.agents import create_agent
 from langchain.agents.structured_output import ToolStrategy
-from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage
+from langchain_ollama import ChatOllama
 
 @dataclass
 class RAGResponse:
@@ -271,7 +275,7 @@ class RAGResponse:
     sources: list[str]
     confidence: str  # "high" | "medium" | "low"
 
-model = ChatOpenAI(model="gpt-5.4-nano")
+model = ChatOllama(model="qwen3.5:9b", base_url="http://localhost:11434")
 
 agent = create_agent(
     model=model,
@@ -286,7 +290,7 @@ agent = create_agent(
 )
 
 response = agent.invoke({
-    "messages": [{"role": "user", "content": "What is Apple's net income for 2025?"}]
+    "messages": [HumanMessage("What is Apple's net income for 2025?")]
 })
 result = response["structured_response"]
 print(f"Answer:     {result.answer}")
@@ -296,7 +300,7 @@ print(f"Confidence: {result.confidence}")
 
 ---
 
-## 8. Full Working Example
+## 7. Full Working Example
 
 Save as `examples/rag_agent.py` and run:
 
@@ -316,30 +320,24 @@ Place PDF files in examples/data/ then run:
   python examples/rag_agent.py
 """
 
-import sys
-from pathlib import Path
 from typing import Optional
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from langchain.agents import create_agent
 from langchain.tools import tool
-from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage
+from langchain_ollama import ChatOllama
 from langgraph.checkpoint.memory import InMemorySaver
 
 from ragwire import RAGWire, setup_logging
 
 logger = setup_logging(log_level="INFO")
 
-CONFIG_PATH = Path(__file__).parent.parent / "config.yaml"
-DATA_DIR = Path(__file__).parent / "data"
-
 
 # ------------------------------------------------------------------ #
 # 1. Pipeline
 # ------------------------------------------------------------------ #
-rag = RAGWire(str(CONFIG_PATH))
-stats = rag.ingest_directory(str(DATA_DIR))
+rag = RAGWire("config.yaml")
+stats = rag.ingest_directory("data/")
 logger.info(f"Ingested {stats['processed']} docs, {stats['chunks_created']} chunks")
 
 
@@ -389,7 +387,7 @@ def search_documents(query: str, filters: Optional[dict] = None) -> str:
 # ------------------------------------------------------------------ #
 # 3. Agent with memory
 # ------------------------------------------------------------------ #
-model = ChatOpenAI(model="gpt-5.4-nano")
+model = ChatOllama(model="qwen3.5:9b", base_url="http://localhost:11434")
 checkpointer = InMemorySaver()
 
 agent = create_agent(
@@ -421,7 +419,7 @@ while True:
         continue
 
     response = agent.invoke(
-        {"messages": [{"role": "user", "content": question}]},
+        {"messages": [HumanMessage(question)]},
         config=config,
     )
     print(f"\nAgent: {response['messages'][-1].content}\n")

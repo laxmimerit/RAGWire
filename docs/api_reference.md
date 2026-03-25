@@ -709,9 +709,9 @@ Uses `with_structured_output` with a Pydantic model for reliable, type-safe extr
 
 ```python
 from ragwire import MetadataExtractor, FinancialMetadata
-from langchain_openai import ChatOpenAI
+from langchain_ollama import ChatOllama
 
-llm = ChatOpenAI(model="gpt-5.4-nano")
+llm = ChatOllama(model="qwen3.5:9b", base_url="http://localhost:11434")
 
 # Default — uses FinancialMetadata schema (company_name, doc_type, fiscal_quarter, fiscal_year)
 extractor = MetadataExtractor(llm)

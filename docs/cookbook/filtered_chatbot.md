@@ -6,7 +6,8 @@ Combine auto-filter with a metadata-aware system prompt so the agent knows what 
 from ragwire import RAGWire
 from langchain.agents import create_agent
 from langchain.tools import tool
-from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage
+from langchain_ollama import ChatOllama
 
 rag = RAGWire("config.yaml")
 
@@ -41,13 +42,13 @@ def search_documents(query: str) -> str:
     return "\n\n---\n\n".join(chunks)
 
 agent = create_agent(
-    model=ChatOpenAI(model="gpt-5.4-nano"),
+    model=ChatOllama(model="qwen3.5:9b", base_url="http://localhost:11434"),
     tools=[search_documents],
     system_prompt=SYSTEM_PROMPT,
 )
 
 response = agent.invoke({
-    "messages": [{"role": "user", "content": "What is Apple's net income for 2025?"}]
+    "messages": [HumanMessage("What is Apple's net income for 2025?")]
 })
 print(response["messages"][-1].content)
 ```
@@ -66,7 +67,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 checkpointer = InMemorySaver()
 
 agent = create_agent(
-    model=ChatOpenAI(model="gpt-5.4-nano"),
+    model=ChatOllama(model="qwen3.5:9b", base_url="http://localhost:11434"),
     tools=[search_documents],
     system_prompt=SYSTEM_PROMPT,
     checkpointer=checkpointer,
@@ -76,11 +77,11 @@ config = {"configurable": {"thread_id": "session-1"}}
 
 # The agent remembers previous turns within the same thread_id
 response = agent.invoke(
-    {"messages": [{"role": "user", "content": "What is Apple's revenue?"}]},
+    {"messages": [HumanMessage("What is Apple's revenue?")]},
     config=config,
 )
 response = agent.invoke(
-    {"messages": [{"role": "user", "content": "How does that compare to Microsoft?"}]},
+    {"messages": [HumanMessage("How does that compare to Microsoft?")]},
     config=config,
 )
 ```
