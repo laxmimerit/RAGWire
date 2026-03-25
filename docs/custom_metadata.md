@@ -47,6 +47,7 @@ See [Domain Examples](#domain-examples) below for ready-to-use schemas for legal
 | `prompt` | No | Custom extraction prompt. Must contain a `{content}` placeholder. Defaults to the built-in RAGWire prompt if omitted. |
 | `fields` | Yes | List of metadata field definitions (see below) |
 
+
 **Field definition keys**
 
 | Key | Required | Description |

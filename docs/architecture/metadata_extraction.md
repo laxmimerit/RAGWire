@@ -9,7 +9,7 @@ Metadata extraction is the intelligence layer of RAGWire. It uses an LLM to read
 ```mermaid
 flowchart LR
     subgraph Ingestion
-        Chunk0["chunk[0]\n(first ~10,000 chars)"]
+        Chunk0["doc start\n(first 4,000 chars)"]
         Extractor["MetadataExtractor\n.extract(text, stored_values)"]
         Meta["metadata dict\n{company_name, doc_type, ...}"]
         AllChunks["All chunks\n(same metadata attached to each)"]
@@ -30,7 +30,7 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    A["Text input\nchunk[0] — first 10,000 chars"]
+    A["Text input\ndoc start — first 3,000 chars"]
 
     A --> B["Check _stored_values_cache\nDoes collection have existing data?"]
 
@@ -75,8 +75,8 @@ The LLM receives a structured prompt. Grounding is injected **before** the docum
 │   Use stored value if this document is same entity" │
 ├─────────────────────────────────────────────────────┤
 │  DOCUMENT TEXT                                      │
-│  "Document Text:                                    │
-│   {content — first 10,000 chars}"                   │
+│  "## Document Text                                  │
+│   {content — first 3,000 chars}"                    │
 ├─────────────────────────────────────────────────────┤
 │  OUTPUT MARKER                                      │
 │  "Extracted Metadata (JSON only):"                  │

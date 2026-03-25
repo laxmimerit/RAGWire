@@ -106,7 +106,6 @@ class MetadataExtractor:
         self.prompt = ChatPromptTemplate.from_template(self.prompt_template)
         self._structured_llm = llm.with_structured_output(self.schema_model)
         self.fields: Optional[List[str]] = None
-        self.extraction_chars: int = 3000
 
     def extract(self, text: str, stored_values: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
@@ -137,7 +136,7 @@ class MetadataExtractor:
             prompt = self.prompt
 
         chain = prompt | self._structured_llm
-        result = chain.invoke({"content": text[:self.extraction_chars]})
+        result = chain.invoke({"content": text[:4000]})
 
         metadata = result.model_dump()
 
