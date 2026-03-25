@@ -105,6 +105,7 @@ vectorstore:
 retriever:
   search_type: "hybrid"  # "similarity" | "mmr" | "hybrid"
   top_k: 5
+  auto_filter: false     # set true to enable LLM-based filter extraction from every query
 
 # =================================================================
 # Logging

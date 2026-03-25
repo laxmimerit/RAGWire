@@ -50,6 +50,7 @@ vectorstore:
 retriever:
   search_type: "hybrid"
   top_k: 5
+  auto_filter: false   # set true to enable LLM-based filter extraction from every query
 ```
 
 ### HuggingFace Embeddings + OpenAI LLM
@@ -75,6 +76,7 @@ vectorstore:
 retriever:
   search_type: "hybrid"
   top_k: 5
+  auto_filter: false   # set true to enable LLM-based filter extraction from every query
 ```
 
 ## 3. Python Usage

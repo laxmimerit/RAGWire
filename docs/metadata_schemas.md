@@ -283,3 +283,81 @@ fields:
   - name: audience
     description: "Intended audience in lowercase (e.g. 'all employees', 'managers'). Null if not stated."
 ```
+
+---
+
+## Auto-Filter with Custom Schemas
+
+When you configure a custom `metadata.yaml`, RAGWire automatically derives its **filter fields** from the field names in that file. `auto_filter` then extracts values for exactly those fields — not the default financial ones.
+
+### How it works
+
+```
+metadata.yaml fields → rag.filter_fields → auto_filter extracts → retrieve() narrows results
+```
+
+- **Default schema** (no `metadata.yaml`): filter fields are `company_name`, `doc_type`, `fiscal_quarter`, `fiscal_year`
+- **Custom schema**: filter fields become whatever `name:` entries you defined in your YAML
+
+### Check which fields are active
+
+```python
+rag = RAGWire(Config("config.yaml"))
+print(rag.filter_fields)
+# Legal schema  → ['organization', 'doc_type', 'effective_year', 'jurisdiction', 'parties']
+# Academic schema → ['title', 'authors', 'publication_year', 'domain', 'keywords']
+# HR schema     → ['department', 'doc_type', 'effective_year', 'audience']
+```
+
+### Enable auto_filter in config.yaml
+
+```yaml
+metadata:
+  config_file: "your_schema.yaml"   # custom schema
+
+retriever:
+  auto_filter: true    # LLM extracts filters from every query automatically
+```
+
+With this set, any call to `retrieve()` with no explicit filters will automatically extract metadata filters using your schema's fields:
+
+```python
+# Legal schema — auto_filter extracts jurisdiction and doc_type from the query
+results = rag.retrieve("NDA agreements governed by California law")
+# → internally applies: {"doc_type": "nda", "jurisdiction": "california"}
+
+# Academic schema — extracts domain and publication_year
+results = rag.retrieve("computer science papers from 2023")
+# → internally applies: {"domain": "computer-science", "publication_year": 2023}
+
+# HR schema — extracts department and doc_type
+results = rag.retrieve("engineering job descriptions")
+# → internally applies: {"department": "engineering", "doc_type": "job-description"}
+```
+
+### auto_filter vs explicit filters vs agent-controlled
+
+| Mode | Config | When to use |
+|------|--------|-------------|
+| `auto_filter: true` | `retriever.auto_filter: true` | Simple chatbots and search UIs — one-liner retrieval |
+| Explicit filters | `auto_filter: false` (default) + pass `filters=` | Programmatic pipelines where you know the inputs |
+| Agent-controlled | `auto_filter: false` + call `extract_filters()` or `get_filter_context()` | Agents that need to inspect or adjust filters before retrieving |
+
+!!! note "auto_filter is off by default"
+    Set `auto_filter: true` only when you want every `retrieve()` call to run an LLM filter-extraction step. This adds latency. For agents, keep the default and use `extract_filters()` or `get_filter_context()` so the agent retains full control.
+
+### Stored-value matching
+
+When `auto_filter` runs, it reads the actual values already stored in your Qdrant collection and feeds them to the LLM. This allows intelligent alias resolution:
+
+```
+Query: "Google filings"
+Stored company_name values: ["alphabet inc."]
+→ auto_filter extracts: {"company_name": "alphabet inc."}   ✓ correct match
+
+Query: "2023 oncology studies"
+Stored specialty values: ["cardiology", "oncology", "neurology"]
+→ auto_filter extracts: {"specialty": "oncology", "publication_year": 2023}   ✓
+```
+
+The same matching logic applies to all custom schemas — stored values anchor the extraction so results are consistent as the collection grows.
