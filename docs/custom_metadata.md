@@ -294,7 +294,7 @@ def get_filter_context(query: str) -> str:
 @tool
 def search_documents(query: str, filters: Optional[dict] = None) -> str:
     """Search the document knowledge base with optional filters."""
-    results = rag.retrieve(query, top_k=5, filters=filters or None)
+    results = rag.retrieve(query, top_k=5, filters=filters)
     if not results:
         return "No relevant documents found."
     return "\n\n---\n\n".join(

@@ -71,7 +71,7 @@ def search_documents(query: str, filters: Optional[dict] = None) -> str:
         filters: Optional metadata filters decided from get_filter_context.
                  Pass {} or omit to search without filtering.
     """
-    results = rag.retrieve(query, top_k=5, filters=filters or None)
+    results = rag.retrieve(query, top_k=5, filters=filters)
     if not results:
         return "No relevant documents found."
 
@@ -368,7 +368,7 @@ def search_documents(query: str, filters: Optional[dict] = None) -> str:
         filters: Optional metadata filters decided from get_filter_context.
                  Pass {} or omit to search without filtering.
     """
-    results = rag.retrieve(query, top_k=5, filters=filters or None)
+    results = rag.retrieve(query, top_k=5, filters=filters)
     if not results:
         return "No relevant documents found."
 
