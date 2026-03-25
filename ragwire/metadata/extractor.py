@@ -56,7 +56,7 @@ class MetadataExtractor:
         "## Extracted Metadata"
     )
 
-    def __init__(self, llm, schema_model: Optional[Type[BaseModel]] = None):
+    def __init__(self, llm, schema_model: Optional[Type[BaseModel]] = None, prompt_template: Optional[str] = None):
         """
         Initialize the metadata extractor.
 
@@ -64,10 +64,14 @@ class MetadataExtractor:
             llm: LangChain chat model instance
             schema_model: Pydantic model defining the metadata schema.
                           Defaults to FinancialMetadata if not provided.
+            prompt_template: Custom extraction prompt. Must contain a {content}
+                             placeholder. Defaults to EXTRACTION_PROMPT if not provided.
         """
         self.llm = llm
         self.schema_model = schema_model or FinancialMetadata
-        self.prompt_template = self.EXTRACTION_PROMPT
+        self.prompt_template = prompt_template or self.EXTRACTION_PROMPT
+        if "{content}" not in self.prompt_template:
+            raise ValueError("Custom prompt must contain a {content} placeholder for document text.")
         self.prompt = ChatPromptTemplate.from_template(self.prompt_template)
         self._structured_llm = llm.with_structured_output(self.schema_model)
         self.fields: Optional[List[str]] = None
@@ -181,6 +185,9 @@ class MetadataExtractor:
           - type: "string" | "list" | "integer" (default: "string")
           - values: list of example/allowed values (optional)
 
+        Optionally, a top-level 'prompt' key overrides the default extraction
+        prompt. Must contain a {content} placeholder.
+
         Args:
             llm: LangChain chat model instance
             yaml_path: Path to the metadata YAML config file
@@ -203,10 +210,14 @@ class MetadataExtractor:
                 f"Metadata config '{yaml_path}' must define a 'fields' list"
             )
 
+        custom_prompt = meta_config.get("prompt")
+
         schema_model = cls._build_schema_model(fields)
-        instance = cls(llm, schema_model=schema_model)
+        instance = cls(llm, schema_model=schema_model, prompt_template=custom_prompt)
         instance.fields = [f["name"] for f in fields]
 
+        if custom_prompt:
+            logger.debug(f"Using custom extraction prompt from {yaml_path}")
         logger.debug(f"Built metadata schema from {len(fields)} field definitions: {instance.fields}")
         return instance
 

@@ -52,11 +52,21 @@ See [Domain Examples](#domain-examples) below for ready-to-use schemas for legal
 
 ---
 
-## Domain Examples
+## Custom Extraction Prompt
 
-### Health & Gym Supplement Research Papers
+By default RAGWire uses a built-in extraction prompt. You can override it per-config using a top-level `prompt` key in your `metadata.yaml`. The prompt must contain a `{content}` placeholder where the document text is injected.
 
 ```yaml
+prompt: |
+  You are a sports science research assistant specializing in supplement studies.
+  Read the document carefully and extract the metadata fields below.
+  Be thorough — do not leave fields empty if the information is present.
+
+  ## Document
+  {content}
+
+  ## Extracted Metadata
+
 fields:
   - name: title
     description: "Full title of the research paper"
@@ -70,7 +80,35 @@ fields:
     type: integer
 
   - name: research_focus
-    description: "List of all research topics covered in lowercase-hyphenated format. Not limited to the examples — extract any focus area mentioned"
+    description: "List of research topics in lowercase-hyphenated format"
+    type: list
+    values: ["muscle-growth", "recovery", "performance", "endurance"]
+```
+
+!!! note
+    The `prompt` key is optional. When omitted, the default RAGWire extraction prompt is used.
+
+---
+
+## Domain Examples
+
+### Health & Gym Supplement Research Papers
+
+```yaml
+fields:
+  - name: title
+    description: "Full title of the research paper exactly as it appears in the document. Do not paraphrase."
+
+  - name: authors
+    description: "List of full author names exactly as they appear in the paper (e.g. 'John A. Smith'). Extract all authors."
+    type: list
+
+  - name: publication_year
+    description: "Year the paper was published or last revised. Extract the 4-digit year only."
+    type: integer
+
+  - name: research_focus
+    description: "List of all primary research topics covered, in lowercase-hyphenated format. Not limited to the examples — extract any focus area mentioned in the paper."
     type: list
     values: ["muscle-growth", "recovery", "performance", "endurance", "cognitive-function", "fat-loss", "safety", "hormonal"]
 

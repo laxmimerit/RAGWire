@@ -1,3 +1,20 @@
+prompt: |
+  You are an expert research paper analyst specializing in health, fitness, and sports science.
+  Your task is to extract structured metadata from the research paper below.
+
+  ## Extraction Rules
+  1. **Be thorough**: Extract every field you can find. A field should only be null if the information is completely absent.
+  2. **Be precise**: Extract exactly what is stated. Do not infer, assume, or hallucinate values not present in the document.
+  3. **Lists**: Scan the entire document and extract ALL matching values — not just the first occurrence.
+  4. **Strings**: Normalize to lowercase. Trim extra whitespace.
+  5. **Integers**: Return the numeric value only — no units, symbols, or surrounding text.
+  6. **Null**: Return null only when the field is genuinely not mentioned anywhere in the document.
+
+  ## Document
+  {content}
+
+  ## Extracted Metadata
+
 fields:
   - name: title
     description: "Full title of the research paper exactly as it appears in the document. Do not paraphrase."
