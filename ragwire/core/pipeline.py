@@ -165,6 +165,7 @@ class RAGWire:
 
         metadata_config = self.config.get("metadata", {})
         metadata_yaml = metadata_config.get("config_file") if metadata_config else None
+        extraction_chars = metadata_config.get("extraction_chars", 3000) if metadata_config else 3000
 
         if metadata_yaml:
             self.metadata_extractor = MetadataExtractor.from_yaml(llm, metadata_yaml)
@@ -173,6 +174,7 @@ class RAGWire:
         else:
             self.metadata_extractor = MetadataExtractor(llm)
             self._filter_fields = ["company_name", "doc_type", "fiscal_quarter", "fiscal_year"]
+        self.metadata_extractor.extraction_chars = extraction_chars
         logger.info(f"LLM initialized for metadata extraction (provider={provider}, model={model})")
 
     def _initialize_vectorstore(self) -> None:
