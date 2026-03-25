@@ -129,20 +129,29 @@ Use these to apply precise filters when answering questions.
 
 ## Filtering at Query Time
 
-RAGWire applies filters in two ways:
+RAGWire applies filters in three ways:
 
 - **Explicit filters** — pass a `filters` dict directly; LLM extraction is skipped
-- **Auto-filter** — pass nothing; the configured LLM extracts filters from the query automatically
+- **Auto-filter** — set `auto_filter: true` in `config.yaml`; LLM automatically extracts filters from every query
+- **Agent-controlled** — call `rag.extract_filters(query)` or `rag.get_filter_context(query)` manually; agent decides what to apply
 
 ```python
 # Explicit — LLM extraction skipped
 results = rag.retrieve("What is the revenue?", filters={"company_name": "apple"})
 
-# Auto — LLM extracts {"company_name": "apple", "fiscal_year": 2025} from the query
+# Auto-filter (requires auto_filter: true in config.yaml)
 results = rag.retrieve("What is Apple's revenue for 2025?")
+
+# Agent-controlled — extract first, adjust, then retrieve
+filters = rag.extract_filters("What is Apple's revenue for 2025?")
+# → {"company_name": "apple", "fiscal_year": 2025}
+results = rag.retrieve("What is Apple's revenue for 2025?", filters=filters)
 ```
 
-The available filter fields match your metadata schema. By default these are `company_name`, `doc_type`, `fiscal_quarter`, and `fiscal_year`. If you've configured [custom metadata](custom_metadata.md), auto-filter will use your custom fields instead.
+!!! note "auto_filter is disabled by default"
+    By default (`auto_filter: false`), no filter extraction happens unless you pass `filters=` explicitly or call `extract_filters()` / `get_filter_context()` manually. Enable it in `config.yaml` only for simple chatbot use cases. For agents, keep it `false` and use `get_filter_context()` to give the agent full control.
+
+The available filter fields match your metadata schema. By default these are `company_name`, `doc_type`, `fiscal_quarter`, and `fiscal_year`. If you've configured [custom metadata](custom_metadata.md), filtering will use your custom fields instead.
 
 ---
 
@@ -225,9 +234,24 @@ results = rag.hybrid_search(
 
 ## Telling an External LLM What Metadata Is Available
 
-When building a RAG chatbot, pass the schema to your LLM so it can decide what filters to apply before querying.
+When building a RAG agent, pass the schema to your LLM so it can decide what filters to apply before querying.
 
-Instead of hardcoding field names and values in your system prompt, build it dynamically from the collection. This way the prompt is always accurate and works for any metadata schema:
+### One-liner: `get_filter_context()`
+
+The simplest approach — `get_filter_context(query)` returns a ready-made markdown prompt block containing available fields, stored values, extracted filters, and agent instructions. Just prepend it to your task prompt:
+
+```python
+rag = RAGWire("config.yaml")
+
+context = rag.get_filter_context("What is Apple's revenue for 2025?")
+agent_prompt = context + "\n\n" + your_task_prompt
+```
+
+The block includes available fields + stored values, the filters extracted from the query, and instructions for the agent on whether to apply, adjust, or drop them.
+
+### Manual: build dynamically from the collection
+
+For full control over the prompt format, build it yourself using `filter_fields` and `get_field_values()`:
 
 ```python
 from ragwire import RAGWire
@@ -257,61 +281,35 @@ When answering questions, extract any filters from the user query and apply them
 
 This generates a prompt grounded in real data — no hardcoded assumptions about field names, types, or allowed values.
 
-### Full example — LLM-driven filter extraction
+### Full example — agent-controlled filter extraction
 
-The prompt is built **dynamically** from what is actually in your collection — no hardcoded field names, types, or values. This works identically whether you use the default finance schema or [custom metadata](custom_metadata.md).
+Use `extract_filters()` to get the raw filters from RAGWire, then let the agent inspect and adjust before retrieval. Works for any domain — finance, legal, medical, HR, etc.
 
 ```python
 from ragwire import RAGWire
-from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
-import json
 
 rag = RAGWire("config.yaml")
-llm = ChatOpenAI(model="gpt-5.4-nano")
-
-# filter_fields returns only the semantic fields used for filtering
-# (excludes system fields like file_hash, chunk_id, source, created_at)
-fields = rag.filter_fields
-values = rag.get_field_values(fields)
-
-# Build the filter prompt dynamically — works for any schema
-field_descriptions = "\n".join(
-    f"- {field}: {values[field]}" if values.get(field) else f"- {field}"
-    for field in fields
-)
-
-FILTER_PROMPT = f"""
-Given the user query below, extract metadata filters as JSON.
-Only include fields if clearly mentioned in the query. Return {{{{}}}} if no filters apply.
-
-Available metadata fields and known values:
-{field_descriptions}
-
-User query: {{query}}
-
-Filters (JSON only):
-"""
 
 def query_with_filters(user_query: str, top_k: int = 5):
-    # Step 1: LLM extracts filters from the query using the dynamic prompt
-    prompt = ChatPromptTemplate.from_template(FILTER_PROMPT)
-    chain = prompt | llm
-    response = chain.invoke({"query": user_query})
+    # Step 1: RAGWire extracts filters — agent can inspect and adjust
+    filters = rag.extract_filters(user_query)
+    # → {"company_name": "apple", "fiscal_year": 2025}
 
-    try:
-        filters = json.loads(response.content.strip())
-    except Exception:
-        filters = {}
+    # Step 2: Validate against stored values — drop filters with no match
+    if filters:
+        stored = rag.get_field_values(rag.filter_fields)
+        filters = {
+            k: v for k, v in filters.items()
+            if not stored.get(k) or v in stored[k]
+        }
 
-    print(f"Extracted filters: {filters}")
+    print(f"Applied filters: {filters}")
 
-    # Step 2: Retrieve with extracted filters
+    # Step 3: Retrieve
     results = rag.retrieve(user_query, top_k=top_k, filters=filters or None)
     return results
 
 
-# Works for any domain — finance, legal, medical, HR, etc.
 results = query_with_filters("What is Apple's revenue for fiscal year 2025?")
 for doc in results:
     print(doc.metadata)
@@ -319,19 +317,15 @@ for doc in results:
     print()
 ```
 
-The prompt RAGWire sends to the LLM will look like this at runtime (example with default finance schema):
+Or use `get_filter_context()` to inject the full context into an agent prompt and let the agent reason about filters itself:
 
+```python
+def query_with_agent_context(user_query: str):
+    context = rag.get_filter_context(user_query)
+    # Prepend to agent system prompt — agent sees fields, values, extracted filters
+    # and decides what to pass to retrieve()
+    return context
 ```
-Available metadata fields and known values:
-- company_name: ['apple', 'microsoft', 'google']
-- doc_type: ['10-k', '10-q']
-- fiscal_year: [2023, 2024, 2025]
-- fiscal_quarter: ['q1', 'q2', 'q3', 'q4']
-- file_name: ['Apple_10k_2025.pdf', 'Microsoft_10k_2025.pdf']
-...
-```
-
-The LLM sees the actual values in your collection, so it can match them precisely instead of guessing.
 
 ---
 

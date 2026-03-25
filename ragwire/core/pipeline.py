@@ -210,10 +210,11 @@ class RAGWire:
         retriever_config = self.config.get("retriever", {})
         search_type = retriever_config.get("search_type", "hybrid")
         top_k = retriever_config.get("top_k", 5)
+        self._auto_filter = retriever_config.get("auto_filter", False)
         self.retriever = get_retriever(
             self.vectorstore, top_k=top_k, search_type=search_type
         )
-        logger.info(f"Retriever initialized (type={search_type}, top_k={top_k})")
+        logger.info(f"Retriever initialized (type={search_type}, top_k={top_k}, auto_filter={self._auto_filter})")
 
     def ingest_documents(self, file_paths: List[str]) -> Dict[str, Any]:
         """
@@ -420,6 +421,74 @@ class RAGWire:
             )
         return self._stored_values_cache
 
+    def extract_filters(self, query: str) -> Optional[Dict[str, Any]]:
+        """
+        Extract metadata filters from a natural language query.
+
+        Returns the raw extracted filters so the caller (e.g. an agent) can
+        inspect, adjust, or discard them before passing to retrieve().
+
+        Args:
+            query: Natural language query string
+
+        Returns:
+            Dict of extracted filters, or None if nothing was extracted.
+
+        Example:
+            >>> filters = rag.extract_filters("muscle building studies from 2023")
+            >>> # {"research_focus": "muscle building", "publication_year": 2023}
+            >>> # Agent inspects and adjusts if needed
+            >>> results = rag.retrieve(query, filters=filters)
+        """
+        return self._extract_filters_from_query(query)
+
+    def get_filter_context(self, query: str, limit: int = 50) -> str:
+        """
+        Build a ready-made prompt block for an agent describing available metadata
+        filters, their stored values, and the filters extracted from the current query.
+
+        Append or prepend this to your agent's task prompt so the agent can decide
+        whether to apply, adjust, or discard the extracted filters before calling retrieve().
+
+        Args:
+            query: Natural language query string
+            limit: Max stored values to show per field (default: 50)
+
+        Returns:
+            Formatted markdown string ready to inject into an agent prompt.
+
+        Example:
+            >>> context = rag.get_filter_context("muscle building studies from 2023")
+            >>> agent_prompt = context + "\\n\\n" + your_task_prompt
+        """
+        stored_values = self.get_field_values(self._filter_fields, limit=limit)
+        extracted = self.extract_filters(query) or {}
+
+        lines = ["## RAGWire Filter Context", ""]
+        lines.append("### Available Metadata Fields and Stored Values")
+        for field in self._filter_fields:
+            values = stored_values.get(field, [])
+            lines.append(f"- **{field}**: {values}")
+
+        lines.append("")
+        lines.append("### Extracted Filters from Query")
+        if extracted:
+            for k, v in extracted.items():
+                lines.append(f"- **{k}**: `{v}`")
+        else:
+            lines.append("- *(no filters extracted)*")
+
+        lines += [
+            "",
+            "### Instructions",
+            "1. Review the extracted filters above.",
+            "2. If an extracted value does not match or closely relate to any stored value, adjust or drop that filter.",
+            "3. If the query has no clear metadata intent, pass an empty dict `{}` as filters.",
+            "4. Pass the final filters dict to the retrieval tool as `filters=`.",
+        ]
+
+        return "\n".join(lines)
+
     def _extract_filters_from_query(self, query: str) -> Optional[Dict[str, Any]]:
         """Use the configured LLM to extract metadata filters from a natural language query.
 
@@ -506,7 +575,7 @@ class RAGWire:
         if top_k is None:
             top_k = self.config.get("retriever", {}).get("top_k", 5)
 
-        if filters is None:
+        if filters is None and self._auto_filter:
             filters = self._extract_filters_from_query(query)
 
         # Build search kwargs without mutating the shared retriever
@@ -537,7 +606,7 @@ class RAGWire:
         Returns:
             List of retrieved documents
         """
-        if filters is None:
+        if filters is None and self._auto_filter:
             filters = self._extract_filters_from_query(query)
         qdrant_filter = self._build_qdrant_filter(filters) if filters else None
         return hybrid_search(self.vectorstore, query, k=k, filters=qdrant_filter)
@@ -602,7 +671,7 @@ class RAGWire:
 
         Args:
             fields: A field name (str) or list of field names
-            limit: Max unique values to return per field (default: 20)
+            limit: Max unique values to return per field (default: 50)
 
         Returns:
             - If fields is a str: list of unique values for that field

@@ -118,10 +118,11 @@ Each `Document` has:
 
 **Filter behaviour:**
 
-- If `filters` is passed → used as-is, no LLM call
-- If `filters` is not passed → LLM automatically extracts filters from the query
+- If `filters` is passed → used as-is, no LLM call (always, regardless of `auto_filter` setting)
+- If `filters` is not passed and `auto_filter: true` in config → LLM extracts filters from the query
+- If `filters` is not passed and `auto_filter: false` (default) → no filtering, pure semantic search
 
-**When to use auto-filter vs explicit filters:** Use explicit filters in programmatic pipelines where you control the inputs (faster, zero LLM overhead). Use auto-filter in user-facing chatbots where the user types natural language queries and you want the system to figure out the right filters automatically.
+**When to use auto-filter vs explicit filters:** Use explicit filters in programmatic pipelines where you control the inputs (faster, zero LLM overhead). Enable `auto_filter` in simple user-facing chatbots. For agents, keep `auto_filter: false` and use `rag.extract_filters(query)` to give the agent full control over whether and how to apply filters.
 
 ```python
 # Explicit filters — LLM extraction skipped
@@ -131,7 +132,10 @@ results = rag.retrieve(
     filters={"company_name": "apple", "fiscal_year": 2025}
 )
 
-# No filters passed — LLM extracts {"company_name": "apple", "fiscal_year": 2025} from the query
+# auto_filter: true in config — LLM extracts {"company_name": "apple", "fiscal_year": 2025}
+results = rag.retrieve("What is Apple's net income for 2025?")
+
+# auto_filter: false (default) — pure semantic search, no filter extraction
 results = rag.retrieve("What is Apple's net income for 2025?")
 
 for doc in results:
@@ -167,7 +171,7 @@ Perform hybrid search combining dense (semantic) and sparse (keyword) vectors. R
 | | `retrieve()` | `hybrid_search()` |
 |---|---|---|
 | Search type | Whatever is set in `config.yaml` (`similarity`, `mmr`, or `hybrid`) | Always hybrid (dense + sparse), regardless of config |
-| Auto-filter | Yes — LLM extracts filters from query | Yes — same LLM extraction |
+| Auto-filter | Only when `auto_filter: true` in config (default `false`) | Same — respects `auto_filter` setting |
 | `top_k` default | From `config.yaml` | `k=5` parameter |
 | Typical use | Primary method for all RAG flows | Override to force hybrid on a single call |
 
@@ -184,6 +188,76 @@ results = rag.hybrid_search(
     filters={"company_name": "apple"}
 )
 ```
+
+---
+
+#### `rag.extract_filters(query)`
+
+Extract metadata filters from a natural language query without triggering retrieval. Returns the raw extracted dict so an agent can inspect, adjust, or discard before passing to `retrieve()`.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `query` | `str` | Yes | Natural language query |
+
+**Returns:** `dict` of extracted filters, or `None` if nothing was extracted.
+
+!!! note
+    This method always runs regardless of the `auto_filter` config setting. It gives agents explicit control — call it manually, decide what to do, then pass the result to `retrieve(filters=...)`.
+
+```python
+# Agent workflow — full control over filters
+filters = rag.extract_filters("muscle building studies from 2023")
+# → {"research_focus": "muscle building", "publication_year": 2023}
+
+# Agent validates against stored values
+stored = rag.get_field_values(rag.filter_fields)
+if filters.get("research_focus") not in stored.get("research_focus", []):
+    filters.pop("research_focus")  # drop uncertain filter, rely on semantic search
+
+results = rag.retrieve("muscle building studies from 2023", filters=filters)
+```
+
+---
+
+#### `rag.get_filter_context(query, limit)`
+
+Build a ready-made markdown prompt block for an agent — contains available metadata fields, their stored values, the filters extracted from the current query, and instructions for the agent on how to act on them. Append or prepend to your agent's task prompt.
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `query` | `str` | Yes | — | Natural language query |
+| `limit` | `int` | No | `50` | Max stored values to show per field |
+
+**Returns:** `str` — formatted markdown block ready to inject into an agent prompt.
+
+```python
+context = rag.get_filter_context("muscle building studies from 2023")
+agent_prompt = context + "\n\n" + your_task_prompt
+```
+
+The returned block looks like:
+
+```
+## RAGWire Filter Context
+
+### Available Metadata Fields and Stored Values
+- **research_focus**: ["muscle-growth", "endurance", "recovery", ...]
+- **publication_year**: [2022, 2023, 2024]
+- **authors**: ["john smith", "jane doe", ...]
+
+### Extracted Filters from Query
+- **research_focus**: `muscle building`
+- **publication_year**: `2023`
+
+### Instructions
+1. Review the extracted filters above.
+2. If an extracted value does not match or closely relate to any stored value, adjust or drop that filter.
+3. If the query has no clear metadata intent, pass an empty dict {} as filters.
+4. Pass the final filters dict to the retrieval tool as filters=.
+```
+
+!!! note "Typical agent workflow"
+    Use `get_filter_context()` to give the agent full situational awareness. The agent can then call `rag.retrieve(query, filters=adjusted_filters)` with a well-informed decision on which filters to apply.
 
 ---
 
@@ -411,6 +485,28 @@ embeddings:
   provider: "fastembed"
   model_name: "BAAI/bge-small-en-v1.5"
 ```
+
+---
+
+### `retriever` section
+
+Controls retrieval behaviour.
+
+| Key | Required | Default | Description |
+|---|---|---|---|
+| `search_type` | No | `"similarity"` | `"similarity"` \| `"mmr"` \| `"hybrid"` (hybrid requires `use_sparse: true`) |
+| `top_k` | No | `5` | Number of results returned by `retrieve()` |
+| `auto_filter` | No | `false` | If `true`, LLM automatically extracts metadata filters from every query passed to `retrieve()` / `hybrid_search()`. If `false`, no filter extraction happens unless `filters=` is passed explicitly or `rag.extract_filters()` is called manually. |
+
+```yaml
+retriever:
+  search_type: "hybrid"
+  top_k: 5
+  auto_filter: false   # set true to enable automatic filter extraction from queries
+```
+
+!!! note "Agent use case"
+    Keep `auto_filter: false` when an agent is driving retrieval. Use `rag.extract_filters(query)` to let the agent inspect and adjust filters before calling `retrieve(filters=...)`.
 
 ---
 

@@ -70,7 +70,31 @@ def search_documents(query: str) -> str:
 
 By default the agent doesn't know what companies, document types, or years are in your collection. Without this, it may hallucinate filter values or skip filtering entirely.
 
-Use `filter_fields` and `get_field_values()` to build a metadata-aware system prompt dynamically from what's actually in your collection:
+### Option A — `get_filter_context()` (recommended for agents)
+
+The simplest approach. Call `get_filter_context(query)` per query and prepend it to the agent prompt. The agent sees available fields, stored values, extracted filters, and instructions — and decides what filters to pass to the retrieval tool:
+
+```python
+def search_documents_with_context(query: str) -> str:
+    """Search the document knowledge base for relevant information."""
+    # Give the agent full filter context — it decides what to apply
+    context = rag.get_filter_context(query)
+    filters = rag.extract_filters(query)  # agent can override this
+
+    results = rag.retrieve(query, top_k=5, filters=filters)
+    if not results:
+        return "No relevant documents found."
+
+    chunks = [context]  # prepend filter context so agent can reason about results
+    for doc in results:
+        source = doc.metadata.get("file_name", "unknown")
+        chunks.append(f"[{source}]\n{doc.page_content}")
+    return "\n\n---\n\n".join(chunks)
+```
+
+### Option B — Static system prompt from stored values
+
+Build a metadata-aware system prompt once at startup using `filter_fields` and `get_field_values()`:
 
 ```python
 # filter_fields returns only semantic/filterable fields — excludes system fields
@@ -92,13 +116,12 @@ The knowledge base contains documents with the following metadata:
 - doc_type: {values['doc_type']}
 - fiscal_year: {values['fiscal_year']}
 
-When the user mentions a specific company, year, or document type, the retrieval
-tool will automatically apply the right filters. You do not need to pass filters
-manually — just ask a natural language question.
+When calling search_documents, pass explicit filters based on what the user mentions.
 """
 ```
 
-This prompt tells the agent exactly what data is available, so it can ask precise questions like "What is Apple's revenue for 2025?" and the auto-filter will correctly extract `{"company_name": "apple", "fiscal_year": 2025}`.
+!!! note "auto_filter is off by default"
+    Filters are not automatically extracted from queries unless you set `auto_filter: true` in `config.yaml`. For agents, keep it `false` and use `extract_filters()` or `get_filter_context()` to control filter extraction explicitly.
 
 ---
 

@@ -56,6 +56,8 @@ vectorstore:
 retriever:
   search_type: "hybrid"   # "similarity" | "mmr" | "hybrid" (hybrid requires use_sparse: true)
   top_k: 5
+  auto_filter: false       # If true, LLM automatically extracts metadata filters from every query.
+                           # Default false — use rag.extract_filters(query) to let an agent decide.
 
 # =================================================================
 # Logging
