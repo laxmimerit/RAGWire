@@ -78,9 +78,12 @@ def search_documents(query: str, filters: Optional[dict] = None) -> str:
     chunks = []
     for doc in results:
         source = doc.metadata.get("file_name", "unknown")
-        company = doc.metadata.get("company_name", "")
-        year = doc.metadata.get("fiscal_year", "")
-        header = f"[{source}" + (f" | {company} {year}" if company else "") + "]"
+        meta_parts = [
+            f"{k}={str(v)[:100]}"
+            for k, v in doc.metadata.items()
+            if k != "file_name" and v not in (None, "", [])
+        ]
+        header = f"[{source}" + (f" | {', '.join(meta_parts)}" if meta_parts else "") + "]"
         chunks.append(f"{header}\n{doc.page_content}")
 
     return "\n\n---\n\n".join(chunks)
@@ -361,9 +364,12 @@ def search_documents(query: str, filters: Optional[dict] = None) -> str:
     chunks = []
     for doc in results:
         source = doc.metadata.get("file_name", "unknown")
-        company = doc.metadata.get("company_name", "")
-        year = doc.metadata.get("fiscal_year", "")
-        header = f"[{source}" + (f" | {company} {year}" if company else "") + "]"
+        meta_parts = [
+            f"{k}={str(v)[:100]}"
+            for k, v in doc.metadata.items()
+            if k != "file_name" and v not in (None, "", [])
+        ]
+        header = f"[{source}" + (f" | {', '.join(meta_parts)}" if meta_parts else "") + "]"
         chunks.append(f"{header}\n{doc.page_content}")
 
     return "\n\n---\n\n".join(chunks)
