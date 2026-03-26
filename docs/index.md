@@ -6,6 +6,10 @@ RAGWire handles the full RAG pipeline — from loading raw documents to storing 
 
 ---
 
+![RAGWire High-Level Overview](assets/ragwire_highlevel.jpg)
+
+---
+
 ## Features
 
 - **Document Loading** — PDF, DOCX, XLSX, PPTX and more via MarkItDown
