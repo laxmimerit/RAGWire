@@ -264,35 +264,37 @@ print(response["messages"][-1].content)
 
 ## 6. Structured Output
 
-Get a typed response with answer, sources, and confidence:
+Get a typed response with answer, sources, and confidence using a Pydantic model passed directly as `response_format`:
 
 ```python
-from dataclasses import dataclass
+from typing import Literal
+from pydantic import BaseModel, Field
 from langchain.agents import create_agent
-from langchain.agents.structured_output import ToolStrategy
 from langchain_core.messages import HumanMessage
 from langchain_ollama import ChatOllama
 
-@dataclass
-class RAGResponse:
+class RAGResponse(BaseModel):
     """Structured agent response."""
-    answer: str
-    sources: list[str]
-    confidence: str  # "high" | "medium" | "low"
+    answer: str = Field(description="The answer to the user's question based on retrieved documents.")
+    sources: list[str] = Field(description="List of source document filenames used to generate the answer.")
+    confidence: Literal["high", "medium", "low"] = Field(
+        description="Confidence level: 'high' if strongly supported by sources, 'medium' if partially supported, 'low' if weakly supported."
+    )
 
 model = ChatOllama(model="qwen3.5:9b", base_url="http://localhost:11434")
 
 agent = create_agent(
     model=model,
-    tools=[search_documents],
+    tools=[search_documents, get_filter_context],
     system_prompt=(
         "You are a helpful document assistant. "
         "For complex questions, break them down into simple sub-questions and answer each one before forming a final answer. "
         "Always use search_documents to retrieve information before answering — never answer from general knowledge. "
         "If no relevant documents are found, say so — do not guess or fabricate an answer. "
-        "Always cite the source document in your answer."
+        "Always cite the source document in your answer. "
+        "CRITICAL: You MUST output your final answer using the provided structured response format. Do not return plain text."
     ),
-    response_format=ToolStrategy(RAGResponse),
+    response_format=RAGResponse,
 )
 
 response = agent.invoke({
@@ -303,6 +305,9 @@ print(f"Answer:     {result.answer}")
 print(f"Sources:    {', '.join(result.sources)}")
 print(f"Confidence: {result.confidence}")
 ```
+
+!!! tip "Pydantic `Field` descriptions matter"
+    The `description` on each field is part of the schema sent to the model. Clear descriptions — especially on constrained fields like `confidence` — significantly improve output reliability.
 
 ---
 
