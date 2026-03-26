@@ -538,9 +538,9 @@ class RAGWire:
             chain = ChatPromptTemplate.from_template(prompt_template) | self.metadata_extractor.llm
             response = chain.invoke({"query": query})
             text = response.text.strip()
-            start, end = text.find("{"), text.rfind("}") + 1
-            if start != -1 and end > start:
-                filters = json.loads(text[start:end])
+            start = text.find("{")
+            if start != -1:
+                filters, _ = json.JSONDecoder().raw_decode(text, start)
                 if filters:
                     filters = {
                         k: [i.lower() if isinstance(i, str) else i for i in v] if isinstance(v, list)
