@@ -36,11 +36,6 @@ prompt: |
   ## Grounding
   If existing collection values are provided above, reuse the exact stored value when this document refers to the same entity.
 
-  ## Document
-  {content}
-
-  ## Extracted Metadata
-
 fields:
   - name: company_name
     description: "Full legal registrant name in lowercase. Example: 'alphabet inc.', 'apple inc.'"
@@ -92,11 +87,6 @@ prompt: |
   ## Rules
   - All string values must be lowercase.
   - Null if a field is not clearly stated.
-
-  ## Document
-  {content}
-
-  ## Extracted Metadata
 
 fields:
   - name: organization
@@ -151,11 +141,6 @@ prompt: |
   - All string values must be lowercase and hyphenated where appropriate.
   - Null if a field is not clearly present.
 
-  ## Document
-  {content}
-
-  ## Extracted Metadata
-
 fields:
   - name: condition
     description: "Primary medical condition(s) in lowercase-hyphenated format (e.g. 'type-2-diabetes', 'heart-failure')."
@@ -205,11 +190,6 @@ prompt: |
   ## Rules
   - All string values must be lowercase.
   - Null if a field is genuinely absent.
-
-  ## Document
-  {content}
-
-  ## Extracted Metadata
 
 fields:
   - name: title
@@ -262,11 +242,6 @@ prompt: |
   ## Rules
   - All string values must be lowercase and hyphenated where appropriate.
   - Null if a field is not clearly stated.
-
-  ## Document
-  {content}
-
-  ## Extracted Metadata
 
 fields:
   - name: department

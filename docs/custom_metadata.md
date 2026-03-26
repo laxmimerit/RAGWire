@@ -44,7 +44,7 @@ See [Domain Examples](#domain-examples) below for ready-to-use schemas for legal
 
 | Key | Required | Description |
 |---|---|---|
-| `prompt` | No | Custom extraction prompt. Must contain a `{content}` placeholder. Defaults to the built-in RAGWire prompt if omitted. |
+| `prompt` | No | Custom extraction prompt. Document text is injected automatically — no placeholder needed. Defaults to the built-in RAGWire prompt if omitted. |
 | `fields` | Yes | List of metadata field definitions (see below) |
 
 
@@ -64,17 +64,12 @@ See [Domain Examples](#domain-examples) below for ready-to-use schemas for legal
 
 ## Custom Extraction Prompt
 
-By default RAGWire uses a built-in extraction prompt. You can override it per-config using a top-level `prompt` key in your `metadata.yaml`. The prompt must contain a `{content}` placeholder where the document text is injected.
+By default RAGWire uses a built-in extraction prompt. You can override it per-config using a top-level `prompt` key in your `metadata.yaml`. Write your instructions — the document text is appended automatically.
 
 ```yaml
 prompt: |
   You are a <domain> expert. Extract the metadata fields below from the document.
   Be thorough — only return null if the information is genuinely absent.
-
-  ## Document
-  {content}
-
-  ## Extracted Metadata
 
 fields:
   - name: my_field
@@ -82,7 +77,7 @@ fields:
 ```
 
 !!! note
-    The `prompt` key is optional. When omitted, the default RAGWire extraction prompt is used. Must contain a `{content}` placeholder.
+    The `prompt` key is optional. When omitted, the default RAGWire extraction prompt is used. No `{content}` placeholder needed — document text is appended automatically.
 
 ---
 
@@ -102,11 +97,6 @@ prompt: |
   4. **Strings**: Normalize to lowercase. Trim extra whitespace.
   5. **Integers**: Return the numeric value only — no units, symbols, or surrounding text.
   6. **Null**: Return null only when the field is genuinely not mentioned anywhere in the document.
-
-  ## Document
-  {content}
-
-  ## Extracted Metadata
 
 fields:
   - name: title

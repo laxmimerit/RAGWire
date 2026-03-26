@@ -118,7 +118,7 @@ flowchart TD
 
     YAML --> BP["build_prompt_from_fields()\nAuto-builds extraction prompt\nfrom field definitions"]
 
-    BP --> PT["Custom prompt template\nwith {content} placeholder"]
+    BP --> PT["Extraction prompt\nDocument text appended automatically"]
 
     PT --> ME["MetadataExtractor(llm, schema_model)\nSame extraction logic\nDifferent fields"]
 ```

@@ -94,14 +94,16 @@ class MetadataExtractor:
             llm: LangChain chat model instance
             schema_model: Pydantic model defining the metadata schema.
                           Defaults to FinancialMetadata if not provided.
-            prompt_template: Custom extraction prompt. Must contain a {content}
-                             placeholder. Defaults to EXTRACTION_PROMPT if not provided.
+            prompt_template: Custom extraction prompt. If omitted, defaults to
+                             EXTRACTION_PROMPT. If provided, the document text
+                             block is always appended automatically.
         """
         self.llm = llm
         self.schema_model = schema_model or FinancialMetadata
-        self.prompt_template = prompt_template or self.EXTRACTION_PROMPT
-        if "{content}" not in self.prompt_template:
-            raise ValueError("Custom prompt must contain a {content} placeholder for document text.")
+        if prompt_template:
+            self.prompt_template = prompt_template.rstrip() + "\n\n## Document\n{content}\n\n## Extracted Metadata"
+        else:
+            self.prompt_template = self.EXTRACTION_PROMPT
         self.prompt = ChatPromptTemplate.from_template(self.prompt_template)
         self._structured_llm = llm.with_structured_output(self.schema_model)
         self.fields: Optional[List[str]] = None
@@ -216,7 +218,8 @@ class MetadataExtractor:
           - values: list of example/allowed values (optional)
 
         Optionally, a top-level 'prompt' key overrides the default extraction
-        prompt. Must contain a {content} placeholder.
+        prompt. The document text is appended automatically — no need to include
+        a {content} placeholder.
 
         Args:
             llm: LangChain chat model instance

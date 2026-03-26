@@ -23,11 +23,6 @@ prompt: |
   ## Grounding
   If existing collection values are provided above, reuse the exact stored value when this document refers to the same entity.
 
-  ## Document
-  {content}
-
-  ## Extracted Metadata
-
 fields:
   - name: company_name
     description: >

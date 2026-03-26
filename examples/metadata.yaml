@@ -10,11 +10,6 @@ prompt: |
   5. **Integers**: Return the numeric value only — no units, symbols, or surrounding text.
   6. **Null**: Return null only when the field is genuinely not mentioned anywhere in the document.
 
-  ## Document
-  {content}
-
-  ## Extracted Metadata
-
 fields:
   - name: title
     description: "Full title of the research paper exactly as it appears in the document. Do not paraphrase."
