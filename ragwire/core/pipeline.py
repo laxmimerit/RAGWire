@@ -203,6 +203,8 @@ class RAGWire:
             logger.info(f"Using existing collection: {collection_name}")
 
         self.vectorstore = self.vectorstore_wrapper.get_store(use_sparse=use_sparse)
+        existing_fields = self.vectorstore_wrapper.get_metadata_keys()
+        self.vectorstore_wrapper.create_payload_indexes(["file_hash"] + existing_fields)
         logger.info("Vector store initialized")
 
     def _initialize_retriever(self) -> None:
