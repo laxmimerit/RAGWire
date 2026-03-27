@@ -1,13 +1,14 @@
 # Build a Metadata-Aware Filtered Chatbot
 
-Combine auto-filter with a metadata-aware system prompt so the agent knows what data is available and can filter precisely.
+The agent is told what companies, doc types, and fiscal years exist in the collection — then it decides which filters to pass when calling the search tool. This gives the agent full control over retrieval precision.
 
 ```python
+from typing import Optional
 from ragwire import RAGWire
 from langchain.agents import create_agent
 from langchain.tools import tool
 from langchain_core.messages import HumanMessage
-from langchain_ollama import ChatOllama
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 rag = RAGWire("config.yaml")
 
@@ -20,19 +21,26 @@ Always use search_documents to retrieve information before answering — never a
 If no relevant documents are found, say so — do not guess or fabricate an answer.
 Always cite the source document in your answer.
 
-Available data:
+Available data in the knowledge base:
 - Companies  : {values['company_name']}
 - Doc types  : {values['doc_type']}
 - Fiscal years: {values['fiscal_year']}
 
-The retrieval system automatically filters by company, year, and doc type
-when mentioned in the query — you don't need to do anything special.
+When calling search_documents, pass the appropriate filters based on what the user is asking about.
+Match filter values exactly as shown above (e.g. use "apple inc." not "Apple").
+Only pass filters that are clearly relevant — omit filters when the query is broad.
 """
 
 @tool
-def search_documents(query: str) -> str:
-    """Search the financial document knowledge base."""
-    results = rag.retrieve(query, top_k=5)
+def search_documents(query: str, filters: Optional[dict] = None) -> str:
+    """
+    Search the financial document knowledge base.
+
+    Args:
+        query: The search query.
+        filters: Optional metadata filters (e.g. {"company_name": "apple inc.", "fiscal_year": 2025}).
+    """
+    results = rag.retrieve(query, top_k=5, filters=filters)
     if not results:
         return "No relevant documents found."
     chunks = []
@@ -42,7 +50,7 @@ def search_documents(query: str) -> str:
     return "\n\n---\n\n".join(chunks)
 
 agent = create_agent(
-    model=ChatOllama(model="qwen3.5:9b", base_url="http://localhost:11434"),
+    model=ChatGoogleGenerativeAI(model="gemini-2.5-flash"),
     tools=[search_documents],
     system_prompt=SYSTEM_PROMPT,
 )
@@ -50,14 +58,17 @@ agent = create_agent(
 response = agent.invoke({
     "messages": [HumanMessage("What is Apple's net income for 2025?")]
 })
-print(response["messages"][-1].content)
+print(response["messages"][-1].text)
 ```
 
 ## Why This Works
 
 1. `get_field_values()` fetches the actual values stored in your collection — no hardcoding
-2. The system prompt tells the LLM exactly what companies, years, and doc types are available
-3. When the user asks "Apple's 2025 revenue", `retrieve()` auto-filters to `{company_name: "apple", fiscal_year: 2025}` — the agent doesn't need to pass filters manually
+2. The system prompt tells the agent exactly what companies, years, and doc types exist
+3. The agent reads the query, decides which filters apply, and passes them explicitly to `search_documents`
+4. `retrieve()` applies those filters directly — no guessing, no LLM-based auto-extraction
+
+This is more reliable than `auto_filter` because the agent reasons about filters using the full conversation context, not just the current query string.
 
 ## Add Multi-Turn Memory
 
@@ -67,7 +78,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 checkpointer = InMemorySaver()
 
 agent = create_agent(
-    model=ChatOllama(model="qwen3.5:9b", base_url="http://localhost:11434"),
+    model=ChatGoogleGenerativeAI(model="gemini-2.5-flash"),
     tools=[search_documents],
     system_prompt=SYSTEM_PROMPT,
     checkpointer=checkpointer,
@@ -84,6 +95,7 @@ response = agent.invoke(
     {"messages": [HumanMessage("How does that compare to Microsoft?")]},
     config=config,
 )
+print(response["messages"][-1].text)
 ```
 
 See [RAG Agent](../rag_agent.md) for the full guide including structured output and a complete working example.
