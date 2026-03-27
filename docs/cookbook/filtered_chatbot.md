@@ -12,8 +12,10 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 rag = RAGWire("config.yaml")
 
-# Discover what's in the collection
-values = rag.get_field_values(["company_name", "doc_type", "fiscal_year"])
+# Dynamically discover all filterable fields and their values
+fields = rag.get_metadata_keys()
+values = rag.get_field_values(fields)
+filter_context = "\n".join(f"- {field}: {vals}" for field, vals in values.items() if vals)
 
 SYSTEM_PROMPT = f"""
 You are a financial document assistant.
@@ -22,12 +24,10 @@ If no relevant documents are found, say so — do not guess or fabricate an answ
 Always cite the source document in your answer.
 
 Available data in the knowledge base:
-- Companies  : {values['company_name']}
-- Doc types  : {values['doc_type']}
-- Fiscal years: {values['fiscal_year']}
+{filter_context}
 
 When calling search_documents, pass the appropriate filters based on what the user is asking about.
-Match filter values exactly as shown above (e.g. use "apple inc." not "Apple").
+Match filter values exactly as shown above.
 Only pass filters that are clearly relevant — omit filters when the query is broad.
 """
 
