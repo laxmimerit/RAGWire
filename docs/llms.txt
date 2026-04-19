@@ -21,6 +21,27 @@ pip install fastembed        # required for hybrid search
 
 ---
 
+## Qdrant Setup
+
+**Option 1 — Local (Docker):**
+```bash
+docker run -p 6333:6333 qdrant/qdrant
+```
+
+**Option 2 — Qdrant Cloud:** Create a free cluster at https://cloud.qdrant.io, then set in `config.yaml`:
+```yaml
+vectorstore:
+  url: "https://your-cluster.qdrant.io"
+  api_key: "${QDRANT_API_KEY}"
+```
+
+**For CLI agents — verify Qdrant is up before running:**
+```bash
+curl -sf http://localhost:6333/healthz || { echo "ERROR: Qdrant is not running. Start it with: docker run -p 6333:6333 qdrant/qdrant"; exit 1; }
+```
+
+---
+
 ## config.yaml
 
 ```yaml
