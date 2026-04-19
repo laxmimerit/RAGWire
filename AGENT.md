@@ -35,7 +35,7 @@ vectorstore:
   api_key: "${QDRANT_API_KEY}"
 ```
 
-**For CLI agents — verify Qdrant is up before running:**
+**For CLI agents — before writing or executing any RAGWire code, first verify Qdrant is running:**
 ```bash
 curl -sf http://localhost:6333/healthz || { echo "ERROR: Qdrant is not running. Start it with: docker run -p 6333:6333 qdrant/qdrant"; exit 1; }
 ```
