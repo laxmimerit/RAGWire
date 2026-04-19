@@ -646,31 +646,22 @@ for key, value in results[0].metadata.items():
 ## Complete Example: rag_agent.py (LangChain Agent)
 
 ```python
-"""
-RAG Agent — RAGWire + LangChain create_agent
-Prerequisites:
-  pip install "ragwire[openai]" fastembed langgraph
-  export OPENAI_API_KEY="sk-..."
-"""
 from typing import Optional
 from langchain.agents import create_agent
 from langchain.tools import tool
 from langchain_core.messages import HumanMessage
 from langchain_ollama import ChatOllama
 from langgraph.checkpoint.memory import InMemorySaver
-from ragwire import RAGWire, setup_logging
-
-logger = setup_logging(log_level="INFO")
+from ragwire import RAGWire
 
 rag = RAGWire("config.yaml")
-stats = rag.ingest_directory("data/")
-logger.info(f"Ingested {stats['processed']} docs, {stats['chunks_created']} chunks")
+rag.ingest_directory("data/")
 
 @tool
 def get_filter_context(query: str) -> str:
-    """Get available metadata fields and filter suggestions for a query.
-    Call before search_documents when the query involves specific metadata.
-    Skip for purely semantic queries."""
+    """Get available metadata fields and filter suggestions for this query.
+    Call before search_documents when the query involves specific metadata
+    (company, year, document type). Skip for purely semantic queries."""
     return rag.get_filter_context(query)
 
 @tool
@@ -678,33 +669,28 @@ def search_documents(query: str, filters: Optional[dict] = None) -> str:
     """Search the document knowledge base.
     Args:
         query: The search query
-        filters: Optional metadata filters from get_filter_context. Pass {} for no filtering."""
+        filters: Optional metadata filters from get_filter_context. Pass {} to search without filtering."""
     results = rag.retrieve(query, top_k=5, filters=filters)
     if not results:
         return "No relevant documents found."
     chunks = []
     for doc in results:
         source = doc.metadata.get("file_name", "unknown")
-        meta_parts = [f"{k}={str(v)[:100]}" for k, v in doc.metadata.items()
-                      if k != "file_name" and v not in (None, "", [])]
-        header = f"[{source}" + (f" | {', '.join(meta_parts)}" if meta_parts else "") + "]"
-        chunks.append(f"{header}\n{doc.page_content}")
+        meta = {k: v for k, v in doc.metadata.items() if k != "file_name" and v not in (None, "", [])}
+        chunks.append(f"[{source} | {meta}]\n{doc.page_content}")
     return "\n\n---\n\n".join(chunks)
 
 model = ChatOllama(model="qwen3.5:9b", base_url="http://localhost:11434")
-checkpointer = InMemorySaver()
-
 agent = create_agent(
     model=model,
     tools=[get_filter_context, search_documents],
     system_prompt=(
-        "You are a helpful financial document assistant. "
-        "Always use search_documents to retrieve information before answering. "
+        "Always use search_documents to retrieve information. "
         "Use get_filter_context before search_documents when the query involves "
         "specific metadata (company, year, document type). "
-        "If no relevant documents are found, say so. Always cite the source."
+        "Never answer from general knowledge. Always cite the source."
     ),
-    checkpointer=checkpointer,
+    checkpointer=InMemorySaver(),
 )
 
 config = {"configurable": {"thread_id": "demo"}}
@@ -716,6 +702,13 @@ while True:
     response = agent.invoke({"messages": [HumanMessage(question)]}, config=config)
     print(f"\nAgent: {response['messages'][-1].content}\n")
 ```
+
+**Agent reasoning flow:**
+1. Query arrives
+2. Call `get_filter_context` if query mentions specific company/year/type
+3. Use returned context to decide `filters` dict
+4. Call `search_documents(query, filters=filters)`
+5. Answer from retrieved chunks
 
 ---
 
