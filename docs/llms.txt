@@ -506,6 +506,111 @@ text_hash  = sha256_text(content)                   # → str
 
 ---
 
+## OpenAI-Compatible FastAPI Server
+
+Build a server that OpenWebUI, LibreChat, or any OpenAI-compatible client can connect to.
+
+**Required endpoints:**
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /health` | Health check |
+| `GET /v1/models` | Model list stub (required by OpenWebUI / LibreChat on connect) |
+| `POST /v1/chat/completions` | RAG-augmented chat — **must support streaming** |
+| `POST /upload` | Ingest a document into the vector store |
+
+**Install extras:**
+```bash
+pip install fastapi uvicorn openai python-multipart
+```
+
+**Template (`server.py`):**
+```python
+import json, os, tempfile, time
+from fastapi import FastAPI, UploadFile, File
+from fastapi.responses import StreamingResponse
+from openai import AsyncOpenAI
+from ragwire import RAGWire
+
+app = FastAPI()
+rag = RAGWire("config.yaml")
+
+# Upstream LLM — configure via env vars
+_client = AsyncOpenAI(
+    base_url=os.getenv("LLM_BASE_URL", "http://localhost:11434/v1"),
+    api_key=os.getenv("LLM_API_KEY", "ollama"),
+)
+LLM_MODEL = os.getenv("LLM_MODEL", "qwen3.5:9b")
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
+@app.get("/v1/models")
+def list_models():
+    return {
+        "object": "list",
+        "data": [{"id": "ragwire-rag", "object": "model", "created": int(time.time()), "owned_by": "ragwire"}],
+    }
+
+
+@app.post("/upload")
+async def upload(file: UploadFile = File(...)):
+    suffix = os.path.splitext(file.filename)[1]
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        tmp.write(await file.read())
+        tmp_path = tmp.name
+    try:
+        stats = rag.ingest_documents([tmp_path])
+    finally:
+        os.unlink(tmp_path)
+    return stats
+
+
+@app.post("/v1/chat/completions")
+async def chat(request: dict):
+    query = request["messages"][-1]["content"]
+    stream = request.get("stream", False)
+
+    # RAG: retrieve relevant chunks and prepend as system context
+    filters = rag.extract_filters(query)
+    docs = rag.retrieve(query, filters=filters)
+    context = "\n\n---\n\n".join(doc.page_content for doc in docs)
+    augmented = [{"role": "system", "content": f"Answer using only the context below.\n\n{context}"}]
+    augmented += [m for m in request["messages"] if m["role"] != "system"]
+
+    if stream:
+        async def generate():
+            async for chunk in await _client.chat.completions.create(
+                model=LLM_MODEL, messages=augmented, stream=True
+            ):
+                yield f"data: {chunk.model_dump_json()}\n\n"
+            yield "data: [DONE]\n\n"
+        return StreamingResponse(generate(), media_type="text/event-stream")
+
+    resp = await _client.chat.completions.create(model=LLM_MODEL, messages=augmented)
+    return resp.model_dump()
+```
+
+**Run:**
+```bash
+uvicorn server:app --host 0.0.0.0 --port 8000
+```
+
+**Connect OpenWebUI / LibreChat:** set the OpenAI base URL to `http://localhost:8000/v1` and API key to any non-empty string.
+
+**Environment variables:**
+
+| Variable | Default | Description |
+|---|---|---|
+| `LLM_BASE_URL` | `http://localhost:11434/v1` | Upstream LLM base URL (Ollama, OpenAI, etc.) |
+| `LLM_API_KEY` | `ollama` | API key for upstream LLM |
+| `LLM_MODEL` | `qwen3.5:9b` | Model name forwarded to upstream LLM |
+
+---
+
 ## Troubleshooting
 
 | Error | Fix |
