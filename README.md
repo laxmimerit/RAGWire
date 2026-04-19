@@ -56,17 +56,34 @@ from ragwire import RAGWire
 
 rag = RAGWire("config.yaml")
 
-# Ingest a list of files (shows tqdm progress bar)
-stats = rag.ingest_documents(["data/Apple_10k_2025.pdf"])
-print(f"Chunks created: {stats['chunks_created']}")
+# Ingest files — SHA256 deduplication, safe to re-run
+stats = rag.ingest_documents(["data/Apple_10k_2025.pdf", "data/Microsoft_10k_2025.pdf"])
+print(f"Processed: {stats['processed']}, Skipped: {stats['skipped']}, Chunks: {stats['chunks_created']}")
 
 # Or ingest an entire directory
 stats = rag.ingest_directory("data/", recursive=True)
 
-# Retrieve
-results = rag.retrieve("What is Apple's total revenue?", top_k=5)
+# Basic retrieval — returns list of LangChain Document objects
+results = rag.retrieve("What is the total revenue?", top_k=5)
 for doc in results:
-    print(doc.metadata.get("company_name"), doc.page_content[:200])
+    print(doc.page_content[:300])
+    print(doc.metadata["company_name"])   # str, lowercased — e.g. "apple"
+    print(doc.metadata["fiscal_year"])    # list[int] — e.g. [2025]  ← NOT a plain int
+    print(doc.metadata["file_name"])      # str — e.g. "Apple_10k_2025.pdf"
+
+# Retrieval with explicit metadata filters
+results = rag.retrieve(
+    "What is the net income?",
+    filters={"company_name": "apple", "fiscal_year": 2025}  # pass year as int
+)
+
+# OR logic within a field — matches any of the listed values
+results = rag.retrieve("Compare revenue trends", filters={"fiscal_year": [2023, 2024, 2025]})
+
+# Agent-controlled filtering (recommended for AI agents)
+filters = rag.extract_filters("Apple's revenue in 2025")
+# → {"company_name": "apple", "fiscal_year": 2025} or None
+results = rag.retrieve("Apple's revenue in 2025", filters=filters)
 ```
 
 ## Configuration

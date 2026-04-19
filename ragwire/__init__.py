@@ -27,12 +27,12 @@ from importlib.metadata import version, PackageNotFoundError
 try:
     __version__ = version("ragwire")
 except PackageNotFoundError:
-    __version__ = "1.2.8"
+    __version__ = "1.2.9"
 
 __author__ = "KGP Talkie Private Limited"
 
 from .core.config import Config
-from .core.pipeline import RAGWire
+from .core.pipeline import RAGWire, IngestStats, IngestError
 from .metadata.schema import DocumentMetadata
 from .metadata.extractor import MetadataExtractor, FinancialMetadata
 from .loaders.markitdown_loader import MarkItDownLoader
@@ -47,6 +47,8 @@ __all__ = [
     # Core
     "Config",
     "RAGWire",
+    "IngestStats",
+    "IngestError",
     # Metadata
     "DocumentMetadata",
     "MetadataExtractor",

@@ -68,16 +68,20 @@ def get_embedding(config: dict, **kwargs: Any) -> Any:
             return _get_fastembed_embeddings(config, **kwargs)
 
         else:
+            valid = "ollama, openai, huggingface, google, fastembed"
             raise ValueError(
-                f"Unsupported embedding provider: {provider}. "
-                f"Supported providers: openai, huggingface, ollama, google, fastembed"
+                f"Unsupported embedding provider: '{provider}'. Valid options: {valid}\n"
+                f"Example config:\n"
+                f"  embeddings:\n"
+                f"    provider: ollama\n"
+                f"    model: nomic-embed-text"
             )
 
     except ImportError as e:
         logger.error(f"Missing dependency for {provider} embeddings: {e}")
         raise ImportError(
-            f"Required package for {provider} embeddings not installed. "
-            f"Install with: {get_install_command(provider)}"
+            f"Required package for '{provider}' embeddings is not installed.\n"
+            f"Run: {get_install_command(provider)}"
         )
 
 

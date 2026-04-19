@@ -1,0 +1,520 @@
+# RAGWire
+
+RAGWire is a production-grade Python RAG (Retrieval-Augmented Generation) toolkit for document ingestion and retrieval. Install with `pip install ragwire`. It loads documents (PDF, DOCX, XLSX, PPTX, TXT, MD), splits them, extracts structured metadata via LLM, stores embeddings in Qdrant with hybrid dense+sparse search, and retrieves results with optional metadata filtering. The `RAGWire` class is the single entry point for all operations.
+
+- PyPI: https://pypi.org/project/ragwire/
+- GitHub: https://github.com/laxmimerit/ragwire
+- Docs: https://laxmimerit.github.io/RAGWire/
+- Full API reference (plain text): https://laxmimerit.github.io/RAGWire/llms-full.txt
+
+---
+
+## Installation
+
+```bash
+# Base install (Ollama embedding, local Qdrant)
+pip install ragwire
+
+# With OpenAI
+pip install "ragwire[openai]"
+
+# With HuggingFace
+pip install "ragwire[huggingface]"
+
+# With Google Gemini
+pip install "ragwire[google]"
+
+# With Groq
+pip install "ragwire[groq]"
+
+# With Anthropic
+pip install "ragwire[anthropic]"
+
+# Everything
+pip install "ragwire[all]"
+
+# Hybrid search sparse vectors (always install separately)
+pip install fastembed
+```
+
+---
+
+## Quick Start — Minimum Working Example
+
+```python
+from ragwire import RAGWire
+
+# Initialize from config.yaml (see config.yaml section below)
+rag = RAGWire("config.yaml")
+
+# Ingest files — SHA256 deduplication, safe to re-run
+stats = rag.ingest_documents(["data/Apple_10k_2025.pdf", "data/Microsoft_10k_2025.pdf"])
+print(f"Processed: {stats['processed']}, Skipped: {stats['skipped']}, Chunks: {stats['chunks_created']}")
+
+# Ingest a whole directory
+stats = rag.ingest_directory("data/", recursive=True, extensions=[".pdf", ".docx"])
+
+# Basic retrieval — returns list of LangChain Document objects
+results = rag.retrieve("What is the total revenue?", top_k=5)
+for doc in results:
+    print(doc.page_content[:300])
+    print(doc.metadata["company_name"])   # str, lowercased, e.g. "apple"
+    print(doc.metadata["fiscal_year"])    # list[int], e.g. [2025]  ← NOT a plain int
+    print(doc.metadata["file_name"])      # str, e.g. "Apple_10k_2025.pdf"
+
+# Retrieval with explicit metadata filters (most common pattern)
+results = rag.retrieve(
+    "What is the net income?",
+    top_k=5,
+    filters={"company_name": "apple", "fiscal_year": 2025}  # pass year as int, stored as [int]
+)
+
+# OR logic within a field: match any of the listed values
+results = rag.retrieve(
+    "Compare revenue",
+    filters={"fiscal_year": [2023, 2024, 2025]}  # matches chunks from any of these years
+)
+
+# Agent-controlled filtering (recommended for AI agents)
+filters = rag.extract_filters("Apple's revenue in 2025")
+# filters → {"company_name": "apple", "fiscal_year": 2025} or None
+results = rag.retrieve("Apple's revenue in 2025", filters=filters)
+```
+
+---
+
+## config.yaml — Complete Reference
+
+Copy `config.example.yaml` to `config.yaml`. All sections shown below. The four sections `embeddings`, `llm`, `vectorstore`, and `retriever` are required.
+
+```yaml
+# =================================================================
+# Document Loader
+# =================================================================
+loader:
+  extensions: [".pdf", ".docx", ".xlsx", ".pptx", ".txt", ".md"]
+
+# =================================================================
+# Text Splitter
+# =================================================================
+splitter:
+  chunk_size: 10000
+  chunk_overlap: 2000
+  strategy: "markdown"   # "markdown" | "recursive"
+
+# =================================================================
+# Embedding Model — pick ONE provider block
+# =================================================================
+embeddings:
+  # --- Ollama (local, no API key) ---
+  provider: "ollama"
+  model: "qwen3-embedding:0.6b"
+  base_url: "http://localhost:11434"
+
+  # --- OpenAI ---
+  # provider: "openai"
+  # model: "text-embedding-3-small"
+  # (reads OPENAI_API_KEY from environment automatically)
+
+  # --- HuggingFace (local) ---
+  # provider: "huggingface"
+  # model_name: "sentence-transformers/all-MiniLM-L6-v2"
+
+  # --- Google ---
+  # provider: "google"
+  # model: "models/embedding-001"
+  # (reads GOOGLE_API_KEY from environment automatically)
+
+  # --- FastEmbed (local, CPU-friendly) ---
+  # provider: "fastembed"
+  # model: "BAAI/bge-small-en-v1.5"
+
+# =================================================================
+# LLM — used for metadata extraction on every ingested document
+# =================================================================
+llm:
+  # --- Ollama (local) ---
+  provider: "ollama"
+  model: "qwen3.5:9b"
+  base_url: "http://localhost:11434"
+  num_ctx: 16384         # Context window — must fit your largest chunk
+
+  # --- OpenAI ---
+  # provider: "openai"
+  # model: "gpt-4o-mini"
+
+  # --- Google Gemini ---
+  # provider: "google"
+  # model: "gemini-2.0-flash"
+
+  # --- Groq ---
+  # provider: "groq"
+  # model: "llama-3.3-70b-versatile"
+
+  # --- Anthropic ---
+  # provider: "anthropic"
+  # model: "claude-haiku-4-5-20251001"
+
+# =================================================================
+# Custom Metadata (optional)
+# =================================================================
+# metadata:
+#   config_file: "metadata.yaml"   # Path to custom metadata YAML
+#                                  # If omitted, built-in financial fields are used:
+#                                  # company_name, doc_type, fiscal_quarter, fiscal_year
+
+# =================================================================
+# Vector Store (Qdrant)
+# =================================================================
+vectorstore:
+  url: "http://localhost:6333"          # Local Qdrant
+  # url: "https://your-cluster.qdrant.io"  # Qdrant Cloud
+  # api_key: "${QDRANT_API_KEY}"           # Env var substitution syntax
+  # url: "./qdrant_storage"                # File-based local storage
+  collection_name: "financial_docs"
+  use_sparse: true       # Enables hybrid search. Requires: pip install fastembed
+  force_recreate: false  # WARNING: true WIPES the collection. Set once, then back to false.
+
+# =================================================================
+# Retriever
+# =================================================================
+retriever:
+  search_type: "hybrid"   # "similarity" | "mmr" | "hybrid"
+                          # "hybrid" requires use_sparse: true + pip install fastembed
+  top_k: 5
+  auto_filter: false      # If true, LLM extracts metadata filters from every query automatically.
+                          # For agents: keep false and use rag.extract_filters(query) instead.
+
+# =================================================================
+# Logging
+# =================================================================
+logging:
+  level: "INFO"
+  console_output: true
+  colored: true
+  # log_file: "logs/rag.log"
+```
+
+**Environment variable substitution:** Use `${VAR_NAME}` anywhere in config.yaml. Values are read from environment or `.env` file (loaded automatically via python-dotenv).
+
+---
+
+## API — RAGWire Class
+
+```python
+from ragwire import RAGWire
+rag = RAGWire(config_path: str)
+```
+
+### Ingestion
+
+```python
+# Ingest a list of files
+stats = rag.ingest_documents(file_paths: list[str]) -> IngestStats
+# IngestStats keys: total (int), processed (int), skipped (int), failed (int),
+#                   chunks_created (int), errors (list[IngestError])
+# IngestError keys: file (str), error (str)
+
+# Ingest a directory
+stats = rag.ingest_directory(
+    directory: str,
+    recursive: bool = False,
+    extensions: list[str] | None = None  # default: from config loader.extensions
+) -> IngestStats  # same shape as ingest_documents()
+```
+
+### Retrieval
+
+```python
+# Standard retrieval (similarity, MMR, or hybrid — controlled by config)
+results = rag.retrieve(
+    query: str,
+    top_k: int | None = None,           # overrides config top_k
+    filters: dict | None = None          # metadata filters
+) -> list[Document]                      # LangChain Document objects
+
+# Force hybrid search regardless of config
+results = rag.hybrid_search(
+    query: str,
+    k: int = 5,
+    filters: dict | None = None
+) -> list[Document]
+
+# Each Document has:
+doc.page_content  # str — the chunk text
+doc.metadata      # dict — see Metadata Schema section below
+```
+
+### Filtering
+
+```python
+# Extract metadata filters from a natural language query
+filters = rag.extract_filters(query: str) -> dict | None
+# Example: rag.extract_filters("Apple 2025 annual report")
+# Returns: {"company_name": "apple", "fiscal_year": 2025} or None
+
+# Get formatted context for an agent to decide filters
+context = rag.get_filter_context(
+    query: str,
+    limit: int = 50
+) -> str  # Markdown-formatted string listing available fields and values
+
+# Get unique stored values for specific fields
+values = rag.get_field_values(
+    fields: str | list[str],  # single field name or list
+    limit: int = 50
+) -> list | dict
+# Example: rag.get_field_values("company_name") → ["apple", "microsoft", "google"]
+# Example: rag.get_field_values(["company_name", "fiscal_year"]) → {"company_name": [...], "fiscal_year": [...]}
+
+# List all filterable metadata fields in the collection
+fields = rag.discover_metadata_fields() -> list[str]
+# Returns: ["company_name", "doc_type", "fiscal_quarter", "fiscal_year", ...]
+
+# Access filterable field names directly
+fields = rag.filter_fields  # property → list[str]
+```
+
+### Metadata & Stats
+
+```python
+# Extract metadata from arbitrary text (without ingesting)
+meta = rag.extract_metadata(text: str) -> dict
+
+# Get collection statistics
+stats = rag.get_stats() -> dict
+# stats keys: collection_name (str), total_points (int),
+#             vector_size (int), status (str)
+```
+
+---
+
+## Metadata Schema
+
+Every retrieved `doc.metadata` is a dict with these keys:
+
+```python
+doc.metadata = {
+    # LLM-extracted (financial defaults — customizable via metadata.yaml)
+    "company_name":   "apple",          # str, always lowercased
+    "doc_type":       "10-K",           # str: "10-K", "10-Q", "8-K", etc.
+    "fiscal_quarter": "q4",             # str: "q1", "q2", "q3", "q4", or None
+    "fiscal_year":    [2025],           # list[int] — IMPORTANT: stored as a list, NOT plain int
+
+    # File-level (auto-populated)
+    "source":         "/data/Apple_10k_2025.pdf",
+    "file_name":      "Apple_10k_2025.pdf",
+    "file_type":      "pdf",
+    "file_hash":      "a3f8...",        # SHA256 of file content
+
+    # Chunk-level (auto-populated)
+    "chunk_id":       "a3f8..._0",
+    "chunk_hash":     "d7c2...",
+    "chunk_index":    0,                # position of chunk within the document
+    "total_chunks":   42,               # total chunks from this file
+    "created_at":     "2026-04-19T...", # ISO format UTC timestamp
+}
+```
+
+**Critical:** `fiscal_year` is stored as `list[int]` (e.g. `[2025]`), but when filtering, pass it as `int` (e.g. `filters={"fiscal_year": 2025}`). RAGWire handles the conversion internally.
+
+**Custom metadata** (via metadata.yaml) adds extra keys alongside the above. File-level and chunk-level keys are always present.
+
+---
+
+## Filter Syntax — Three Modes
+
+```python
+# Mode 1: Explicit filters (most common — zero LLM overhead)
+rag.retrieve(query, filters={"company_name": "apple"})
+rag.retrieve(query, filters={"company_name": "apple", "fiscal_year": 2025})
+rag.retrieve(query, filters={"doc_type": "10-K", "fiscal_year": 2025})
+rag.retrieve(query, filters={"fiscal_year": [2023, 2024, 2025]})  # OR logic within field
+
+# Mode 2: auto_filter in config.yaml (set retriever.auto_filter: true)
+rag.retrieve(query)  # LLM auto-extracts filters from the query on every call
+
+# Mode 3: Agent-controlled (recommended for AI agents)
+filters = rag.extract_filters(query)   # inspect/adjust before using
+if filters:
+    results = rag.retrieve(query, filters=filters)
+else:
+    results = rag.retrieve(query)      # no-filter fallback
+```
+
+**Filter rules:**
+- String values must be lowercase — `"apple"` matches, `"Apple"` does not
+- `fiscal_year` filter takes `int`, not `str` and not `list`
+- List values use **OR logic within** the field: `{"fiscal_year": [2023, 2024]}` matches either year
+- Multiple fields use **AND logic across** fields: `{"company_name": "apple", "fiscal_year": 2025}` requires both
+- Use `rag.get_field_values("company_name")` to discover valid stored values before filtering
+
+---
+
+## Agent Integration Pattern
+
+Complete two-tool LangChain agent pattern:
+
+```python
+from typing import Optional
+from langchain.agents import create_agent
+from langchain.tools import tool
+from langchain_ollama import ChatOllama
+from langgraph.checkpoint.memory import InMemorySaver
+from ragwire import RAGWire
+
+rag = RAGWire("config.yaml")
+rag.ingest_directory("data/")
+
+@tool
+def get_filter_context(query: str) -> str:
+    """Get available metadata fields and filter suggestions for this query.
+    Call before search_documents when the query involves specific metadata
+    (company, year, document type). Skip for purely semantic queries."""
+    return rag.get_filter_context(query)
+
+@tool
+def search_documents(query: str, filters: Optional[dict] = None) -> str:
+    """Search the document knowledge base.
+    Args:
+        query: The search query
+        filters: Optional metadata filters from get_filter_context. Pass {} to search without filtering."""
+    results = rag.retrieve(query, top_k=5, filters=filters)
+    if not results:
+        return "No relevant documents found."
+    chunks = []
+    for doc in results:
+        source = doc.metadata.get("file_name", "unknown")
+        meta = {k: v for k, v in doc.metadata.items() if k != "file_name" and v not in (None, "", [])}
+        header = f"[{source} | {meta}]"
+        chunks.append(f"{header}\n{doc.page_content}")
+    return "\n\n---\n\n".join(chunks)
+
+model = ChatOllama(model="qwen3.5:9b", base_url="http://localhost:11434")
+agent = create_agent(
+    model=model,
+    tools=[get_filter_context, search_documents],
+    system_prompt=(
+        "Always use search_documents to retrieve information. "
+        "Use get_filter_context before search_documents when the query involves "
+        "specific metadata (company, year, document type). "
+        "Never answer from general knowledge. Always cite the source."
+    ),
+    checkpointer=InMemorySaver(),
+)
+
+response = agent.invoke(
+    {"messages": [{"role": "user", "content": "What is Apple's 2025 revenue?"}]},
+    config={"configurable": {"thread_id": "session-1"}},
+)
+print(response["messages"][-1].content)
+```
+
+**Agent reasoning flow:**
+1. Query arrives
+2. Call `get_filter_context` if query mentions specific company/year/type
+3. Use returned context to decide `filters` dict
+4. Call `search_documents(query, filters=filters)`
+5. Answer from retrieved chunks
+
+---
+
+## Custom Metadata (Non-Financial Documents)
+
+For non-financial domains (legal, HR, medical, technical), create a `metadata.yaml`:
+
+```yaml
+fields:
+  - name: organization
+    description: "Organization name in lowercase"
+
+  - name: doc_type
+    description: "Type of document"
+    values: ["contract", "policy", "report", "memo", "other"]
+
+  - name: effective_year
+    description: "Year the document is effective, as integer or null"
+
+  - name: jurisdiction
+    description: "Country or region the document applies to, or null"
+
+# Optional: override auto-generated prompt (must include {content} placeholder)
+# prompt_template: |
+#   Extract metadata from the document. Return ONLY valid JSON:
+#   {"organization": "...", "doc_type": "...", ...}
+#   Document Text: {content}
+#   Extracted Metadata (JSON only):
+```
+
+Then reference it in `config.yaml`:
+
+```yaml
+metadata:
+  config_file: "metadata.yaml"
+```
+
+Custom fields replace the default financial fields (`company_name`, `doc_type`, `fiscal_quarter`, `fiscal_year`). All file-level and chunk-level fields are still added automatically.
+
+---
+
+## Component API (Advanced / Custom Pipelines)
+
+```python
+from ragwire import (
+    MarkItDownLoader, get_splitter, get_markdown_splitter, get_code_splitter,
+    get_embedding, QdrantStore, MetadataExtractor, DocumentMetadata, FinancialMetadata,
+    sha256_text, sha256_file_from_path, sha256_chunk,
+    hybrid_search, mmr_search, get_retriever,
+)
+
+# Document loading
+loader = MarkItDownLoader()
+result = loader.load("document.pdf")
+# result keys: success (bool), text_content (str), file_name (str), file_type (str), error (str|None)
+
+# Text splitting
+splitter = get_markdown_splitter(chunk_size=10000, chunk_overlap=2000)
+splitter = get_splitter(chunk_size=10000, chunk_overlap=2000)        # recursive
+splitter = get_code_splitter(chunk_size=2000, chunk_overlap=200)     # code
+chunks = splitter.split_text(result["text_content"])
+
+# Embeddings — provider config dict
+embedding = get_embedding({"provider": "ollama", "model": "qwen3-embedding:0.6b", "base_url": "http://localhost:11434"})
+embedding = get_embedding({"provider": "openai", "model": "text-embedding-3-small"})
+embedding = get_embedding({"provider": "huggingface", "model_name": "sentence-transformers/all-MiniLM-L6-v2"})
+embedding = get_embedding({"provider": "google", "model": "models/embedding-001"})
+embedding = get_embedding({"provider": "fastembed", "model": "BAAI/bge-small-en-v1.5"})
+
+# Vector store
+store = QdrantStore(config={"url": "http://localhost:6333"}, embedding=embedding)
+store.set_collection("my_collection")
+vectorstore = store.get_store()  # returns LangChain VectorStore
+
+# Custom metadata extractor
+from langchain_ollama import ChatOllama
+llm = ChatOllama(model="qwen3.5:9b")
+extractor = MetadataExtractor(llm)                        # uses built-in FinancialMetadata schema
+extractor = MetadataExtractor.from_yaml(llm, "metadata.yaml")  # uses custom YAML schema
+meta = extractor.extract(text)                             # → dict
+metas = extractor.extract_batch([text1, text2])           # → list[dict]
+
+# Hashing
+file_hash = sha256_file_from_path("document.pdf")  # → str
+chunk_hash = sha256_chunk(chunk_id, content)        # → str
+text_hash  = sha256_text(content)                   # → str
+```
+
+---
+
+## Troubleshooting
+
+| Error | Fix |
+|-------|-----|
+| Qdrant connection refused | `docker run -p 6333:6333 qdrant/qdrant` |
+| `markitdown[pdf]` missing | `pip install "markitdown[pdf]"` |
+| Ollama model not found | `ollama pull <model-name>` |
+| `fastembed` missing | `pip install fastembed` (needed for `use_sparse: true` / hybrid search) |
+| Embedding dimension mismatch | Set `force_recreate: true` once, restart, then set back to `false` |
+| Hybrid search returns dense-only results | `pip install fastembed` + set `use_sparse: true` in config |
+| Filter returns no results | Values are lowercased — check with `rag.get_field_values("company_name")` |
+| `fiscal_year` filter not matching | Pass as `int` not `str`: `{"fiscal_year": 2025}` not `{"fiscal_year": "2025"}` |

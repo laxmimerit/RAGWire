@@ -14,7 +14,21 @@ import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, TypedDict
+
+
+class IngestError(TypedDict):
+    file: str
+    error: str
+
+
+class IngestStats(TypedDict):
+    total: int
+    processed: int
+    skipped: int
+    failed: int
+    chunks_created: int
+    errors: List[IngestError]
 
 from langchain_core.prompts import ChatPromptTemplate
 
@@ -125,6 +139,15 @@ class RAGWire:
     def _initialize_embeddings(self) -> None:
         """Initialize embedding model."""
         embedding_config = self.config.get("embeddings", {})
+        if not embedding_config or not embedding_config.get("provider"):
+            raise ValueError(
+                "Missing [embeddings] section or embeddings.provider in config.yaml.\n"
+                "Example:\n"
+                "  embeddings:\n"
+                "    provider: ollama\n"
+                "    model: nomic-embed-text\n"
+                "Valid providers: ollama, openai, huggingface, google, fastembed"
+            )
         self.embedding = get_embedding(embedding_config)
         logger.info(
             f"Embedding model initialized (provider={embedding_config.get('provider')})"
@@ -142,26 +165,44 @@ class RAGWire:
             raise ValueError("llm.model must be set in config")
         base_url = llm_config.get("base_url", "http://localhost:11434")
 
-        if provider == "ollama":
-            from langchain_ollama import ChatOllama
-            extra = {}
-            if "num_ctx" in llm_config:
-                extra["num_ctx"] = llm_config["num_ctx"]
-            llm = ChatOllama(model=model, base_url=base_url, **extra)
-        elif provider == "openai":
-            from langchain_openai import ChatOpenAI
-            llm = ChatOpenAI(model=model)
-        elif provider == "google" or provider == "gemini":
-            from langchain_google_genai import ChatGoogleGenerativeAI
-            llm = ChatGoogleGenerativeAI(model=model, google_api_key=llm_config.get("api_key"))
-        elif provider == "groq":
-            from langchain_groq import ChatGroq
-            llm = ChatGroq(model=model, groq_api_key=llm_config.get("api_key"))
-        elif provider == "anthropic":
-            from langchain_anthropic import ChatAnthropic
-            llm = ChatAnthropic(model=model, anthropic_api_key=llm_config.get("api_key"))
-        else:
-            raise ValueError(f"Unsupported LLM provider: {provider}")
+        _llm_install = {
+            "ollama": "pip install langchain-ollama",
+            "openai": "pip install \"ragwire[openai]\"",
+            "google": "pip install \"ragwire[google]\"",
+            "gemini": "pip install \"ragwire[google]\"",
+            "groq": "pip install \"ragwire[groq]\"",
+            "anthropic": "pip install \"ragwire[anthropic]\"",
+        }
+        try:
+            if provider == "ollama":
+                from langchain_ollama import ChatOllama
+                extra = {}
+                if "num_ctx" in llm_config:
+                    extra["num_ctx"] = llm_config["num_ctx"]
+                llm = ChatOllama(model=model, base_url=base_url, **extra)
+            elif provider == "openai":
+                from langchain_openai import ChatOpenAI
+                llm = ChatOpenAI(model=model)
+            elif provider == "google" or provider == "gemini":
+                from langchain_google_genai import ChatGoogleGenerativeAI
+                llm = ChatGoogleGenerativeAI(model=model, google_api_key=llm_config.get("api_key"))
+            elif provider == "groq":
+                from langchain_groq import ChatGroq
+                llm = ChatGroq(model=model, groq_api_key=llm_config.get("api_key"))
+            elif provider == "anthropic":
+                from langchain_anthropic import ChatAnthropic
+                llm = ChatAnthropic(model=model, anthropic_api_key=llm_config.get("api_key"))
+            else:
+                valid = "ollama, openai, google, groq, anthropic"
+                raise ValueError(
+                    f"Unsupported LLM provider: '{provider}'. Valid options: {valid}"
+                )
+        except ImportError:
+            install_cmd = _llm_install.get(provider, f"pip install \"ragwire[{provider}]\"")
+            raise ImportError(
+                f"Required package for LLM provider '{provider}' is not installed.\n"
+                f"Run: {install_cmd}"
+            )
 
         metadata_config = self.config.get("metadata", {})
         metadata_yaml = metadata_config.get("config_file") if metadata_config else None
@@ -178,6 +219,15 @@ class RAGWire:
     def _initialize_vectorstore(self) -> None:
         """Initialize vector store."""
         vectorstore_config = self.config.get("vectorstore", {})
+        if not vectorstore_config or not vectorstore_config.get("url"):
+            raise ValueError(
+                "Missing [vectorstore] section or vectorstore.url in config.yaml.\n"
+                "Example:\n"
+                "  vectorstore:\n"
+                "    url: http://localhost:6333\n"
+                "    collection_name: my_docs\n"
+                "Start Qdrant locally with: docker run -p 6333:6333 qdrant/qdrant"
+            )
         collection_name = vectorstore_config.get("collection_name", "rag_documents")
         use_sparse = vectorstore_config.get("use_sparse", True)
         force_recreate = vectorstore_config.get("force_recreate", False)
@@ -218,7 +268,7 @@ class RAGWire:
         )
         logger.info(f"Retriever initialized (type={search_type}, top_k={top_k}, auto_filter={self._auto_filter})")
 
-    def ingest_documents(self, file_paths: List[str]) -> Dict[str, Any]:
+    def ingest_documents(self, file_paths: List[str]) -> IngestStats:
         """
         Ingest documents into the vector store.
 
@@ -307,7 +357,7 @@ class RAGWire:
         directory: str,
         recursive: bool = False,
         extensions: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+    ) -> IngestStats:
         """
         Ingest all supported documents from a directory.
 
