@@ -15,7 +15,7 @@ RAGWire handles the full RAG pipeline — from loading raw documents to storing 
 - **Document Loading** — PDF, DOCX, XLSX, PPTX and more via MarkItDown
 - **LLM Metadata Extraction** — extracts company, doc type, and fiscal period automatically
 - **Smart Text Splitting** — markdown-aware and recursive chunking strategies
-- **Multiple Embedding Providers** — Ollama, OpenAI, HuggingFace, Google, FastEmbed
+- **Multiple Embedding Providers** — Ollama, OpenAI, OpenRouter, HuggingFace, Google, FastEmbed
 - **Qdrant Vector Store** — dense, sparse, and hybrid search
 - **Advanced Retrieval** — similarity, MMR, and hybrid search
 - **SHA256 Deduplication** — at both file and chunk level — no duplicate ingestion
@@ -67,6 +67,7 @@ for doc in results:
 |---|---|---|---|
 | [Ollama](ollama.md) | Yes | Yes | Yes (local) |
 | [OpenAI](openai.md) | Yes | Yes | No |
+| [OpenRouter](openrouter.md) | Yes | Yes | Free tier |
 | [Google Gemini](gemini.md) | Yes | Yes | Free tier |
 | [Groq](groq.md) | No | Yes | Free tier |
 | [Anthropic](anthropic.md) | No | Yes | No |

@@ -146,7 +146,7 @@ class RAGWire:
                 "  embeddings:\n"
                 "    provider: ollama\n"
                 "    model: nomic-embed-text\n"
-                "Valid providers: ollama, openai, huggingface, google, fastembed"
+                "Valid providers: ollama, openai, openrouter, huggingface, google, fastembed"
             )
         self.embedding = get_embedding(embedding_config)
         logger.info(
@@ -168,6 +168,7 @@ class RAGWire:
         _llm_install = {
             "ollama": "pip install langchain-ollama",
             "openai": "pip install \"ragwire[openai]\"",
+            "openrouter": "pip install \"ragwire[openrouter]\"",
             "google": "pip install \"ragwire[google]\"",
             "gemini": "pip install \"ragwire[google]\"",
             "groq": "pip install \"ragwire[groq]\"",
@@ -183,6 +184,17 @@ class RAGWire:
             elif provider == "openai":
                 from langchain_openai import ChatOpenAI
                 llm = ChatOpenAI(model=model)
+            elif provider == "openrouter":
+                # Use the dedicated ChatOpenRouter integration, NOT ChatOpenAI with a
+                # base_url override. The override approach breaks with_structured_output()
+                # — which the metadata extractor relies on. ChatOpenRouter supports
+                # native structured output and tool calling.
+                # Reads the OPENROUTER_API_KEY env var when api_key is not set in config.
+                from langchain_openrouter import ChatOpenRouter
+                extra = {}
+                if llm_config.get("api_key"):
+                    extra["api_key"] = llm_config["api_key"]
+                llm = ChatOpenRouter(model=model, **extra)
             elif provider == "google" or provider == "gemini":
                 from langchain_google_genai import ChatGoogleGenerativeAI
                 llm = ChatGoogleGenerativeAI(model=model, google_api_key=llm_config.get("api_key"))
@@ -193,7 +205,7 @@ class RAGWire:
                 from langchain_anthropic import ChatAnthropic
                 llm = ChatAnthropic(model=model, anthropic_api_key=llm_config.get("api_key"))
             else:
-                valid = "ollama, openai, google, groq, anthropic"
+                valid = "ollama, openai, openrouter, google, groq, anthropic"
                 raise ValueError(
                     f"Unsupported LLM provider: '{provider}'. Valid options: {valid}"
                 )

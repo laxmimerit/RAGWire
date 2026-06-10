@@ -384,14 +384,17 @@ Controls the LLM used for metadata extraction (and filter extraction during retr
 
 | Key | Required | Default | Description |
 |---|---|---|---|
-| `provider` | Yes | — | `ollama`, `openai`, `google`, `groq`, `anthropic` |
-| `model` | Yes | — | Model name (e.g. `qwen3.5:9b`, `gpt-4o-mini`) |
+| `provider` | Yes | — | `ollama`, `openai`, `openrouter`, `google`, `groq`, `anthropic` |
+| `model` | Yes | — | Model name (e.g. `qwen3.5:9b`, `gpt-4o-mini`, `poolside/laguna-m.1:free`) |
 | `base_url` | Ollama only | `http://localhost:11434` | Ollama server URL |
 | `num_ctx` | Ollama only | LangChain default | Context window size — only set this if you need to override the default |
-| `api_key` | Google / Groq / Anthropic | — | API key (or use `${ENV_VAR}` syntax) |
+| `api_key` | Google / Groq / Anthropic / OpenRouter | — | API key (or use `${ENV_VAR}` syntax) |
 
 !!! note "OpenAI"
     OpenAI reads `OPENAI_API_KEY` from the environment automatically — no `api_key` field needed in config.
+
+!!! note "OpenRouter"
+    Uses the dedicated `ChatOpenRouter` integration (`pip install "ragwire[openrouter]"`, Python ≥ 3.10). Reads `OPENROUTER_API_KEY` from the environment automatically; `api_key` in config is optional.
 
 ```yaml
 # Ollama
@@ -405,6 +408,12 @@ llm:
 llm:
   provider: "openai"
   model: "gpt-4o-mini"
+
+# OpenRouter (free-tier models available)
+llm:
+  provider: "openrouter"
+  model: "poolside/laguna-m.1:free"
+  api_key: "${OPENROUTER_API_KEY}"
 
 # Google Gemini
 llm:
@@ -433,11 +442,13 @@ Controls the embedding model used to encode documents and queries into vectors.
 
 | Key | Required | Default | Description |
 |---|---|---|---|
-| `provider` | Yes | — | `ollama`, `openai`, `google`, `huggingface`, `fastembed` |
+| `provider` | Yes | — | `ollama`, `openai`, `openrouter`, `google`, `huggingface`, `fastembed` |
 | `model` | Most providers | provider default | Embedding model name |
 | `base_url` | Ollama only | `http://localhost:11434` | Ollama server URL |
 | `num_ctx` | Ollama only | LangChain default | Context window size — only set this if you need to override the default |
-| `api_key` | Google only | — | API key (or use `${ENV_VAR}` syntax) |
+| `api_key` | Google / OpenRouter | — | API key (or use `${ENV_VAR}` syntax) |
+| `batch_size` | OpenRouter only | `100` | Inputs sent per embedding request |
+| `dimensions` | OpenRouter only | model default | Output dimensionality (only if the model supports it) |
 | `model_name` | HuggingFace / FastEmbed only | see below | Model identifier (uses `model_name` key, not `model`) |
 | `model_kwargs` | HuggingFace only | `{}` | Passed to the HuggingFace model constructor (e.g. `{"device": "cpu"}`) |
 | `encode_kwargs` | HuggingFace only | `{}` | Passed to the encode call (e.g. `{"normalize_embeddings": true}`) |
@@ -448,6 +459,7 @@ Controls the embedding model used to encode documents and queries into vectors.
 |---|---|
 | `ollama` | `nomic-embed-text` |
 | `openai` | `text-embedding-3-small` |
+| `openrouter` | `nvidia/llama-nemotron-embed-vl-1b-v2:free` |
 | `google` | `models/embedding-001` |
 | `huggingface` | `sentence-transformers/all-MiniLM-L6-v2` |
 | `fastembed` | `BAAI/bge-small-en-v1.5` |
@@ -464,6 +476,12 @@ embeddings:
 embeddings:
   provider: "openai"
   model: "text-embedding-3-small"
+
+# OpenRouter (free-tier models available)
+embeddings:
+  provider: "openrouter"
+  model: "nvidia/llama-nemotron-embed-vl-1b-v2:free"
+  api_key: "${OPENROUTER_API_KEY}"
 
 # Google Gemini
 embeddings:
@@ -659,7 +677,7 @@ from ragwire import get_embedding
 |---|---|---|---|
 | `config` | `dict` | Yes | Provider config dict with `provider` key |
 
-**Supported providers:** `ollama`, `openai`, `huggingface`, `google`, `fastembed`
+**Supported providers:** `ollama`, `openai`, `openrouter`, `huggingface`, `google`, `fastembed`
 
 **Returns:** Embedding model with `.embed_query(text)` and `.embed_documents(texts)` methods.
 
@@ -675,6 +693,13 @@ embedding = get_embedding({
 embedding = get_embedding({
     "provider": "openai",
     "model": "text-embedding-3-small",
+})
+
+# OpenRouter
+embedding = get_embedding({
+    "provider": "openrouter",
+    "model": "nvidia/llama-nemotron-embed-vl-1b-v2:free",
+    "api_key": "${OPENROUTER_API_KEY}",
 })
 
 # HuggingFace

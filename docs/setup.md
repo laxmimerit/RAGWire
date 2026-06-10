@@ -18,6 +18,7 @@ Install with a specific provider:
 ```bash
 pip install "ragwire[ollama]"       # Ollama (local, no API key)
 pip install "ragwire[openai]"       # OpenAI
+pip install "ragwire[openrouter]"   # OpenRouter — LLM + embeddings (Python >= 3.10)
 pip install "ragwire[google]"       # Google Gemini
 pip install "ragwire[huggingface]"  # HuggingFace (local)
 pip install "ragwire[groq]"         # Groq

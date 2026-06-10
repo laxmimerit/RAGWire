@@ -59,7 +59,7 @@ rag-setup/
 | Splitter | `processing/splitter.py` | Markdown, recursive, code splitters |
 | Hashing | `processing/hashing.py` | SHA256 for file and chunk deduplication |
 | Metadata | `metadata/extractor.py` | LLM-based extraction (once per document, from first chunk) |
-| Embeddings | `embeddings/factory.py` | Ollama, OpenAI, HuggingFace, Google, FastEmbed |
+| Embeddings | `embeddings/factory.py` | Ollama, OpenAI, OpenRouter, HuggingFace, Google, FastEmbed |
 | Vector Store | `vectorstores/qdrant_store.py` | Qdrant wrapper, hybrid search, collection management |
 | Retriever | `retriever/hybrid.py` | Similarity, MMR, hybrid (dense + sparse) |
 | Logging | `utils/logging.py` | Colored console + file logging |

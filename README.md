@@ -24,7 +24,7 @@
 - **Document Loading** — PDF, DOCX, XLSX, PPTX and more via MarkItDown
 - **LLM Metadata Extraction** — extracts company, doc type, fiscal period using your LLM; fully customisable via YAML
 - **Smart Text Splitting** — markdown-aware and recursive chunking strategies
-- **Multiple Embedding Providers** — Ollama, OpenAI, HuggingFace, Google, FastEmbed
+- **Multiple Embedding Providers** — Ollama, OpenAI, OpenRouter, HuggingFace, Google, FastEmbed
 - **Qdrant Vector Store** — dense, sparse, and hybrid search
 - **Advanced Retrieval** — similarity, MMR, and hybrid search with metadata filtering
 - **SHA256 Deduplication** — at both file and chunk level
@@ -44,6 +44,9 @@ pip install ragwire
 
 # With Ollama support (local, no API key)
 pip install "ragwire[ollama]"
+
+# With OpenRouter support (LLM + embeddings; requires Python >= 3.10)
+pip install "ragwire[openrouter]"
 
 # With all providers
 pip install "ragwire[all]"
@@ -137,6 +140,12 @@ embeddings:
 embeddings:
   provider: "openai"
   model: "text-embedding-3-small"
+
+# OpenRouter (free-tier models available)
+embeddings:
+  provider: "openrouter"
+  model: "nvidia/llama-nemotron-embed-vl-1b-v2:free"
+  api_key: "${OPENROUTER_API_KEY}"
 
 # HuggingFace (local)
 embeddings:

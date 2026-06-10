@@ -35,11 +35,11 @@ graph TD
 | `splitter.py` | `langchain-text-splitters` | Markdown + recursive splitting |
 | `extractor.py` | `langchain-core` (ChatPromptTemplate) | Prompt building + LLM chain |
 | `schema.py` | `pydantic` | Metadata schema validation |
-| `factory.py` (embeddings) | `langchain-openai` · `langchain-ollama` · `langchain-huggingface` · `langchain-google-genai` | Lazy import — only the configured provider is loaded |
+| `factory.py` (embeddings) | `langchain-openai` · `langchain-ollama` · `langchain-huggingface` · `langchain-google-genai` · `openrouter` | Lazy import — only the configured provider is loaded |
 | `qdrant_store.py` | `qdrant-client` · `langchain-qdrant` · `fastembed` | `fastembed` only needed for hybrid search |
 | `hybrid.py` | `langchain-qdrant` (QdrantVectorStore) | Similarity / MMR / hybrid retrieval |
 | `config.py` | `pyyaml` · `python-dotenv` | YAML loading + env var resolution |
-| `pipeline.py` (LLM) | `langchain-openai` · `langchain-ollama` · `langchain-google-genai` · `langchain-groq` · `langchain-anthropic` | Lazy import — only the configured provider is loaded |
+| `pipeline.py` (LLM) | `langchain-openai` · `langchain-ollama` · `langchain-openrouter` · `langchain-google-genai` · `langchain-groq` · `langchain-anthropic` | Lazy import — only the configured provider is loaded |
 
 ---
 

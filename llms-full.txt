@@ -363,13 +363,14 @@ Filter rules:
 
 | Key | Required | Description |
 |---|---|---|
-| `provider` | Yes | `ollama`, `openai`, `google`, `groq`, `anthropic` |
+| `provider` | Yes | `ollama`, `openai`, `openrouter`, `google`, `groq`, `anthropic` |
 | `model` | Yes | Model name |
 | `base_url` | Ollama only | Default: `http://localhost:11434` |
 | `num_ctx` | Ollama only | Context window size |
 | `api_key` | Some providers | API key or `${ENV_VAR}` |
 
 Note: OpenAI reads `OPENAI_API_KEY` from environment automatically — no `api_key` field needed.
+Note: OpenRouter uses the dedicated ChatOpenRouter integration (pip install "ragwire[openrouter]", Python >= 3.10) and reads OPENROUTER_API_KEY from environment automatically.
 
 ```yaml
 # Ollama
@@ -383,6 +384,12 @@ llm:
 llm:
   provider: "openai"
   model: "gpt-4o-mini"
+
+# OpenRouter (free-tier models available)
+llm:
+  provider: "openrouter"
+  model: "poolside/laguna-m.1:free"
+  api_key: "${OPENROUTER_API_KEY}"
 
 # Google Gemini
 llm:
@@ -407,15 +414,21 @@ llm:
 
 | Key | Required | Description |
 |---|---|---|
-| `provider` | Yes | `ollama`, `openai`, `google`, `huggingface`, `fastembed` |
+| `provider` | Yes | `ollama`, `openai`, `openrouter`, `google`, `huggingface`, `fastembed` |
 | `model` | Most providers | Embedding model name |
 | `model_name` | HuggingFace/FastEmbed | Uses `model_name` key (not `model`) |
 | `base_url` | Ollama only | Ollama server URL |
-| `api_key` | Google only | API key or `${ENV_VAR}` |
+| `api_key` | Google / OpenRouter | API key or `${ENV_VAR}` |
+| `batch_size` | OpenRouter only | Inputs per request (default 100) |
+| `dimensions` | OpenRouter only | Output dimensionality (if supported) |
 
 Default models: ollama=`nomic-embed-text`, openai=`text-embedding-3-small`,
+openrouter=`nvidia/llama-nemotron-embed-vl-1b-v2:free`,
 google=`models/embedding-001`, huggingface=`sentence-transformers/all-MiniLM-L6-v2`,
 fastembed=`BAAI/bge-small-en-v1.5`
+
+OpenRouter embeddings go through the official openrouter Python SDK (encoding_format="float"),
+not the OpenAI client.
 
 ```yaml
 # Ollama
@@ -427,6 +440,12 @@ embeddings:
 embeddings:
   provider: "openai"
   model: "text-embedding-3-small"
+
+# OpenRouter (free-tier models available)
+embeddings:
+  provider: "openrouter"
+  model: "nvidia/llama-nemotron-embed-vl-1b-v2:free"
+  api_key: "${OPENROUTER_API_KEY}"
 
 # HuggingFace
 embeddings:

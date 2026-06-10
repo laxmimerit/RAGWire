@@ -14,6 +14,7 @@ RAGWire is a Python RAG toolkit for document ingestion and retrieval. Install wi
 ```bash
 pip install ragwire          # Ollama embedding + local Qdrant
 pip install "ragwire[openai]"
+pip install "ragwire[openrouter]"   # LLM + embeddings; Python >= 3.10
 pip install "ragwire[google]"
 pip install "ragwire[anthropic]"
 pip install fastembed        # required for hybrid search
@@ -53,6 +54,10 @@ embeddings:
   # provider: "openai"
   # model: "text-embedding-3-small"
 
+  # provider: "openrouter"
+  # model: "nvidia/llama-nemotron-embed-vl-1b-v2:free"
+  # api_key: "${OPENROUTER_API_KEY}"
+
 llm:
   provider: "ollama"
   model: "qwen3.5:9b"
@@ -61,6 +66,10 @@ llm:
 
   # provider: "openai"
   # model: "gpt-4o-mini"
+
+  # provider: "openrouter"
+  # model: "poolside/laguna-m.1:free"
+  # api_key: "${OPENROUTER_API_KEY}"
 
 vectorstore:
   url: "http://localhost:6333"

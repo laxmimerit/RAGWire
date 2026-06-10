@@ -44,3 +44,8 @@ langchain-groq>=0.0.0
 
 # Optional: Anthropic LLM
 langchain-anthropic>=0.0.0
+
+# Optional: OpenRouter support — LLM (ChatOpenRouter) + embeddings (openrouter SDK)
+# NOTE: langchain-openrouter requires Python >= 3.10
+langchain-openrouter>=0.2.0
+openrouter>=0.9.0

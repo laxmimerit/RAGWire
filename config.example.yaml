@@ -37,6 +37,12 @@ embeddings:
   # provider: "google"
   # model: "models/embedding-001"
 
+  # --- OpenRouter embeddings (official openrouter SDK; needs: pip install "ragwire[openrouter]") ---
+  # provider: "openrouter"
+  # model: "nvidia/llama-nemotron-embed-vl-1b-v2:free"
+  # api_key: "${OPENROUTER_API_KEY}"   # or set the OPENROUTER_API_KEY env var
+  # dimensions: 2048                   # optional, only if the model supports it
+
 # =================================================================
 # LLM — used for metadata extraction on every ingested document
 # =================================================================
@@ -50,6 +56,11 @@ llm:
   # --- OpenAI ---
   # provider: "openai"
   # model: "gpt-5.4-nano"
+
+  # --- OpenRouter (uses ChatOpenRouter; needs: pip install "ragwire[openrouter]") ---
+  # provider: "openrouter"
+  # model: "poolside/laguna-m.1:free"
+  # api_key: "${OPENROUTER_API_KEY}"   # or set the OPENROUTER_API_KEY env var
 
 # =================================================================
 # Metadata Extraction (optional)

@@ -67,6 +67,7 @@ nav:
   - Providers:
     - Ollama (Local): ollama.md
     - OpenAI: openai.md
+    - OpenRouter: openrouter.md
     - Google Gemini: gemini.md
     - Groq: groq.md
     - Anthropic: anthropic.md
