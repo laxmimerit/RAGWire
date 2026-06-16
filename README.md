@@ -22,6 +22,12 @@
   </a>
 </p>
 
+<p align="center">
+  <video src="https://raw.githubusercontent.com/laxmimerit/RAGWire/main/assets/ragwire_explainer_10s.mp4" controls width="100%">
+    Your browser does not support the video tag.
+  </video>
+</p>
+
 ---
 
 ## Table of Contents
