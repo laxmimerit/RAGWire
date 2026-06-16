@@ -27,7 +27,7 @@ from importlib.metadata import version, PackageNotFoundError
 try:
     __version__ = version("ragwire")
 except PackageNotFoundError:
-    __version__ = "1.3.1"
+    __version__ = "1.3.2"
 
 __author__ = "KGP Talkie Private Limited"
 
