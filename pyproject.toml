@@ -29,14 +29,15 @@ classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Text Processing :: Linguistic",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     # Core dependencies
     "langchain>=0.1.0",
@@ -149,7 +150,6 @@ ragwire = ["py.typed"]
 
 [tool.black]
 line-length = 88
-target-version = ['py39', 'py310', 'py311', 'py312']
 include = '\.pyi?$'
 
 [tool.isort]
@@ -158,7 +158,7 @@ line_length = 88
 multi_line_output = 3
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false

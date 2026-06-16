@@ -6,7 +6,7 @@ This tutorial walks you through a complete RAG pipeline from scratch using RAGWi
 
 ## Prerequisites
 
-- Python 3.9+
+- Python 3.10+
 - [Docker](https://www.docker.com/) installed
 - [Ollama](https://ollama.com/) installed
 

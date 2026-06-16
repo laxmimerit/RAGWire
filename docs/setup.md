@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Python 3.9 or higher
+- Python 3.10 or higher
 - [Docker](https://www.docker.com/) (for running Qdrant locally)
 
 ## Install RAGWire
