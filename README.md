@@ -28,10 +28,6 @@
   </a>
 </p>
 
-<p align="center">
-  <a href="https://raw.githubusercontent.com/laxmimerit/RAGWire/main/assets/ragwire_explainer_10s.mp4">Watch the 10-second MP4 explainer</a>
-</p>
-
 ---
 
 ## Table of Contents
