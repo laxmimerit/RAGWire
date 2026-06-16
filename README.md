@@ -23,9 +23,13 @@
 </p>
 
 <p align="center">
-  <video src="https://raw.githubusercontent.com/laxmimerit/RAGWire/main/assets/ragwire_explainer_10s.mp4" controls width="100%">
-    Your browser does not support the video tag.
-  </video>
+  <a href="https://raw.githubusercontent.com/laxmimerit/RAGWire/main/assets/ragwire_explainer_10s.mp4">
+    <img src="https://raw.githubusercontent.com/laxmimerit/RAGWire/main/assets/ragwire_explainer_10s.gif" alt="RAGWire 10-second explainer" width="100%"/>
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://raw.githubusercontent.com/laxmimerit/RAGWire/main/assets/ragwire_explainer_10s.mp4">Watch the 10-second MP4 explainer</a>
 </p>
 
 ---
