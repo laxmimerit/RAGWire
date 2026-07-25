@@ -8,6 +8,10 @@
 
 **Status legend:** ☐ open · ◐ in progress · ☑ done · ✗ won't fix
 
+> **Current status (2026-07-25):** all 14 actionable bugs fixed and covered by
+> regression tests. B2 is won't-fix by decision. Phases 0 and 1 are complete;
+> Phases 2–4 remain open. Suite: 36 tests, all passing, no server or LLM needed.
+
 ---
 
 ## 1. Confirmed bugs
@@ -15,7 +19,7 @@
 Ordered by blast radius. Each entry has a concrete failure scenario so it can be
 turned into a regression test.
 
-### B1 — `compare_hashes()` raises `AttributeError` on every call ☐
+### B1 — `compare_hashes()` raises `AttributeError` on every call ☑
 **File:** [ragwire/processing/hashing.py:116](ragwire/processing/hashing.py#L116) · **Severity:** high
 
 ```python
@@ -46,7 +50,7 @@ Logged here so it is not re-reported as a defect.
 
 ---
 
-### B3 — Failed ingestion leaves a permanently half-ingested document ☐
+### B3 — Failed ingestion leaves a permanently half-ingested document ☑
 **File:** [ragwire/core/pipeline.py:345](ragwire/core/pipeline.py#L345) · **Severity:** high
 
 ```python
@@ -74,7 +78,7 @@ hashes whose stored chunk count ≠ `total_chunks`.
 
 ---
 
-### B4 — LLM metadata failure is swallowed and becomes permanent ☐
+### B4 — LLM metadata failure is swallowed and becomes permanent ☑
 **File:** [ragwire/core/pipeline.py:441-446](ragwire/core/pipeline.py#L441) · **Severity:** high
 
 ```python
@@ -101,7 +105,7 @@ it is discoverable and repairable. Surface a `metadata_failed` counter in
 
 ---
 
-### B5 — Files producing zero chunks vanish from the stats ☐
+### B5 — Files producing zero chunks vanish from the stats ☑
 **File:** [ragwire/core/pipeline.py:346-350](ragwire/core/pipeline.py#L346) · **Severity:** medium
 
 ```python
@@ -127,7 +131,7 @@ the most common real-world RAG failure (scanned PDFs) and the framework hides it
 
 ---
 
-### B6 — Custom integer metadata fields get the wrong Qdrant index ☐
+### B6 — Custom integer metadata fields get the wrong Qdrant index ☑
 **File:** [ragwire/vectorstores/qdrant_store.py:283](ragwire/vectorstores/qdrant_store.py#L283) · **Severity:** high
 
 ```python
@@ -158,7 +162,7 @@ from a sampled payload value rather than a hardcoded name set.
 
 ---
 
-### B7 — Bare `except: pass` hides index-creation failures ☐
+### B7 — Bare `except: pass` hides index-creation failures ☑
 **File:** [ragwire/vectorstores/qdrant_store.py:311-312](ragwire/vectorstores/qdrant_store.py#L311) · **Severity:** medium
 
 ```python
@@ -176,7 +180,7 @@ reports success.
 
 ---
 
-### B8 — Metadata field discovery samples exactly one point ☐
+### B8 — Metadata field discovery samples exactly one point ☑
 **File:** [ragwire/vectorstores/qdrant_store.py:269-279](ragwire/vectorstores/qdrant_store.py#L269) · **Severity:** medium
 
 ```python
@@ -203,7 +207,7 @@ system fields, which is authoritative and needs no network call.
 
 ---
 
-### B9 — Caller-supplied filters are not normalized; LLM-extracted ones are ☐
+### B9 — Caller-supplied filters are not normalized; LLM-extracted ones are ☑
 **File:** [ragwire/core/pipeline.py:648-651](ragwire/core/pipeline.py#L648) · **Severity:** medium
 
 `_extract_filters_from_query` lowercases every extracted string value
@@ -223,7 +227,7 @@ extracted path — one shared `_normalize_filters()` helper used by both.
 
 ---
 
-### B10 — Dependency floors permit versions the code cannot run on ☐
+### B10 — Dependency floors permit versions the code cannot run on ☑
 **File:** [pyproject.toml:43-46](pyproject.toml#L43) · **Severity:** high
 
 ```toml
@@ -255,7 +259,7 @@ extraction. Optional extras are worse — every one is `>=0.0.0`.
 
 ---
 
-### B11 — Shipped `config.yaml` wipes the collection on every startup ☐
+### B11 — Shipped `config.yaml` wipes the collection on every startup ☑
 **File:** [config.yaml:52](config.yaml#L52) · **Severity:** high
 
 ```yaml
@@ -280,7 +284,7 @@ deletes a non-empty collection.
 
 ---
 
-### B12 — `log_level: DEBUG` never reaches the console ☐
+### B12 — `log_level: DEBUG` never reaches the console ☑
 **File:** [ragwire/utils/logging.py:56](ragwire/utils/logging.py#L56), [:135](ragwire/utils/logging.py#L135) · **Severity:** low
 
 ```python
@@ -300,7 +304,7 @@ creation, chunk details) is unreachable without a log file.
 
 ---
 
-### B13 — No embedding-dimension check against an existing collection ☐
+### B13 — No embedding-dimension check against an existing collection ☑
 **File:** [ragwire/core/pipeline.py:261-267](ragwire/core/pipeline.py#L261) · **Severity:** medium
 
 When the collection already exists, RAGWire attaches to it without comparing the
@@ -318,7 +322,7 @@ actionable error naming both dimensions and the exact remediation.
 
 ---
 
-### B14 — `DocumentMetadata` is declared, exported, and never used ☐
+### B14 — `DocumentMetadata` is declared, exported, and never used ☑
 **File:** [ragwire/metadata/schema.py:13](ragwire/metadata/schema.py#L13) · **Severity:** low
 
 `_process_document` builds a **raw dict** ([pipeline.py:453](ragwire/core/pipeline.py#L453))
@@ -336,7 +340,7 @@ ship an unenforced schema.
 
 ---
 
-### B15 — `extract()` truncates at 4,000 chars while docs promise 10,000 ☐
+### B15 — `extract()` truncates at 4,000 chars while docs promise 10,000 ☑
 **File:** [ragwire/metadata/extractor.py:140](ragwire/metadata/extractor.py#L140) · **Severity:** medium
 
 ```python
@@ -379,6 +383,22 @@ context window rather than a magic number.
 | G13 | **No `add_documents` batching or size guard.** A 10k-chunk document is one request. | Large documents blow request-size limits or time out mid-way, triggering B3. | Yes — internal default |
 | G14 | **Tests are import smoke tests only.** No Qdrant fixture, no fake LLM, no ingestion test. | Coverage is nominal; `--cov` in `addopts` reports on code no test exercises. | Yes |
 
+### G15 — Payload indexes do not work in local (path) mode ☐
+
+Surfaced while writing the B6 regression tests. `QdrantClient(path=...)` — the
+mode used whenever `vectorstore.url` is not an HTTP URL — emits:
+
+> *"Payload indexes have no effect in the local Qdrant."*
+
+Payload indexes are what the facet API needs, so on local storage
+`get_field_values()` returns empty lists, which means `auto_filter` and
+`get_filter_context()` show the LLM no stored values and silently degrade. The
+library currently gives no indication that a headline feature is inert.
+
+**Fix:** detect path mode at init and log one clear warning naming the affected
+features, and document that metadata filtering wants server mode
+(`docker run -p 6333:6333 qdrant/qdrant`). Related to G12.
+
 ---
 
 ## 3. Action plan
@@ -388,24 +408,24 @@ Sequenced so that each phase is independently shippable.
 ### Phase 0 — Stop the bleeding (patch 1.3.3)
 Small, no API change, no new dependency.
 
-- [ ] B1 — `hmac.compare_digest`
-- [ ] B11 — `force_recreate: false` in tracked `config.yaml`
-- [ ] B12 — console handler honours `log_level`
-- [ ] B15 — align truncation limit with documentation
-- [ ] B5 — count zero-chunk files as failed with an actionable message
-- [ ] B9 — normalize caller-supplied filters
-- [ ] G1 — add `.github/workflows/test.yml` (pytest on 3.10–3.13, run before publish)
+- [x] B1 — `hmac.compare_digest`
+- [x] B11 — `force_recreate: false` in tracked `config.yaml`
+- [x] B12 — console handler honours `log_level`
+- [x] B15 — align truncation limit with documentation
+- [x] B5 — count zero-chunk files as failed with an actionable message
+- [x] B9 — normalize caller-supplied filters
+- [x] G1 — add `.github/workflows/test.yml` (pytest on 3.10–3.13, run before publish)
 
 ### Phase 1 — Correctness (minor 1.4.0)
-- [ ] B3 — atomic per-file ingestion + completion marker; `reingest()` / `repair()`
-- [ ] B4 — retry metadata extraction, then fail loudly or tag `metadata_status`
-- [ ] B6 — derive payload index types from the declared schema, not a name allowlist
-- [ ] B7 — narrow the exception handling around index creation
-- [ ] B8 — union field keys across a sample, or use the configured schema
-- [ ] B13 — embedding-dimension guard with an actionable error
-- [ ] B10 — real dependency floors + a lockfile for CI
-- [ ] B14 — enforce or delete `DocumentMetadata`; reconcile `fiscal_year` type
-- [ ] G14 — real tests: fake LLM, in-memory Qdrant, full ingest→retrieve round trip
+- [x] B3 — atomic per-file ingestion + completion marker; `reingest()` / `repair()`
+- [x] B4 — retry metadata extraction, then fail loudly or tag `metadata_status`
+- [x] B6 — derive payload index types from the declared schema, not a name allowlist
+- [x] B7 — narrow the exception handling around index creation
+- [x] B8 — union field keys across a sample, or use the configured schema
+- [x] B13 — embedding-dimension guard with an actionable error
+- [x] B10 — real dependency floors + a lockfile for CI
+- [x] B14 — enforce or delete `DocumentMetadata`; reconcile `fiscal_year` type
+- [x] G14 — real tests: fake LLM, in-memory Qdrant, full ingest→retrieve round trip
 
 ### Phase 2 — Scale (minor 1.5.0)
 - [ ] G3 — retry/backoff on every network boundary (tenacity or hand-rolled)
@@ -460,3 +480,7 @@ These exist so "production grade" does not quietly destroy "simple setup."
 |---|---|
 | 2026-07-25 | Initial audit of v1.3.2 — 15 bugs, 14 gaps, 4-phase plan |
 | 2026-07-25 | B2 (global warning filter) marked won't-fix — intentional design choice |
+| 2026-07-25 | Phase 0 shipped: B1, B5, B9, B11, B12, B15 + CI test workflow (`85bbf68`, `13f6a53`) |
+| 2026-07-25 | Phase 1 shipped: B3, B4, B6, B7, B8, B10, B13, B14 + 31 regression tests (`13f6a53`, `bb3019e`) |
+| 2026-07-25 | New: `reingest_documents()`, `delete_document()`, `IngestStats.metadata_failed`, `metadata_status` payload field |
+| 2026-07-25 | G15 logged — payload indexes are inert in local path mode, silently disabling metadata filtering |

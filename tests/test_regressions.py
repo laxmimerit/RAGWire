@@ -371,6 +371,92 @@ def test_b15_default_char_limit_is_10k():
 
 
 # --------------------------------------------------------------------------- #
+# B4 / B5 — document processing: retries, status tagging, empty documents
+# --------------------------------------------------------------------------- #
+
+class _FlakyExtractor:
+    """Fails `failures` times, then succeeds."""
+
+    def __init__(self, failures):
+        self.failures = failures
+        self.attempts = 0
+
+    def extract(self, text, stored_values=None):
+        self.attempts += 1
+        if self.attempts <= self.failures:
+            raise RuntimeError("connection refused")
+        return {"company_name": "acme inc."}
+
+
+def _pipeline_for_processing(extractor, retries=2):
+    from ragwire.processing.splitter import get_splitter
+
+    rag = object.__new__(RAGWire)
+    rag.splitter = get_splitter(chunk_size=100, chunk_overlap=0)
+    rag.metadata_extractor = extractor
+    rag._metadata_retries = retries
+    rag._stored_values_cache = {}
+    return rag
+
+
+def _process(rag, text):
+    return rag._process_document(
+        text=text, file_path="/d/f.pdf", file_name="f.pdf",
+        file_type="pdf", file_hash="a" * 64,
+    )
+
+
+def test_b5_empty_document_yields_no_chunks(monkeypatch):
+    rag = _pipeline_for_processing(_FlakyExtractor(failures=0))
+    chunks, ok = _process(rag, "")
+
+    # ingest_documents turns this into a `failed` entry rather than letting the
+    # file disappear from the stats entirely.
+    assert chunks == []
+    assert ok is True
+
+
+def test_b4_metadata_retry_eventually_succeeds(monkeypatch):
+    monkeypatch.setattr("ragwire.core.pipeline.time.sleep", lambda s: None)
+    extractor = _FlakyExtractor(failures=1)
+    rag = _pipeline_for_processing(extractor, retries=2)
+
+    chunks, ok = _process(rag, "word " * 200)
+
+    assert extractor.attempts == 2
+    assert ok is True
+    assert chunks[0].metadata["metadata_status"] == "ok"
+    assert chunks[0].metadata["company_name"] == "acme inc."
+
+
+def test_b4_exhausted_retries_tag_the_document(monkeypatch):
+    monkeypatch.setattr("ragwire.core.pipeline.time.sleep", lambda s: None)
+    extractor = _FlakyExtractor(failures=99)
+    rag = _pipeline_for_processing(extractor, retries=2)
+
+    chunks, ok = _process(rag, "word " * 200)
+
+    assert extractor.attempts == 3  # 1 initial + 2 retries
+    assert ok is False
+    # Chunks are still ingested and searchable, but discoverable as incomplete
+    # instead of silently lacking metadata forever.
+    assert chunks
+    assert all(c.metadata["metadata_status"] == "failed" for c in chunks)
+
+
+def test_b3_every_chunk_records_total_chunks(monkeypatch):
+    monkeypatch.setattr("ragwire.core.pipeline.time.sleep", lambda s: None)
+    rag = _pipeline_for_processing(_FlakyExtractor(failures=0))
+
+    chunks, _ = _process(rag, "word " * 500)
+
+    # get_ingest_status relies on this marker to tell partial from complete.
+    assert len(chunks) > 1
+    assert all(c.metadata["total_chunks"] == len(chunks) for c in chunks)
+    assert [c.metadata["chunk_index"] for c in chunks] == list(range(len(chunks)))
+
+
+# --------------------------------------------------------------------------- #
 # B11 — the tracked config must not wipe the collection on startup
 # --------------------------------------------------------------------------- #
 
