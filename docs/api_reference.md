@@ -58,9 +58,25 @@ Ingest a list of documents into the vector store. Skips files already ingested (
     "skipped": 1,         # Already in vector store (duplicate)
     "failed": 0,          # Failed to load or process
     "chunks_created": 84, # Total chunks added to Qdrant
+    "metadata_failed": 0, # Ingested, but LLM metadata extraction failed
+    "replaced": 0,        # Changed files whose old chunks were removed first
     "errors": []          # List of {"file": ..., "error": ...} dicts
 }
 ```
+
+`processed + skipped + failed` always equals `total`. If a document is missing
+from your results, that identity is the first thing to check.
+
+Two counters deserve attention:
+
+- **`metadata_failed`** counts documents that were stored but carry no
+  LLM-extracted metadata, usually because the LLM was unreachable. They are
+  included in `processed` and their text is searchable, but they match no
+  metadata filter until re-ingested. Each such chunk is tagged
+  `metadata_status: "failed"`. Fix the LLM, then call `reingest_documents()`.
+- **`replaced`** counts files whose content changed since a previous ingest.
+  Their older chunks were deleted before the new ones were written, so the
+  collection holds exactly one version. Controlled by `ingestion.replace_changed`.
 
 ```python
 stats = rag.ingest_documents([
@@ -71,6 +87,59 @@ print(f"Processed: {stats['processed']}, Chunks: {stats['chunks_created']}")
 ```
 
 A progress bar (`tqdm`) is shown automatically while ingestion runs.
+
+---
+
+#### `rag.reingest_documents(file_paths)`
+
+Force re-ingestion, replacing whatever is already stored for those files. Every
+existing chunk for each file is deleted first, so this bypasses the SHA256
+deduplication that makes `ingest_documents()` a no-op on unchanged files.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `file_paths` | `list[str]` | Yes | Paths to re-ingest |
+
+**Returns:** `dict`, the same stats dict as `ingest_documents()`
+
+Use it in two situations:
+
+1. **Recovering documents ingested without metadata.** If a run reported
+   `metadata_failed` above zero, those documents are invisible to filtered
+   retrieval until re-ingested.
+2. **A document changed on disk** and `ingestion.replace_changed` is off, so the
+   old version is still stored alongside the new one.
+
+```python
+stats = rag.ingest_documents(["data/report.pdf"])
+
+if stats["metadata_failed"]:
+    # The LLM was down. Fix it, then repair only the affected documents.
+    rag.reingest_documents(["data/report.pdf"])
+```
+
+---
+
+#### `rag.delete_document(file_path)`
+
+Remove every chunk of a document from the collection.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `file_path` | `str` | Yes | Path to the source file |
+
+**Returns:** `int`, the number of chunks deleted. Returns `0` if the document was
+never ingested.
+
+!!! warning "The file must still exist on disk"
+    Chunks are identified by the SHA256 hash of the file's contents, so the file
+    has to be readable for its hash to be computed. Delete from the collection
+    before deleting from disk, not after.
+
+```python
+removed = rag.delete_document("data/old_report.pdf")
+print(f"Removed {removed} chunks")
+```
 
 ---
 
@@ -526,6 +595,48 @@ retriever:
 
 !!! note "Agent use case"
     Keep `auto_filter: false` when an agent is driving retrieval. Use `rag.extract_filters(query)` to let the agent inspect and adjust filters before calling `retrieve(filters=...)`.
+
+---
+
+### `ingestion` section
+
+Entirely optional. Omit the block and the defaults below apply, which are
+deliberately conservative: single-threaded, no chunk deduplication, and the same
+behaviour as earlier versions apart from retries.
+
+| Key | Required | Default | Description |
+|---|---|---|---|
+| `workers` | No | `1` | Documents prepared in parallel. Loading, splitting and the metadata LLM call run concurrently; writes always stay sequential. |
+| `batch_size` | No | `64` | Chunks per write request. Bounds request size on large documents. |
+| `retries` | No | `2` | Retries per failed write or metadata call, with exponential backoff. |
+| `replace_changed` | No | `true` | When a file's content has changed, delete the old version's chunks before writing the new ones. |
+| `dedup_chunks` | No | `false` | Drop chunks whose text repeats within the same document. |
+
+```yaml
+ingestion:
+  workers: 4              # raise for large batches
+  batch_size: 64
+  retries: 2
+  replace_changed: true
+  dedup_chunks: false
+```
+
+**`workers`** is the setting worth changing for large batches. Ingest time is
+dominated by document conversion and the per-document LLM call, and those are what
+run in parallel. Results are always applied in input order, so stats and logs stay
+deterministic no matter which document finishes first.
+
+!!! warning "Leave `workers: 1` on local file storage"
+    Local Qdrant (`vectorstore.url` pointing at a folder rather than an HTTP URL)
+    takes an exclusive lock and is single-process only.
+
+**`retries`** applies to network failures. Programming errors such as `TypeError`
+and `AttributeError` are re-raised immediately rather than retried, so a genuine
+bug surfaces at once instead of after several backoff delays.
+
+**`dedup_chunks`** helps with long filings that repeat the same boilerplate across
+sections, where duplicates otherwise crowd real content out of the top-k. Every
+chunk carries a `content_hash` in its metadata whether or not this is enabled.
 
 ---
 
