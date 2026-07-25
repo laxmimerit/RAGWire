@@ -83,17 +83,32 @@ rag = RAGWire("config.yaml")
 
 rag.ingest_directory("data/", recursive=True)
 
+answer = rag.query("What was Apple's revenue in 2025?")
+print(answer.formatted())
+```
+
+Example output:
+
+```text
+Apple reported total net sales of $416.2 billion for fiscal 2025 [1], an
+increase of 8% year over year [1].
+
+Sources:
+  [1] Apple_10k_2025.pdf
+```
+
+If the documents do not answer the question, `query()` says so rather than falling back on the model's own knowledge. To work with the underlying chunks instead:
+
+```python
 results = rag.retrieve("What was Apple's revenue in 2025?", top_k=5)
 for doc in results:
     print(doc.page_content[:300])
     print(doc.metadata)
 ```
 
-Example output:
-
 ```text
 Apple reported total net sales of ...
-{'company_name': 'apple inc.', 'doc_type': '10-k', 'fiscal_year': [2025], 'file_name': 'Apple_10k_2025.pdf'}
+{'company_name': 'apple inc.', 'doc_type': '10-k', 'fiscal_year': 2025, 'file_name': 'Apple_10k_2025.pdf'}
 ```
 
 ## Best For
@@ -102,6 +117,8 @@ Apple reported total net sales of ...
 - Internal knowledge bases over PDFs and office documents
 - Research document search with metadata filters
 - Agentic RAG systems that need filter context
+- Giving Claude Desktop, Claude Code or Cursor access to your own documents over MCP
+- Scheduled pipelines that must stay in step with a folder or an S3 bucket
 - Hybrid retrieval applications using Qdrant
 
 ## Supported Stack
@@ -113,6 +130,11 @@ Apple reported total net sales of ...
 | Embeddings | Ollama, OpenAI, OpenRouter, HuggingFace, Google, FastEmbed |
 | LLM metadata extraction | Ollama, OpenAI, OpenRouter, Gemini, Groq, Anthropic |
 | Retrieval | Similarity, MMR, hybrid dense+sparse search, cross-encoder reranking |
+| Reranking | Local cross-encoder (sentence-transformers), Cohere Rerank |
+| Answer generation | Cited answers with refusal, sync and async |
+| Sources | Local folders, S3 and S3-compatible stores, custom connectors |
+| Agent integration | MCP server for Claude Desktop, Claude Code, Cursor |
+| Evaluation | recall@k, MRR, hit rate, precision, config sweeps |
 | Configuration | YAML + environment variables |
 
 ## Project Status
@@ -121,19 +143,28 @@ RAGWire is in beta and designed for developers building production-style RAG sys
 
 ## Features
 
+**Ingestion**
+
 - **Document Loading**: PDF, DOCX, XLSX, PPTX and more via MarkItDown
 - **LLM Metadata Extraction**: extracts company, doc type, fiscal period using your LLM; fully customisable via YAML
 - **Smart Text Splitting**: markdown-aware and recursive chunking strategies
+- **SHA256 Deduplication**: at both file and chunk level
+- **Directory Ingestion**: ingest an entire folder with one call, with optional recursive scan
+- **Source Sync**: `rag.sync()` reconciles against local folders and S3, including deletions that plain ingestion never sees
+
+**Retrieval and answers**
+
 - **Multiple Embedding Providers**: Ollama, OpenAI, OpenRouter, HuggingFace, Google, FastEmbed
 - **Qdrant Vector Store**: dense, sparse, and hybrid search
 - **Advanced Retrieval**: similarity, MMR, and hybrid search with metadata filtering
-- **Grounded Answers**: `rag.query()` returns cited answers and refuses when the documents come up short
-- **MCP Server**: `ragwire mcp serve` exposes a collection to Claude Desktop, Claude Code and Cursor
-- **Source Sync**: `rag.sync()` reconciles against local folders and S3, including deletions
 - **Reranking**: optional cross-encoder second stage, local and API-key-free by default
-- **Evaluation**: recall@k, MRR and config sweeps against your own golden set
-- **SHA256 Deduplication**: at both file and chunk level
-- **Directory Ingestion**: ingest an entire folder with one call, with optional recursive scan
+- **Grounded Answers**: `rag.query()` returns cited answers and refuses when the documents come up short, with `aquery()` for async callers
+
+**Operating it**
+
+- **Evaluation**: recall@k, MRR and config sweeps against your own golden set, so tuning is measured rather than guessed
+- **MCP Server**: `ragwire mcp serve` exposes a collection to Claude Desktop, Claude Code and Cursor
+- **CLI**: `ragwire ingest`, `sync`, `eval` and `mcp serve`
 - **Env Var Substitution**: use `${VAR}` in `config.yaml` for secrets
 
 ## Architecture
@@ -163,9 +194,17 @@ pip install "ragwire[ollama]"
 # With OpenRouter support (LLM + embeddings; requires Python >= 3.10)
 pip install "ragwire[openrouter]"
 
-# With all providers
+# Optional capabilities
+pip install "ragwire[rerank]"   # local cross-encoder reranking, no API key
+pip install "ragwire[cohere]"   # hosted reranking
+pip install "ragwire[mcp]"      # MCP server for Claude Desktop / Code / Cursor
+pip install "ragwire[s3]"       # S3 source connector for rag.sync()
+
+# Everything
 pip install "ragwire[all]"
 ```
+
+Nothing above is needed for the core install. Reranking, MCP and S3 are opt-in, and evaluation needs no extra package at all.
 
 ## Quick Start
 
@@ -318,6 +357,32 @@ retriever:
   auto_filter: false   # set true to enable LLM-based filter extraction from every query
 ```
 
+### Optional blocks
+
+Each of these is entirely optional. Omit it and the feature is off.
+
+```yaml
+retriever:
+  top_k: 5
+  rerank:                              # needs: pip install "ragwire[rerank]"
+    provider: "cross_encoder"          # or "cohere"
+    model: "BAAI/bge-reranker-base"
+    fetch_k: 25                        # candidates scored, default max(4 * top_k, 20)
+
+generation:                            # controls rag.query() only
+  max_context_chars: 12000             # budget for the source block sent to the LLM
+
+sources:                               # used by rag.sync()
+  - type: local
+    path: "./documents"
+    recursive: true
+  - type: s3                           # needs: pip install "ragwire[s3]"
+    bucket: "my-filings"
+    prefix: "2026/"
+```
+
+See the [API reference](https://laxmimerit.github.io/RAGWire/api_reference/) for every key.
+
 ## Embedding Providers
 
 ```yaml
@@ -357,6 +422,7 @@ Start with the basic examples, then move into app and agent tutorials:
 | Basic ingestion and retrieval | [`examples/basic_usage.py`](examples/basic_usage.py) |
 | Custom metadata extraction | [`examples/custom_metadata_usage.py`](examples/custom_metadata_usage.py) |
 | RAG agent helper | [`examples/rag_agent.py`](examples/rag_agent.py) |
+| Golden set for evaluation | [`examples/golden.example.yaml`](examples/golden.example.yaml) |
 | Tutorial series overview | [`examples/tutorials/00_series_overview.md`](examples/tutorials/00_series_overview.md) |
 | FastAPI production app | [`examples/tutorials/15_fastapi_production_app.md`](examples/tutorials/15_fastapi_production_app.md) |
 | LangGraph RAG pipeline | [`examples/tutorials/05_langgraph_rag_pipeline.md`](examples/tutorials/05_langgraph_rag_pipeline.md) |
@@ -370,10 +436,18 @@ Start with the basic examples, then move into app and agent tutorials:
 - Tune `chunk_size`, `chunk_overlap`, `top_k`, and `search_type` for your document type.
 - Use metadata filters for high-precision retrieval over multi-company, multi-year, or multi-domain collections.
 - Enable `use_sparse: true` with `fastembed` when keyword matching matters alongside semantic search.
+- **Measure before you tune.** Write twenty real questions into a golden set and run `ragwire eval golden.yaml`. Chunk size and `top_k` advice, including the advice above, is a guess until it is checked against your own corpus.
+- **Turn on reranking, then prove it helped.** `ragwire eval golden.yaml --compare-rerank` runs both ways. Unchanged recall with improved MRR is the expected shape: reranking reorders the candidate pool rather than widening it.
+- **Prefer `sync()` over repeated `ingest_directory()`** for anything scheduled. Ingestion only ever adds, so a document deleted at the source keeps answering queries forever. Run `ragwire sync --dry-run` the first time.
+- **Log `answer.confidence` and `answer.refused`** in user-facing apps. A run of refusals usually means a retrieval or filtering problem, not a generation one.
 
 ## Security & Privacy
 
-RAGWire can run with local Ollama models for teams that do not want document text sent to hosted LLM providers. If you configure hosted LLM or embedding providers, the relevant document text or query text is sent to those providers for metadata extraction, embeddings, or filter extraction. Keep secrets out of source control by using environment variables in `config.yaml`.
+RAGWire can run with local Ollama models for teams that do not want document text sent to hosted LLM providers. If you configure hosted LLM or embedding providers, the relevant document text or query text is sent to those providers for metadata extraction, embeddings, answer generation, or filter extraction. Keep secrets out of source control by using environment variables in `config.yaml`.
+
+A fully local setup is possible end to end: Ollama for the LLM and embeddings, `cross_encoder` for reranking, and a local or self-hosted Qdrant. Reranking in particular defaults to a local model precisely so that turning it on does not push document text to a third party.
+
+`rag.query()` sends retrieved chunk text to whichever LLM you configured. The MCP server exposes your collection to whatever client you connect it to, so treat that connection with the same care as any other data access.
 
 ## How RAGWire Fits
 
@@ -408,6 +482,27 @@ embedding = get_embedding({"provider": "ollama", "model": "qwen3-embedding:0.6b"
 store = QdrantStore(config={"url": "http://localhost:6333"}, embedding=embedding)
 store.set_collection("my_collection")
 vectorstore = store.get_store()
+```
+
+The newer subsystems are composable in the same way. Each takes what it needs and holds no hidden dependency on `RAGWire`:
+
+```python
+from ragwire.eval import GoldenSet, evaluate, sweep
+from ragwire.generation import AnswerGenerator
+from ragwire.mcp import search_documents, get_filter_context
+from ragwire.retriever import get_reranker
+from ragwire.sources import LocalSource, REGISTRY, Source
+
+# Answer from documents you selected yourself
+generator = AnswerGenerator(rag.llm, max_context_chars=20000)
+answer = generator.generate("What was net income?", my_documents)
+
+# Rerank a candidate list from anywhere
+reranker = get_reranker({"provider": "cross_encoder"})
+best = reranker.rerank("net income", candidates, top_n=5)
+
+# Agent-ready text without running an MCP server
+context = get_filter_context(rag, "apple revenue")
 ```
 
 ## Package Structure

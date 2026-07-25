@@ -22,8 +22,25 @@ graph TD
     PIPE --> EMB["embeddings/factory.py\nget_embedding"]
     PIPE --> QS["vectorstores/qdrant_store.py\nQdrantStore"]
     PIPE --> HYB["retriever/hybrid.py\nget_retriever / hybrid_search"]
+    PIPE --> RRK["retriever/rerank.py\nget_reranker (optional)"]
+    PIPE --> GEN["generation/generator.py\nAnswerGenerator"]
+    PIPE --> SRC["sources/base.py\nbuild_sources (optional)"]
     PIPE --> LOG["utils/logging.py\nsetup_logging"]
+
+    CLI["cli.py\nthe ragwire command"] --> PIPE
+    CLI --> MCP["mcp/server.py\nbuild_server / serve"]
+    CLI --> EVAL["eval/runner.py\nevaluate / sweep"]
+    MCP --> MTOOL["mcp/tools.py\nsearch_documents, answer_question, ..."]
+    MTOOL -.-> PIPE
+    EVAL -.-> PIPE
 ```
+
+Two of these deliberately do not depend on `RAGWire`. `eval/` calls whatever
+`retrieve` it is handed, and `mcp/tools.py` takes the pipeline as an argument,
+so both are testable without a vector store and reusable outside the package.
+
+`generation/` is the same shape one level down: `AnswerGenerator` is given
+documents and returns an `Answer`, holding no retrieval logic of its own.
 
 ---
 
@@ -38,6 +55,11 @@ graph TD
 | `factory.py` (embeddings) | `langchain-openai` · `langchain-ollama` · `langchain-huggingface` · `langchain-google-genai` · `openrouter` | Lazy import; only the configured provider is loaded |
 | `qdrant_store.py` | `qdrant-client` · `langchain-qdrant` · `fastembed` | `fastembed` only needed for hybrid search |
 | `hybrid.py` | `langchain-qdrant` (QdrantVectorStore) | Similarity / MMR / hybrid retrieval |
+| `rerank.py` | `sentence-transformers` · `cohere` | Optional; lazy import, and the cross-encoder model itself loads only on first use |
+| `generator.py` | `langchain-core` | Grounded answers with citations |
+| `eval/` | nothing beyond `pyyaml` | Golden sets and metrics are plain arithmetic |
+| `sources/s3.py` | `boto3` | Optional; `local.py` needs nothing |
+| `mcp/server.py` | `mcp` | Optional; `mcp/tools.py` needs nothing |
 | `config.py` | `pyyaml` · `python-dotenv` | YAML loading + env var resolution |
 | `pipeline.py` (LLM) | `langchain-openai` · `langchain-ollama` · `langchain-openrouter` · `langchain-google-genai` · `langchain-groq` · `langchain-anthropic` | Lazy import; only the configured provider is loaded |
 
@@ -56,12 +78,20 @@ classDiagram
         +vectorstore_wrapper: QdrantStore
         +vectorstore: QdrantVectorStore
         +retriever: Retriever
+        +reranker: BaseReranker or None
+        +generator: AnswerGenerator
+        +sources: List[Source]
+        +llm: BaseChatModel
         -_filter_fields: List[str]
         -_stored_values_cache: dict or None
+        -_rerank_config: dict
 
         +ingest_documents(file_paths) dict
         +ingest_directory(directory) dict
-        +retrieve(query, top_k, filters) List[Document]
+        +sync(sources, delete_missing, dry_run) SyncStats
+        +retrieve(query, top_k, filters, rerank) List[Document]
+        +query(question, top_k, filters, rerank) Answer
+        +aquery(question, top_k, filters, rerank) Answer
         +hybrid_search(query, k, filters) List[Document]
         +extract_metadata(text) dict
         +get_field_values(fields, limit) dict

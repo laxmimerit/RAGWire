@@ -361,7 +361,7 @@ Returns: `dict`
 
 ```python
 metadata = rag.extract_metadata(open("report.txt").read())
-# → {'company_name': 'apple', 'doc_type': '10-k', 'fiscal_quarter': None, 'fiscal_year': [2025]}
+# → {'company_name': 'apple', 'doc_type': '10-k', 'fiscal_quarter': None, 'fiscal_year': 2025}
 ```
 
 ---

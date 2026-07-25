@@ -1557,7 +1557,7 @@ class RAGWire:
         Example:
             >>> metadata = rag.extract_metadata(open("report.pdf.txt").read())
             >>> print(metadata)
-            {'company_name': 'apple inc.', 'doc_type': '10-k', 'fiscal_year': [2025]}
+            {'company_name': 'apple inc.', 'doc_type': '10-k', 'fiscal_year': 2025}
         """
         return self.metadata_extractor.extract(text, stored_values=self._stored_values)
 

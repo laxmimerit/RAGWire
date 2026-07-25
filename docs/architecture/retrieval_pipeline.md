@@ -27,7 +27,7 @@ flowchart TD
 
     E["Build Qdrant Filter\n_build_qdrant_filter(filters)\nfield=value → FieldCondition\nlist=[v1,v2] → should (OR logic)"]
 
-    E --> F["Build search_kwargs\nk=top_k\nfilter=qdrant_filter"]
+    E --> F["Build search_kwargs\nk=top_k, or fetch_k when reranking\nfilter=qdrant_filter"]
 
     F --> G["vectorstore.as_retriever()\nsearch_type: similarity / mmr / hybrid"]
 
@@ -39,10 +39,34 @@ flowchart TD
     I -->|mmr| K["MMR search\ndense vectors\nfetch_k=20 candidates\nre-rank for diversity"]
     I -->|hybrid| L["Hybrid search\ndense + sparse (BM25)\nRetrievalMode.HYBRID\nRRF fusion"]
 
-    J --> M(["List[Document]\npage_content + metadata"])
-    K --> M
-    L --> M
+    J --> N
+    K --> N
+    L --> N
+
+    N{reranker\nconfigured?}
+    N -->|No| M
+    N -->|Yes| O["Score every candidate against the query\nCrossEncoder or Cohere Rerank\nsort, cut to top_k\nattach metadata['rerank_score']"]
+    O --> M
+
+    M(["List[Document]\npage_content + metadata"])
+
+    M --> P{"called via\nquery()?"}
+    P -->|No| Q(["returned to the caller"])
+    P -->|Yes| R["Build numbered source block\nwithin generation.max_context_chars"]
+    R --> S["LLM answers from those sources only\nor returns the refusal sentinel"]
+    S --> T(["Answer\ntext + citations + confidence"])
 ```
+
+Two stages here are off unless configured. Without a `retriever.rerank` block
+the reranking node is skipped entirely and the vector store's own `top_k` is
+returned. `query()` adds the last three nodes; `retrieve()` stops at the
+document list.
+
+The candidate count matters: with reranking active, first-stage retrieval is
+asked for `fetch_k` documents rather than `top_k`, because a reranker can only
+reorder what it is handed. Under MMR, that pool is widened too, since MMR
+selects `k` out of its own `fetch_k` and could not otherwise supply the
+candidates the reranker was asked to score.
 
 ---
 

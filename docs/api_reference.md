@@ -505,7 +505,7 @@ Automatically passes stored collection values so the LLM reuses existing entity 
 ```python
 metadata = rag.extract_metadata(open("report.txt").read())
 print(metadata)
-# {'company_name': 'apple inc.', 'doc_type': '10-k', 'fiscal_quarter': None, 'fiscal_year': [2025]}
+# {'company_name': 'apple inc.', 'doc_type': '10-k', 'fiscal_quarter': None, 'fiscal_year': 2025}
 ```
 
 ---
@@ -1062,7 +1062,7 @@ extractor = MetadataExtractor(llm, schema_model=MySchema)
     "company_name": "apple inc.",
     "doc_type": "10-k",
     "fiscal_quarter": None,
-    "fiscal_year": [2025]
+    "fiscal_year": 2025
 }
 ```
 
