@@ -66,6 +66,9 @@ dependencies = [
     "tqdm>=4.66.0",
 ]
 
+[project.scripts]
+ragwire = "ragwire.cli:main"
+
 [project.optional-dependencies]
 # Provider extras. Floors are set to the first release line that targets
 # langchain-core 1.x. Older releases resolve but fail at runtime.
@@ -122,6 +125,11 @@ cohere = [
     "cohere>=5.0.0,<6.0.0",
 ]
 
+# MCP server, for exposing a collection to Claude Desktop, Claude Code, Cursor
+mcp = [
+    "mcp>=1.2.0,<2.0.0",
+]
+
 # Development dependencies
 dev = [
     "pytest>=7.0.0",
@@ -148,6 +156,7 @@ all = [
     "ragwire[openrouter]",
     "ragwire[rerank]",
     "ragwire[cohere]",
+    "ragwire[mcp]",
     "ragwire[dev]",
 ]
 

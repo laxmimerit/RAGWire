@@ -1117,6 +1117,64 @@ logging:
 
 ---
 
+## Command Line
+
+Installing the package puts a `ragwire` command on your PATH.
+
+| Command | What it does |
+|---|---|
+| `ragwire --version` | Print the installed version |
+| `ragwire mcp serve [--config CONFIG] [--name NAME]` | Run the MCP server over stdio. Requires `pip install ragwire[mcp]`. See [MCP Server](cookbook/mcp_server.md). |
+| `ragwire ingest PATH [--config CONFIG] [--recursive]` | Ingest a file or directory |
+| `ragwire eval GOLDEN [--config CONFIG] [--top-k K] [--compare-rerank]` | Score retrieval against a golden set |
+
+`--config` defaults to `config.yaml` for every subcommand.
+
+```bash
+ragwire ingest ./documents --recursive
+ragwire eval golden.yaml --compare-rerank
+```
+
+`ragwire ingest` exits non-zero when every file failed, so it can be used in a script without checking its output.
+
+---
+
+## MCP Tools
+
+`ragwire.mcp` holds the tool implementations behind the MCP server. They are plain functions with no MCP dependency, so they work anywhere an agent needs to reach a collection.
+
+```python
+from ragwire.mcp import search_documents, answer_question, get_filter_context, collection_stats
+```
+
+| Function | Signature | Returns |
+|---|---|---|
+| `search_documents` | `(rag, query, top_k=5, filters=None)` | Matching passages with sources, as text |
+| `answer_question` | `(rag, question, top_k=5, filters=None)` | A cited answer, or a refusal telling the agent not to fill the gap itself |
+| `get_filter_context` | `(rag, query="")` | The fields and stored values available for filtering |
+| `collection_stats` | `(rag)` | Collection name, chunk count, vector size |
+
+`filters` accepts a dict or a JSON string, since models frequently send a string where a schema asked for an object. An unparseable value raises `ValueError` with a message the agent can act on.
+
+Chunk metadata is filtered before it reaches the agent: `content_hash`, `total_chunks`, `chunk_index`, `metadata_status` and any key starting with `_` are hidden, since they describe how a chunk was stored rather than what it says.
+
+#### `build_server(rag, name="ragwire")`
+
+Build a `FastMCP` server exposing the four tools above. Raises `ImportError` when the `mcp` package is missing.
+
+```python
+from ragwire import RAGWire
+from ragwire.mcp import build_server
+
+build_server(RAGWire("config.yaml")).run()
+```
+
+#### `serve(config_path="config.yaml", name="ragwire")`
+
+Build and run the server over stdio. This is what `ragwire mcp serve` calls.
+
+---
+
 ## Evaluation API
 
 `ragwire.eval` scores retrieval against a golden set. No extra install is needed. See [Measure Retrieval Quality](cookbook/evaluation.md) for the guide.
