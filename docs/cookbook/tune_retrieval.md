@@ -21,8 +21,8 @@ retriever:
 
 **Rule of thumb:**
 
-- Long-form documents (10-Ks, contracts) → larger chunks (`8k–12k`)
-- FAQ-style or structured content → smaller chunks (`500–2k`)
+- Long-form documents (10-Ks, contracts) → larger chunks (`8k` to `12k`)
+- FAQ-style or structured content → smaller chunks (`500` to `2k`)
 - Queries needing breadth (summaries) → higher `top_k`
 - Queries needing precision (exact figures) → lower `top_k` + explicit filters
 
@@ -30,19 +30,19 @@ retriever:
 
 | Search Type | Best For | Requires |
 |---|---|---|
-| `similarity` | General-purpose dense retrieval | — |
+| `similarity` | General-purpose dense retrieval | nothing |
 | `hybrid` | Mixed keyword + semantic queries | `use_sparse: true` + `fastembed` |
-| `mmr` | Avoiding repetitive results | — |
+| `mmr` | Avoiding repetitive results | nothing |
 
 ## Override at Query Time
 
 `top_k` in config sets the default. Override per query without changing config:
 
 ```python
-# Broad summary query — return more chunks
+# Broad summary query, so return more chunks
 results = rag.retrieve("summarize Apple's 2025 annual report", top_k=10)
 
-# Precise fact lookup — return fewer, higher-precision chunks
+# Precise fact lookup, so return fewer, higher-precision chunks
 results = rag.retrieve("Apple net income 2025", top_k=3)
 ```
 

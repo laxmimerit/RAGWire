@@ -86,7 +86,7 @@ class DocumentMetadata(BaseModel):
             "example": {
                 "company_name": "apple",
                 "doc_type": "10-K",
-                "fiscal_year": [2025],
+                "fiscal_year": 2025,
                 "source": "/data/Apple_10k_2025.pdf",
                 "file_name": "Apple_10k_2025.pdf",
                 "file_type": "pdf",

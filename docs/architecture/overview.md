@@ -1,4 +1,4 @@
-# RAGWire — System Overview
+# RAGWire System Overview
 
 RAGWire is a production-grade RAG (Retrieval-Augmented Generation) toolkit. It has two primary workflows: **Ingestion** (storing documents) and **Retrieval** (finding relevant chunks for a query). Both are orchestrated by the central `RAGWire` class.
 
@@ -10,7 +10,7 @@ RAGWire is a production-grade RAG (Retrieval-Augmented Generation) toolkit. It h
 graph TB
     User(["User / Application"])
 
-    subgraph Core ["RAGWire — pipeline.py"]
+    subgraph Core ["RAGWire: pipeline.py"]
         direction LR
         Ingest["ingest_documents()"]
         Retrieve["retrieve()"]
@@ -68,7 +68,7 @@ graph TB
 | **Output** | Stats dict (processed, skipped, chunks) | List of `Document` objects |
 | **LLM used for** | Extracting metadata from document content | Extracting filters from query |
 | **Qdrant operation** | `add_documents` (upsert) | `similarity_search` / hybrid search |
-| **Deduplication** | SHA256 file hash checked before ingestion | — |
+| **Deduplication** | SHA256 file hash checked before ingestion | not applicable |
 | **Caching** | `_stored_values_cache` invalidated after run | `_stored_values_cache` populated on first call |
 
 ---

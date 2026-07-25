@@ -1,6 +1,6 @@
 # RAGWire with HuggingFace
 
-Use HuggingFace sentence-transformers for local embeddings — no API key, runs on CPU or GPU.
+Use HuggingFace sentence-transformers for local embeddings. No API key is needed, and it runs on CPU or GPU.
 
 > HuggingFace does not provide a hosted chat LLM in RAGWire. Pair it with Ollama, OpenAI, Groq, or Anthropic for the metadata extraction LLM.
 

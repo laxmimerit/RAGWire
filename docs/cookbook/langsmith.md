@@ -1,6 +1,6 @@
 # LangSmith Tracing
 
-RAGWire uses LangChain internally for LLM calls (metadata extraction, filter extraction). Because of this, **LangSmith tracing works out of the box** — no code changes needed. Just set four environment variables and every LLM call RAGWire makes will appear in your LangSmith dashboard.
+RAGWire uses LangChain internally for LLM calls (metadata extraction, filter extraction). Because of this, **LangSmith tracing works out of the box** with no code changes. Just set four environment variables and every LLM call RAGWire makes will appear in your LangSmith dashboard.
 
 ## Enable Tracing
 
@@ -15,7 +15,7 @@ LANGCHAIN_TRACING_V2=true
 
 Get your API key from [smith.langchain.com](https://smith.langchain.com).
 
-RAGWire loads `.env` automatically at startup via `python-dotenv` — no additional setup required.
+RAGWire loads `.env` automatically at startup via `python-dotenv`, so no additional setup is required.
 
 ## What Gets Traced
 
@@ -35,7 +35,7 @@ Each trace shows:
 - Latency per call
 - Token usage (if supported by the provider)
 
-This is especially useful for debugging why the LLM extracted `"apple"` instead of `"apple inc."` — you can inspect the exact prompt and grounding that was passed.
+This is especially useful for debugging why the LLM extracted `"apple"` instead of `"apple inc."`, because you can inspect the exact prompt and grounding that was passed.
 
 ## Disable Tracing
 

@@ -32,8 +32,8 @@ Initialize the pipeline from a YAML config file.
 
 **Raises:**
 
-- `FileNotFoundError` — config file not found
-- `ValueError` — missing required config keys (e.g. `llm.model`)
+- `FileNotFoundError`: config file not found
+- `ValueError`: missing required config keys (e.g. `llm.model`)
 
 ```python
 rag = RAGWire("config.yaml")
@@ -80,11 +80,11 @@ Ingest all supported documents from a directory. Internally calls `ingest_docume
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `directory` | `str` | Yes | — | Path to the directory |
+| `directory` | `str` | Yes | n/a | Path to the directory |
 | `recursive` | `bool` | No | `False` | Search subdirectories |
 | `extensions` | `list[str]` | No | loader config | File extensions to include |
 
-**Returns:** `dict` — same stats dict as `ingest_documents()`
+**Returns:** `dict`, the same stats dict as `ingest_documents()`
 
 ```python
 # Ingest all PDFs/DOCX in a folder
@@ -105,7 +105,7 @@ Retrieve the most relevant chunks for a query.
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `query` | `str` | Yes | — | Search query |
+| `query` | `str` | Yes | n/a | Search query |
 | `top_k` | `int` | No | config value | Number of results to return |
 | `filters` | `dict` | No | `None` | Metadata filters (see [Metadata & Filtering](metadata.md)) |
 
@@ -113,8 +113,8 @@ Retrieve the most relevant chunks for a query.
 
 Each `Document` has:
 
-- `doc.page_content` — the chunk text
-- `doc.metadata` — dict with all metadata fields (see [Metadata Schema](metadata.md#metadata-schema))
+- `doc.page_content`: the chunk text
+- `doc.metadata`: a dict with all metadata fields (see [Metadata Schema](metadata.md#metadata-schema))
 
 **Filter behaviour:**
 
@@ -125,17 +125,18 @@ Each `Document` has:
 **When to use auto-filter vs explicit filters:** Use explicit filters in programmatic pipelines where you control the inputs (faster, zero LLM overhead). Enable `auto_filter` in simple user-facing chatbots. For agents, keep `auto_filter: false` and use `rag.extract_filters(query)` to give the agent full control over whether and how to apply filters.
 
 ```python
-# Explicit filters — LLM extraction skipped
+# Explicit filters, so LLM extraction is skipped
 results = rag.retrieve(
     "What is the net income?",
     top_k=5,
     filters={"company_name": "apple", "fiscal_year": 2025}
 )
 
-# auto_filter: true in config — LLM extracts {"company_name": "apple", "fiscal_year": 2025}
+# auto_filter: true in config, so the LLM extracts
+# {"company_name": "apple", "fiscal_year": 2025}
 results = rag.retrieve("What is Apple's net income for 2025?")
 
-# auto_filter: false (default) — pure semantic search, no filter extraction
+# auto_filter: false (default) gives pure semantic search, no filter extraction
 results = rag.retrieve("What is Apple's net income for 2025?")
 
 for doc in results:
@@ -151,7 +152,7 @@ Perform hybrid search combining dense (semantic) and sparse (keyword) vectors. R
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `query` | `str` | Yes | — | Search query |
+| `query` | `str` | Yes | n/a | Search query |
 | `k` | `int` | No | `5` | Number of results |
 | `filters` | `dict` | No | `None` | Metadata filters |
 
@@ -160,25 +161,25 @@ Perform hybrid search combining dense (semantic) and sparse (keyword) vectors. R
 !!! warning "Hybrid search requires sparse vectors"
     `hybrid_search()` only performs true hybrid (dense + sparse) search when **both** conditions are met:
 
-    1. `use_sparse: true` in `config.yaml` — collection must be created with sparse vector support
-    2. `pip install fastembed` — required for sparse encoding
+    1. `use_sparse: true` in `config.yaml`, so the collection is created with sparse vector support
+    2. `pip install fastembed`, which supplies the sparse encoder
 
     If either is missing, the call silently falls back to **dense-only similarity search**. There is no error raised.
     If your collection was created with `use_sparse: false`, you must set `force_recreate: true` and re-ingest to enable hybrid search.
 
-**`retrieve()` vs `hybrid_search()` — when to use which:**
+**Choosing between `retrieve()` and `hybrid_search()`:**
 
 | | `retrieve()` | `hybrid_search()` |
 |---|---|---|
 | Search type | Whatever is set in `config.yaml` (`similarity`, `mmr`, or `hybrid`) | Always hybrid (dense + sparse), regardless of config |
-| Auto-filter | Only when `auto_filter: true` in config (default `false`) | Same — respects `auto_filter` setting |
+| Auto-filter | Only when `auto_filter: true` in config (default `false`) | Same: respects the `auto_filter` setting |
 | `top_k` default | From `config.yaml` | `k=5` parameter |
 | Typical use | Primary method for all RAG flows | Override to force hybrid on a single call |
 
 If your `config.yaml` already has `search_type: "hybrid"`, both methods produce identical results. Use `hybrid_search()` only when your config is set to `similarity` or `mmr` and you want to force hybrid for a specific call.
 
 ```python
-# Use retrieve() in most cases — honours config search type
+# Use retrieve() in most cases. It honours the configured search type.
 results = rag.retrieve("Apple revenue fiscal 2025", top_k=5)
 
 # Use hybrid_search() to force hybrid regardless of config
@@ -202,10 +203,10 @@ Extract metadata filters from a natural language query without triggering retrie
 **Returns:** `dict` of extracted filters, or `None` if nothing was extracted.
 
 !!! note
-    This method always runs regardless of the `auto_filter` config setting. It gives agents explicit control — call it manually, decide what to do, then pass the result to `retrieve(filters=...)`.
+    This method always runs regardless of the `auto_filter` config setting. It gives agents explicit control: call it manually, decide what to do, then pass the result to `retrieve(filters=...)`.
 
 ```python
-# Agent workflow — full control over filters
+# Agent workflow with full control over filters
 filters = rag.extract_filters("muscle building studies from 2023")
 # → {"research_focus": "muscle building", "publication_year": 2023}
 
@@ -221,14 +222,14 @@ results = rag.retrieve("muscle building studies from 2023", filters=filters)
 
 #### `rag.get_filter_context(query, limit)`
 
-Build a ready-made markdown prompt block for an agent — contains available metadata fields, their stored values, the filters extracted from the current query, and instructions for the agent on how to act on them. Append or prepend to your agent's task prompt.
+Build a ready-made markdown prompt block for an agent. It contains the available metadata fields, their stored values, the filters extracted from the current query, and instructions for the agent on how to act on them. Append or prepend to your agent's task prompt.
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `query` | `str` | Yes | — | Natural language query |
+| `query` | `str` | Yes | n/a | Natural language query |
 | `limit` | `int` | No | `50` | Max stored values to show per field |
 
-**Returns:** `str` — formatted markdown block ready to inject into an agent prompt.
+**Returns:** `str`, a formatted markdown block ready to inject into an agent prompt.
 
 ```python
 filter_context = rag.get_filter_context("muscle building studies from 2023")
@@ -263,7 +264,7 @@ The returned block looks like:
 
 #### `rag.filter_fields`
 
-Property. Returns the metadata fields used for filtering and auto-filter extraction — the semantic/LLM-extracted fields only. System fields like `file_hash`, `chunk_id`, `source`, `chunk_index`, `created_at` are excluded.
+Property. Returns the metadata fields used for filtering and auto-filter extraction, meaning the LLM-extracted semantic fields only. System fields like `file_hash`, `chunk_id`, `source`, `chunk_index`, `created_at` are excluded.
 
 Use this when building dynamic filter prompts for an LLM agent. Using `discover_metadata_fields()` instead would include system fields that have no value as filters.
 
@@ -280,7 +281,7 @@ values = rag.get_field_values(fields)
 
 #### `rag.discover_metadata_fields()`
 
-Return **all** metadata field names present in the collection, including system fields. Scrolls one point — fast regardless of collection size.
+Return **all** metadata field names present in the collection, including system fields. It scrolls a single point, so it stays fast regardless of collection size.
 
 Use this for collection inspection or debugging. For building filter prompts, use `rag.filter_fields` instead.
 
@@ -301,27 +302,27 @@ Return unique values for one or more metadata fields using Qdrant's facet API. R
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `fields` | `str \| list[str]` | Yes | — | Field name or list of field names |
+| `fields` | `str \| list[str]` | Yes | n/a | Field name or list of field names |
 | `limit` | `int` | No | `50` | Max unique values to return per field. Increase for high-cardinality fields (e.g. `file_name`). |
 
 **Returns:**
-- `list` — if `fields` is a `str`
-- `dict[str, list]` — if `fields` is a `list`
+- `list` if `fields` is a `str`
+- `dict[str, list]` if `fields` is a `list`
 
 ```python
-# Single field — returns a list of up to 50 unique values
+# Single field returns a list of up to 50 unique values
 rag.get_field_values("company_name")
 # → ['apple', 'microsoft', 'google']
 
-# Multiple fields — returns a dict
+# Multiple fields return a dict
 rag.get_field_values(["company_name", "doc_type"])
 # → {'company_name': ['apple', 'microsoft', 'google'], 'doc_type': ['10-k', '10-q']}
 
-# High-cardinality field — raise the limit
+# High-cardinality field, so raise the limit
 rag.get_field_values("file_name", limit=200)
 # → ['Apple_10k_2025.pdf', 'Microsoft_10k_2025.pdf', ...]
 
-# Typical agent workflow — use filter_fields, not discover_metadata_fields()
+# Typical agent workflow: use filter_fields, not discover_metadata_fields()
 values = rag.get_field_values(rag.filter_fields)
 results = rag.retrieve("revenue", filters={"company_name": values["company_name"][0]})
 ```
@@ -332,7 +333,7 @@ results = rag.retrieve("revenue", filters={"company_name": values["company_name"
 
 Extract structured metadata from text using the configured LLM.
 
-Automatically passes stored collection values so the LLM reuses existing entity names (e.g. `"apple inc."`) rather than extracting inconsistent variants (`"apple"`, `"Apple Inc."`). This grounding is applied transparently — you do not need to pass stored values manually.
+Automatically passes stored collection values so the LLM reuses existing entity names (e.g. `"apple inc."`) rather than extracting inconsistent variants (`"apple"`, `"Apple Inc."`). This grounding is applied automatically, so you do not need to pass stored values yourself.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
@@ -372,7 +373,7 @@ print(f"Collection: {stats['collection_name']}, Chunks: {stats['total_documents'
 
 ---
 
-## Config Reference — `llm` and `embeddings`
+## Config Reference: `llm` and `embeddings`
 
 All parameters below are set in `config.yaml` and read automatically by `RAGWire` at startup.
 
@@ -384,14 +385,14 @@ Controls the LLM used for metadata extraction (and filter extraction during retr
 
 | Key | Required | Default | Description |
 |---|---|---|---|
-| `provider` | Yes | — | `ollama`, `openai`, `openrouter`, `google`, `groq`, `anthropic` |
-| `model` | Yes | — | Model name (e.g. `qwen3.5:9b`, `gpt-4o-mini`, `poolside/laguna-m.1:free`) |
+| `provider` | Yes | n/a | `ollama`, `openai`, `openrouter`, `google`, `groq`, `anthropic` |
+| `model` | Yes | n/a | Model name (e.g. `qwen3.5:9b`, `gpt-4o-mini`, `poolside/laguna-m.1:free`) |
 | `base_url` | Ollama only | `http://localhost:11434` | Ollama server URL |
-| `num_ctx` | Ollama only | LangChain default | Context window size — only set this if you need to override the default |
-| `api_key` | Google / Groq / Anthropic / OpenRouter | — | API key (or use `${ENV_VAR}` syntax) |
+| `num_ctx` | Ollama only | LangChain default | Context window size. Set this only to override the default. |
+| `api_key` | Google / Groq / Anthropic / OpenRouter | n/a | API key (or use `${ENV_VAR}` syntax) |
 
 !!! note "OpenAI"
-    OpenAI reads `OPENAI_API_KEY` from the environment automatically — no `api_key` field needed in config.
+    OpenAI reads `OPENAI_API_KEY` from the environment automatically, so no `api_key` field is needed in config.
 
 !!! note "OpenRouter"
     Uses the dedicated `ChatOpenRouter` integration (`pip install "ragwire[openrouter]"`, Python ≥ 3.10). Reads `OPENROUTER_API_KEY` from the environment automatically; `api_key` in config is optional.
@@ -442,11 +443,11 @@ Controls the embedding model used to encode documents and queries into vectors.
 
 | Key | Required | Default | Description |
 |---|---|---|---|
-| `provider` | Yes | — | `ollama`, `openai`, `openrouter`, `google`, `huggingface`, `fastembed` |
+| `provider` | Yes | n/a | `ollama`, `openai`, `openrouter`, `google`, `huggingface`, `fastembed` |
 | `model` | Most providers | provider default | Embedding model name |
 | `base_url` | Ollama only | `http://localhost:11434` | Ollama server URL |
-| `num_ctx` | Ollama only | LangChain default | Context window size — only set this if you need to override the default |
-| `api_key` | Google / OpenRouter | — | API key (or use `${ENV_VAR}` syntax) |
+| `num_ctx` | Ollama only | LangChain default | Context window size. Set this only to override the default. |
+| `api_key` | Google / OpenRouter | n/a | API key (or use `${ENV_VAR}` syntax) |
 | `batch_size` | OpenRouter only | `100` | Inputs sent per embedding request |
 | `dimensions` | OpenRouter only | model default | Output dimensionality (only if the model supports it) |
 | `model_name` | HuggingFace / FastEmbed only | see below | Model identifier (uses `model_name` key, not `model`) |
@@ -574,7 +575,7 @@ Load multiple documents in one call. Returns results in the same order as the in
 |---|---|---|---|
 | `file_paths` | `list[str]` | Yes | List of file paths to load |
 
-**Returns:** `list[dict]` — same structure as `load()` for each file.
+**Returns:** `list[dict]`, the same structure as `load()` for each file.
 
 ```python
 loader = MarkItDownLoader()
@@ -593,7 +594,7 @@ Load all supported documents from a directory.
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `directory` | `str` | Yes | — | Path to directory |
+| `directory` | `str` | Yes | n/a | Path to directory |
 | `extensions` | `list[str]` | No | all supported | File extensions to include |
 | `recursive` | `bool` | No | `False` | Scan subdirectories |
 
@@ -616,11 +617,11 @@ from ragwire import get_splitter, get_markdown_splitter, get_code_splitter
 All splitters return a `RecursiveCharacterTextSplitter` instance with a `.split_text(text)` method.
 
 **Choosing a splitter:**
-- `get_markdown_splitter` — best for PDF/DOCX/reports (converted to markdown by MarkItDown); respects document structure
-- `get_splitter` — best for plain text, HTML, or any content without markdown headers
-- `get_code_splitter` — best for source code files; splits on class/function boundaries
+- `get_markdown_splitter`: best for PDF/DOCX/reports (converted to markdown by MarkItDown); respects document structure
+- `get_splitter`: best for plain text, HTML, or any content without markdown headers
+- `get_code_splitter`: best for source code files; splits on class/function boundaries
 
-**Chunk size guidance:** Larger chunks (8k–12k chars) preserve more context per chunk — good for long-form financial/legal docs. Smaller chunks (500–2k chars) give more precise retrieval — good for FAQ-style content. `chunk_overlap` prevents context being cut mid-sentence; 20% of chunk size is a sensible default.
+**Chunk size guidance:** Larger chunks (8k to 12k chars) preserve more context per chunk, which suits long-form financial and legal documents. Smaller chunks (500 to 2k chars) give more precise retrieval, which suits FAQ-style content. `chunk_overlap` prevents context being cut mid-sentence; 20% of chunk size is a sensible default.
 
 #### `get_markdown_splitter(chunk_size, chunk_overlap)`
 
@@ -665,7 +666,7 @@ chunks = splitter.split_text(source_code)
 
 ### get_embedding
 
-Factory function — returns an embedding model instance for the configured provider.
+Factory function. Returns an embedding model instance for the configured provider.
 
 ```python
 from ragwire import get_embedding
@@ -725,7 +726,7 @@ from ragwire import MetadataExtractor
 
 #### `MetadataExtractor(llm, schema_model)`
 
-Uses `with_structured_output` with a Pydantic model for reliable, type-safe extraction — no manual JSON parsing.
+Uses `with_structured_output` with a Pydantic model for reliable, type-safe extraction, so there is no manual JSON parsing.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
@@ -738,7 +739,8 @@ from langchain_ollama import ChatOllama
 
 llm = ChatOllama(model="qwen3.5:9b", base_url="http://localhost:11434")
 
-# Default — uses FinancialMetadata schema (company_name, doc_type, fiscal_quarter, fiscal_year)
+# Default: uses the FinancialMetadata schema
+# (company_name, doc_type, fiscal_quarter, fiscal_year)
 extractor = MetadataExtractor(llm)
 
 # Custom Pydantic schema
@@ -776,7 +778,7 @@ extractor = MetadataExtractor(llm, schema_model=MySchema)
 # Basic extraction
 metadata = extractor.extract(document_text)
 
-# With grounding — LLM reuses stored entity names
+# With grounding, the LLM reuses stored entity names
 stored = rag.get_field_values(rag.filter_fields)
 metadata = extractor.extract(document_text, stored_values=stored)
 print(metadata)
@@ -847,7 +849,7 @@ See [Metadata & Filtering](metadata.md) for the full field reference.
 from ragwire import setup_logging, setup_colored_logging
 ```
 
-Use `setup_logging` for plain text logs (production, log files). Use `setup_colored_logging` during development — color-codes log levels so warnings and errors stand out at a glance.
+Use `setup_logging` for plain text logs (production, log files). Use `setup_colored_logging` during development, since it color-codes log levels so warnings and errors stand out at a glance.
 
 #### `setup_logging(log_level, log_file, console_output, format_string)`
 
@@ -867,7 +869,7 @@ logger.info("Pipeline started")
 
 #### `setup_colored_logging(log_level, log_file)`
 
-Same as `setup_logging` but with colored console output — errors in red, warnings in yellow, info in green. Useful during development to spot issues quickly.
+Same as `setup_logging` but with colored console output: errors in red, warnings in yellow, info in green. Useful during development to spot issues quickly.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -885,7 +887,7 @@ logger.warning("Slow response")   # yellow
 logger.error("LLM call failed")   # red
 ```
 
-You can also enable colored logging from `config.yaml` — no code change needed:
+You can also enable colored logging from `config.yaml`, with no code change:
 
 ```yaml
 logging:
@@ -899,7 +901,7 @@ logging:
 
 ## Low-level / Advanced API
 
-These APIs are exported for advanced use cases — custom pipelines, direct vector store access, or building on top of RAGWire internals. Most users will not need these directly.
+These APIs are exported for advanced use cases such as custom pipelines, direct vector store access, or building on top of RAGWire internals. Most users will not need these directly.
 
 ---
 
@@ -948,7 +950,7 @@ docs = vectorstore.similarity_search("revenue", k=5)
 
 #### `store.get_metadata_keys()`
 
-Scrolls one point from the collection and returns all metadata field names present. Use this when you don't know what fields were stored — e.g. inspecting a collection built by someone else, or verifying custom metadata was extracted correctly.
+Scrolls one point from the collection and returns all metadata field names present. Use this when you don't know what fields were stored, for example when inspecting a collection built by someone else, or verifying custom metadata was extracted correctly.
 
 ```python
 fields = store.get_metadata_keys()
@@ -957,11 +959,11 @@ fields = store.get_metadata_keys()
 
 #### `store.get_field_values(fields, limit)`
 
-Returns unique values for each requested field using Qdrant's facet API. Requires payload indexes on those fields — call `create_payload_indexes()` first if you haven't ingested via `RAGWire` (which does this automatically).
+Returns unique values for each requested field using Qdrant's facet API. Requires payload indexes on those fields, so call `create_payload_indexes()` first if you haven't ingested via `RAGWire` (which does this automatically).
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `fields` | `list[str]` | — | Field names (without `metadata.` prefix) |
+| `fields` | `list[str]` | n/a | Field names (without `metadata.` prefix) |
 | `limit` | `int` | `50` | Max unique values per field |
 
 **Returns:** `dict[str, list]`
@@ -974,12 +976,12 @@ fields = store.get_metadata_keys()
 values = store.get_field_values(["company_name", "doc_type"])
 # → {'company_name': ['apple', 'microsoft'], 'doc_type': ['10-k', '10-q']}
 
-# High-cardinality field — raise the limit
+# High-cardinality field, so raise the limit
 values = store.get_field_values(["file_name"], limit=200)
 ```
 
 !!! note "Using `RAGWire` instead?"
-    If you're using `RAGWire`, prefer `rag.filter_fields` + `rag.get_field_values()` for filter prompts, and `rag.discover_metadata_fields()` for collection inspection — they are thin wrappers over these same methods and don't require you to manage the `QdrantStore` instance directly.
+    If you're using `RAGWire`, prefer `rag.filter_fields` + `rag.get_field_values()` for filter prompts, and `rag.discover_metadata_fields()` for collection inspection. They are thin wrappers over these same methods and don't require you to manage the `QdrantStore` instance directly.
 
 ---
 
@@ -997,13 +999,13 @@ from ragwire import get_retriever, hybrid_search, mmr_search
 |---|---|
 | `similarity` | General semantic search; fast, good default |
 | `hybrid` | Queries mix semantic meaning with exact keywords (e.g. ticker symbols, product names, IDs) |
-| `mmr` | You want diverse results — avoids returning 5 nearly identical chunks from the same page |
+| `mmr` | You want diverse results, avoiding 5 nearly identical chunks from the same page |
 
 #### `get_retriever(vectorstore, top_k, search_type)`
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `vectorstore` | `QdrantVectorStore` | — | Vector store instance |
+| `vectorstore` | `QdrantVectorStore` | n/a | Vector store instance |
 | `top_k` | `int` | `5` | Number of results |
 | `search_type` | `str` | `"similarity"` | `"similarity"`, `"mmr"`, `"hybrid"` |
 
@@ -1013,8 +1015,8 @@ from ragwire import get_retriever, hybrid_search, mmr_search
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `vectorstore` | `QdrantVectorStore` | — | Vector store instance |
-| `query` | `str` | — | Search query |
+| `vectorstore` | `QdrantVectorStore` | n/a | Vector store instance |
+| `query` | `str` | n/a | Search query |
 | `k` | `int` | `5` | Number of results |
 | `filters` | `dict` | `None` | Plain metadata filter dict (same format as `rag.retrieve()` filters) |
 
@@ -1022,14 +1024,14 @@ from ragwire import get_retriever, hybrid_search, mmr_search
 
 #### `mmr_search(vectorstore, query, k, fetch_k, lambda_mult, filters)`
 
-Maximal Marginal Relevance — retrieves diverse, non-redundant results. Use this when a regular similarity search returns several near-identical chunks from the same section of a document, and you want results spread across different parts.
+Maximal Marginal Relevance retrieves diverse, non-redundant results. Use this when a regular similarity search returns several near-identical chunks from the same section of a document, and you want results spread across different parts.
 
 `fetch_k` controls how many candidates are retrieved first, then MMR selects the most diverse `k` from them. A larger `fetch_k` gives MMR more candidates to choose from. `lambda_mult` controls the balance: `0.0` = maximise diversity, `1.0` = maximise relevance (same as similarity search), `0.5` = balanced default.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `vectorstore` | `QdrantVectorStore` | — | Vector store instance |
-| `query` | `str` | — | Search query |
+| `vectorstore` | `QdrantVectorStore` | n/a | Vector store instance |
+| `query` | `str` | n/a | Search query |
 | `k` | `int` | `5` | Number of results to return |
 | `fetch_k` | `int` | `20` | Candidates fetched before MMR selection |
 | `lambda_mult` | `float` | `0.5` | Diversity (`0.0` = max diverse, `1.0` = max relevant) |
@@ -1038,10 +1040,10 @@ Maximal Marginal Relevance — retrieves diverse, non-redundant results. Use thi
 **Returns:** `list[Document]`
 
 ```python
-# Balanced — good default
+# Balanced, a good default
 results = mmr_search(vectorstore, "Apple revenue and earnings", k=5)
 
-# More diverse — useful when documents are long and repetitive
+# More diverse, useful when documents are long and repetitive
 results = mmr_search(vectorstore, "Apple revenue and earnings", k=5, lambda_mult=0.3)
 ```
 
@@ -1051,7 +1053,7 @@ results = mmr_search(vectorstore, "Apple revenue and earnings", k=5, lambda_mult
 
 Used internally by the pipeline for SHA256 deduplication. Exposed for custom ingestion workflows.
 
-**Why deduplication matters:** Without it, re-running ingestion on the same files doubles the chunks in Qdrant, degrading retrieval quality and wasting storage. RAGWire checks `file_hash` before ingesting — if a file with the same hash already exists in the collection, the file is skipped entirely.
+**Why deduplication matters:** Without it, re-running ingestion on the same files doubles the chunks in Qdrant, degrading retrieval quality and wasting storage. RAGWire checks `file_hash` before ingesting: if a file with the same hash already exists in the collection, the file is skipped entirely.
 
 ```python
 from ragwire import sha256_text, sha256_file_from_path, sha256_chunk

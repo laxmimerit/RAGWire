@@ -1,6 +1,6 @@
 # Separate Collections per Client or Domain
 
-Use one `RAGWire` instance per collection — useful when serving multiple clients or keeping domains isolated.
+Use one `RAGWire` instance per collection. This is useful when serving multiple clients or keeping domains isolated.
 
 ```python
 from ragwire import RAGWire
@@ -33,4 +33,4 @@ rag_finance.ingest_directory("data/finance/")
 - Different embedding models per domain: create each `RAGWire` with a different `config.yaml`
 
 !!! tip "All instances share the same Qdrant server"
-    Collections are logically separated inside Qdrant — you don't need a separate database per client.
+    Collections are logically separated inside Qdrant, so you don't need a separate database per client.

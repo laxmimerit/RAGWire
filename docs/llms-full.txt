@@ -1,4 +1,4 @@
-# RAGWire — Full API Reference (Plain Text)
+# RAGWire Full API Reference (Plain Text)
 
 This file is the complete API reference for RAGWire in plain text format (no MkDocs syntax).
 For the concise quick-reference, see llms.txt.
@@ -32,8 +32,8 @@ Initialize the pipeline from a YAML config file.
 | `config_path` | `str` | Yes | Path to `config.yaml` |
 
 Raises:
-- `FileNotFoundError` — config file not found
-- `ValueError` — missing required config keys (e.g. `llm.model`)
+- `FileNotFoundError`: config file not found
+- `ValueError`: missing required config keys (e.g. `llm.model`)
 
 ```python
 rag = RAGWire("config.yaml")
@@ -80,11 +80,11 @@ Ingest all supported documents from a directory. Internally calls `ingest_docume
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `directory` | `str` | Yes | — | Path to the directory |
+| `directory` | `str` | Yes | n/a | Path to the directory |
 | `recursive` | `bool` | No | `False` | Search subdirectories |
 | `extensions` | `list[str]` | No | loader config | File extensions to include |
 
-Returns: `dict` — same stats dict as `ingest_documents()`
+Returns: `dict`, the same stats dict as `ingest_documents()`
 
 ```python
 stats = rag.ingest_directory("data/")
@@ -100,15 +100,15 @@ Retrieve the most relevant chunks for a query.
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `query` | `str` | Yes | — | Search query |
+| `query` | `str` | Yes | n/a | Search query |
 | `top_k` | `int` | No | config value | Number of results to return |
 | `filters` | `dict` | No | `None` | Metadata filters |
 
 Returns: `list[Document]`
 
 Each Document has:
-- `doc.page_content` — the chunk text (str)
-- `doc.metadata` — dict with all metadata fields
+- `doc.page_content`: the chunk text (str)
+- `doc.metadata`: a dict with all metadata fields
 
 Filter behaviour:
 - If `filters` is passed → used as-is, no LLM call
@@ -118,14 +118,14 @@ Filter behaviour:
 For agents: keep `auto_filter: false` and use `rag.extract_filters(query)` to give the agent control.
 
 ```python
-# Explicit filters — LLM extraction skipped
+# Explicit filters, so LLM extraction is skipped
 results = rag.retrieve(
     "What is the net income?",
     top_k=5,
     filters={"company_name": "apple", "fiscal_year": 2025}
 )
 
-# OR logic — match chunks from any of these years
+# OR logic matches chunks from any of these years
 results = rag.retrieve("revenue trends", filters={"fiscal_year": [2023, 2024, 2025]})
 
 for doc in results:
@@ -142,7 +142,7 @@ Requires `use_sparse: true` in config and `pip install fastembed`.
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `query` | `str` | Yes | — | Search query |
+| `query` | `str` | Yes | n/a | Search query |
 | `k` | `int` | No | `5` | Number of results |
 | `filters` | `dict` | No | `None` | Metadata filters |
 
@@ -176,7 +176,7 @@ Returns: `dict` of extracted filters, or `None` if nothing was extracted.
 This method always runs regardless of the `auto_filter` config setting. Use it to give agents explicit control over filter decisions.
 
 ```python
-# Agent workflow — inspect and adjust before retrieval
+# Agent workflow: inspect and adjust before retrieval
 filters = rag.extract_filters("Apple's 2025 annual report")
 # → {"company_name": "apple", "fiscal_year": 2025} or None
 
@@ -195,10 +195,10 @@ their stored values, filters extracted from the current query, and instructions.
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `query` | `str` | Yes | — | Natural language query |
+| `query` | `str` | Yes | n/a | Natural language query |
 | `limit` | `int` | No | `50` | Max stored values to show per field |
 
-Returns: `str` — formatted markdown block ready to inject into an agent prompt.
+Returns: `str`, a formatted markdown block ready to inject into an agent prompt.
 
 ```python
 filter_context = rag.get_filter_context("muscle building studies from 2023")
@@ -246,7 +246,7 @@ Return unique values for one or more metadata fields (most common values first).
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `fields` | `str \| list[str]` | Yes | — | Field name or list of field names |
+| `fields` | `str \| list[str]` | Yes | n/a | Field name or list of field names |
 | `limit` | `int` | No | `50` | Max unique values per field |
 
 Returns:
@@ -307,11 +307,11 @@ Every retrieved `doc.metadata` is a dict with these keys:
 
 ```python
 doc.metadata = {
-    # LLM-extracted (financial defaults — customizable via metadata.yaml)
+    # LLM-extracted (financial defaults, customizable via metadata.yaml)
     "company_name":   "apple",          # str, always lowercased
     "doc_type":       "10-K",           # str: "10-K", "10-Q", "8-K", etc.
     "fiscal_quarter": "q4",             # str: "q1", "q2", "q3", "q4", or None
-    "fiscal_year":    [2025],           # list[int] — NOT a plain int
+    "fiscal_year":    2025,             # int
 
     # File-level (auto-populated)
     "source":         "/data/Apple_10k_2025.pdf",
@@ -341,7 +341,7 @@ rag.retrieve(query, filters={"company_name": "apple"})
 rag.retrieve(query, filters={"company_name": "apple", "fiscal_year": 2025})
 rag.retrieve(query, filters={"fiscal_year": [2023, 2024, 2025]})  # OR within field
 
-# auto_filter: true in config — LLM extracts filters from every query automatically
+# auto_filter: true in config makes the LLM extract filters from every query
 rag.retrieve(query)
 
 # Agent-controlled
@@ -357,7 +357,7 @@ Filter rules:
 
 ---
 
-## Config Reference — llm, embeddings, vectorstore, retriever
+## Config Reference: llm, embeddings, vectorstore, retriever
 
 ### llm section
 
@@ -369,7 +369,7 @@ Filter rules:
 | `num_ctx` | Ollama only | Context window size |
 | `api_key` | Some providers | API key or `${ENV_VAR}` |
 
-Note: OpenAI reads `OPENAI_API_KEY` from environment automatically — no `api_key` field needed.
+Note: OpenAI reads `OPENAI_API_KEY` from the environment automatically, so no `api_key` field is needed.
 Note: OpenRouter uses the dedicated ChatOpenRouter integration (pip install "ragwire[openrouter]", Python >= 3.10) and reads OPENROUTER_API_KEY from environment automatically.
 
 ```yaml
@@ -468,11 +468,11 @@ embeddings:
 
 | Key | Required | Default | Description |
 |---|---|---|---|
-| `url` | Yes | — | Qdrant URL or local path |
-| `collection_name` | Yes | — | Collection name |
-| `api_key` | No | — | For Qdrant Cloud (use `${ENV_VAR}`) |
+| `url` | Yes | n/a | Qdrant URL or local path |
+| `collection_name` | Yes | n/a | Collection name |
+| `api_key` | No | none | For Qdrant Cloud (use `${ENV_VAR}`) |
 | `use_sparse` | No | `false` | Enable hybrid search (requires `pip install fastembed`) |
-| `force_recreate` | No | `false` | WARNING: wipes the collection — use once then set back to false |
+| `force_recreate` | No | `false` | WARNING: wipes the collection. Use once, then set back to false. |
 
 ### retriever section
 

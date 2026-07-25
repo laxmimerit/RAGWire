@@ -4,7 +4,7 @@ Use Google Gemini for both embeddings and the metadata extraction LLM.
 
 ## Prerequisites
 
-- Google AI API key — [aistudio.google.com](https://aistudio.google.com)
+- Google AI API key from [aistudio.google.com](https://aistudio.google.com)
 - RAGWire installed: `pip install "ragwire[google]"`
 - Qdrant running: `docker run -d -p 6333:6333 qdrant/qdrant`
 
@@ -89,12 +89,12 @@ python examples/basic_usage.py
 
 | Model | Notes |
 |---|---|
-| `gemini-2.5-flash` | Best price/performance — recommended |
+| `gemini-2.5-flash` | Best price/performance, and the recommended choice |
 | `gemini-2.5-pro` | Most advanced, deep reasoning |
 | `gemini-2.5-flash-lite` | Fastest and most budget-friendly |
 
 ## Notes
 
-- Use `provider: "google"` or `provider: "gemini"` — both are accepted.
-- The API key can also be passed directly in config: `api_key: "AIza..."` — but environment variables are preferred.
+- Use `provider: "google"` or `provider: "gemini"`; both are accepted.
+- The API key can also be passed directly in config as `api_key: "AIza..."`, but environment variables are preferred.
 - Free tier has rate limits. For production use, upgrade to a paid plan.

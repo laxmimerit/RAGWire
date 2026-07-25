@@ -1,12 +1,12 @@
 # Custom Metadata
 
-RAGWire supports fully custom metadata fields for any domain — legal, HR, medical, e-commerce, and more. Define your fields in a YAML file and RAGWire builds a typed Pydantic schema automatically.
+RAGWire supports fully custom metadata fields for any domain: legal, HR, medical, e-commerce and more. Define your fields in a YAML file and RAGWire builds a typed Pydantic schema automatically.
 
 ---
 
 ## Custom Metadata via YAML File
 
-The easiest way to define custom metadata fields is a YAML config file. RAGWire builds a Pydantic model from your field definitions and uses `with_structured_output` for reliable, type-safe extraction — no manual JSON parsing.
+The easiest way to define custom metadata fields is a YAML config file. RAGWire builds a Pydantic model from your field definitions and uses `with_structured_output` for reliable, type-safe extraction, so there is no manual JSON parsing.
 
 ### 1. Create `metadata.yaml`
 
@@ -44,7 +44,7 @@ See [Domain Examples](#domain-examples) below for ready-to-use schemas for legal
 
 | Key | Required | Description |
 |---|---|---|
-| `prompt` | No | Custom extraction prompt. Document text is injected automatically — no placeholder needed. Defaults to the built-in RAGWire prompt if omitted. |
+| `prompt` | No | Custom extraction prompt. Document text is injected automatically, so no placeholder is needed. Defaults to the built-in RAGWire prompt if omitted. |
 | `fields` | Yes | List of metadata field definitions (see below) |
 
 
@@ -55,21 +55,21 @@ See [Domain Examples](#domain-examples) below for ready-to-use schemas for legal
 | `name` | Yes | Field key stored in metadata |
 | `description` | Yes | Instruction sent to the LLM describing what to extract |
 | `type` | No | `string` (default) \| `list` \| `integer` |
-| `values` | No | Example/allowed values — shown to LLM as format hints |
+| `values` | No | Example values, shown to the LLM as format hints |
 
 !!! note "Open-ended lists"
-    For `type: list` fields, `values` are format examples only — not a whitelist. The LLM will extract any value in the same format, even if it's not in the list.
+    For `type: list` fields, `values` are format examples only, not a whitelist. The LLM will extract any value in the same format, even if it's not in the list.
 
 ---
 
 ## Custom Extraction Prompt
 
-By default RAGWire uses a built-in extraction prompt. You can override it per-config using a top-level `prompt` key in your `metadata.yaml`. Write your instructions — the document text is appended automatically.
+By default RAGWire uses a built-in extraction prompt. You can override it per-config using a top-level `prompt` key in your `metadata.yaml`. Write your instructions; the document text is appended automatically.
 
 ```yaml
 prompt: |
   You are a <domain> expert. Extract the metadata fields below from the document.
-  Be thorough — only return null if the information is genuinely absent.
+  Be thorough. Only return null if the information is genuinely absent.
 
 fields:
   - name: my_field
@@ -77,7 +77,7 @@ fields:
 ```
 
 !!! note
-    The `prompt` key is optional. When omitted, the default RAGWire extraction prompt is used. No `{content}` placeholder needed — document text is appended automatically.
+    The `prompt` key is optional. When omitted, the default RAGWire extraction prompt is used. No `{content}` placeholder is needed, because the document text is appended automatically.
 
 ---
 
@@ -93,9 +93,9 @@ prompt: |
   ## Extraction Rules
   1. **Be thorough**: Extract every field you can find. A field should only be null if the information is completely absent.
   2. **Be precise**: Extract exactly what is stated. Do not infer, assume, or hallucinate values not present in the document.
-  3. **Lists**: Scan the entire document and extract ALL matching values — not just the first occurrence.
+  3. **Lists**: Scan the entire document and extract ALL matching values, not just the first occurrence.
   4. **Strings**: Normalize to lowercase. Trim extra whitespace.
-  5. **Integers**: Return the numeric value only — no units, symbols, or surrounding text.
+  5. **Integers**: Return the numeric value only, with no units, symbols or surrounding text.
   6. **Null**: Return null only when the field is genuinely not mentioned anywhere in the document.
 
 fields:
@@ -111,7 +111,7 @@ fields:
     type: integer
 
   - name: research_focus
-    description: "List of all primary research topics covered, in lowercase-hyphenated format. Not limited to the examples — extract any focus area mentioned in the paper."
+    description: "List of all primary research topics covered, in lowercase-hyphenated format. Not limited to the examples; extract any focus area mentioned in the paper."
     type: list
     values: ["muscle-growth", "recovery", "performance", "endurance", "cognitive-function", "fat-loss", "safety", "hormonal"]
 ```
@@ -230,7 +230,7 @@ vectorstore:
 retriever:
   search_type: "hybrid"
   top_k: 5
-  auto_filter: false   # keep false for agent use — use get_filter_context() instead
+  auto_filter: false   # keep false for agent use; call get_filter_context() instead
 ```
 
 ### 3. Ingest and retrieve
@@ -257,7 +257,7 @@ print(results[0].metadata)
 
 ### 4. Filter by custom fields
 
-Explicit filters — pass a dict directly, no LLM extraction:
+Explicit filters: pass a dict directly, with no LLM extraction.
 
 ```python
 results = rag.retrieve(
@@ -271,7 +271,7 @@ results = rag.retrieve(
 )
 ```
 
-Agent-controlled — expose `get_filter_context` and `search_documents` as two separate tools. The agent calls `get_filter_context` first to understand available metadata, then decides what filters to pass to `search_documents`:
+Agent-controlled: expose `get_filter_context` and `search_documents` as two separate tools. The agent calls `get_filter_context` first to understand available metadata, then decides what filters to pass to `search_documents`:
 
 ```python
 from typing import Optional

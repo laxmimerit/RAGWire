@@ -1,6 +1,6 @@
 # Retrieval Pipeline
 
-The retrieval pipeline takes a natural language query and returns the most relevant document chunks from Qdrant. It uses the LLM to automatically extract metadata filters from the query so results are scoped to the right company, year, or document type — without the user having to pass filters manually.
+The retrieval pipeline takes a natural language query and returns the most relevant document chunks from Qdrant. It uses the LLM to automatically extract metadata filters from the query so results are scoped to the right company, year or document type without the user having to pass filters manually.
 
 ---
 
@@ -125,7 +125,7 @@ stateDiagram-v2
 
     Empty --> Populated : First retrieve() or extract_metadata() call\n→ Qdrant facet API called
 
-    Populated --> Populated : Subsequent retrieve() calls\n(no Qdrant call — cache hit)
+    Populated --> Populated : Subsequent retrieve() calls\n(no Qdrant call, cache hit)
 
     Populated --> Empty : ingest_documents() completes\n_stored_values_cache = None
 

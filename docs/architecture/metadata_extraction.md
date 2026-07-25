@@ -30,7 +30,7 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    A["Text input\ndoc start — first 3,000 chars"]
+    A["Text input\ndoc start, first 3,000 chars"]
 
     A --> B["Check _stored_values_cache\nDoes collection have existing data?"]
 
@@ -76,7 +76,7 @@ The LLM receives a structured prompt. Grounding is injected **before** the docum
 ├─────────────────────────────────────────────────────┤
 │  DOCUMENT TEXT                                      │
 │  "## Document Text                                  │
-│   {content — first 3,000 chars}"                    │
+│   {content, first 3,000 chars}"                    │
 ├─────────────────────────────────────────────────────┤
 │  OUTPUT MARKER                                      │
 │  "Extracted Metadata (JSON only):"                  │
@@ -86,7 +86,7 @@ The LLM receives a structured prompt. Grounding is injected **before** the docum
 
 ---
 
-## Grounding — Why It Matters
+## Grounding: Why It Matters
 
 Without grounding, the same company can be stored under multiple names across ingestion runs:
 
@@ -99,7 +99,7 @@ flowchart LR
     end
 
     subgraph With Grounding
-        D3["Apple 10-K 2024"] -->|"First doc — no stored values"| V3["company_name: 'apple'"]
+        D3["Apple 10-K 2024"] -->|"First doc, no stored values"| V3["company_name: 'apple'"]
         V3 -->|"stored in collection"| Stored["Stored: ['apple']"]
         D4["Apple 10-K 2025"] -->|"Sees stored: ['apple']"| V4["company_name: 'apple'\n(reuses stored value)"]
         V3 & V4 --> Fixed["Filter 'apple' finds both docs"]
@@ -123,7 +123,7 @@ flowchart TD
     PT --> ME["MetadataExtractor(llm, schema_model)\nSame extraction logic\nDifferent fields"]
 ```
 
-The `from_yaml()` classmethod handles this automatically — no code change needed, just point `metadata.config_file` to your YAML.
+The `from_yaml()` classmethod handles this automatically. No code change is needed; just point `metadata.config_file` at your YAML.
 
 ---
 

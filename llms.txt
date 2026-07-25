@@ -24,19 +24,19 @@ pip install fastembed        # required for hybrid search
 
 ## Qdrant Setup
 
-**Option 1 — Local (Docker):**
+**Option 1, local via Docker:**
 ```bash
 docker run -p 6333:6333 qdrant/qdrant
 ```
 
-**Option 2 — Qdrant Cloud:** Create a free cluster at https://cloud.qdrant.io, then set in `config.yaml`:
+**Option 2, Qdrant Cloud:** Create a free cluster at https://cloud.qdrant.io, then set in `config.yaml`:
 ```yaml
 vectorstore:
   url: "https://your-cluster.qdrant.io"
   api_key: "${QDRANT_API_KEY}"
 ```
 
-**For CLI agents — before writing or executing any RAGWire code, first verify Qdrant is running:**
+**For CLI agents: before writing or executing any RAGWire code, first verify Qdrant is running:**
 ```bash
 curl -sf http://localhost:6333/healthz || { echo "ERROR: Qdrant is not running. Start it with: docker run -p 6333:6333 qdrant/qdrant"; exit 1; }
 ```
@@ -92,7 +92,7 @@ from ragwire import RAGWire
 
 rag = RAGWire("config.yaml")
 
-# Ingest (SHA256 deduplication — safe to re-run)
+# Ingest. SHA256 deduplication makes this safe to re-run.
 stats = rag.ingest_documents(["data/file.pdf"])
 stats = rag.ingest_directory("data/", recursive=True)
 
@@ -123,14 +123,14 @@ results = rag.retrieve("Apple's revenue in 2025", filters=filters)
 
 ```python
 doc.metadata["company_name"]   # str, lowercased
-doc.metadata["fiscal_year"]    # list[int], e.g. [2025] — pass int when filtering
+doc.metadata["fiscal_year"]    # int, e.g. 2025
 doc.metadata["file_name"]      # str
 doc.metadata["source"]         # str, full path
 ```
 
 ---
 
-## Agentic RAG — LangChain Agent
+## Agentic RAG with a LangChain Agent
 
 ```python
 from typing import Optional

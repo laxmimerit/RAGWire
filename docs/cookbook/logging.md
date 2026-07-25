@@ -40,8 +40,8 @@ logging:
 
 | Level | Use When |
 |---|---|
-| `DEBUG` | Development — shows every step (loading, chunking, embedding, storing) |
-| `INFO` | Production — shows ingestion stats, retrieval queries, warnings |
-| `WARNING` | Minimal — only problems and skipped files |
+| `DEBUG` | Development. Shows every step: loading, chunking, embedding, storing. |
+| `INFO` | Production. Shows ingestion stats, retrieval queries and warnings. |
+| `WARNING` | Minimal. Only problems and skipped files. |
 | `ERROR` | Errors only |
 

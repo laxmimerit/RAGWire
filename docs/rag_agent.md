@@ -7,7 +7,7 @@ Combine RAGWire's retrieval with LangChain's `create_agent` to build a conversat
 ## How it works
 
 1. RAGWire ingests documents and handles retrieval
-2. You wrap the retriever as a `@tool` — the LLM can call it when it needs information
+2. You wrap the retriever as a `@tool`, so the LLM can call it when it needs information
 3. `create_agent` gives the LLM access to that tool and manages the conversation loop
 
 ---
@@ -41,8 +41,8 @@ print(f"Ingested {stats['processed']} docs, {stats['chunks_created']} chunks")
 
 The agent gets two tools with clear separation of concerns:
 
-- **`get_filter_context`** — call when metadata awareness is needed. Returns available fields, stored values, extracted filter suggestions, and instructions. Always fresh from Qdrant — safe to call multiple times in multi-query flows.
-- **`search_documents`** — pure retrieval. Accepts explicit filters the agent decided from the context.
+- **`get_filter_context`**: call when metadata awareness is needed. Returns available fields, stored values, extracted filter suggestions, and instructions. Always read fresh from Qdrant, so it is safe to call multiple times in multi-query flows.
+- **`search_documents`**: pure retrieval. Accepts explicit filters the agent decided from the context.
 
 ```python
 from langchain.tools import tool
@@ -54,7 +54,7 @@ def get_filter_context(query: str) -> str:
 
     Call this before search_documents when the query may involve specific metadata
     (e.g. a company, year, document type, author). The returned context shows what
-    filters are available and what was extracted from your query — use it to decide
+    filters are available and what was extracted from your query. Use it to decide
     what filters to pass to search_documents.
 
     Skip this tool for purely semantic queries with no metadata intent.
@@ -103,7 +103,7 @@ User: "creatine studies from 2023"
    → clean retrieval with agent-decided filters
 ```
 
-For multi-query tasks, the agent calls `get_filter_context` independently per sub-query — always fresh from Qdrant.
+For multi-query tasks, the agent calls `get_filter_context` independently per sub-query, always reading fresh from Qdrant.
 
 ---
 
@@ -125,9 +125,10 @@ Register both tools and give the agent a minimal system prompt:
         system_prompt=(
             "You are a helpful document assistant. "
             "For complex questions, break them down into simple sub-questions and answer each one before forming a final answer. "
-            "Always use search_documents to retrieve information before answering — never answer from general knowledge. "
+            "Always use search_documents to retrieve information before answering. "
+            "Never answer from general knowledge. "
             "Use get_filter_context before search_documents when the query involves specific metadata (company, year, document type, etc.). "
-            "If no relevant documents are found, say so — do not guess or fabricate an answer. "
+            "If no relevant documents are found, say so. Do not guess or fabricate an answer. "
             "Always cite the source document in your answer."
         ),
     )
@@ -147,9 +148,10 @@ Register both tools and give the agent a minimal system prompt:
         system_prompt=(
             "You are a helpful document assistant. "
             "For complex questions, break them down into simple sub-questions and answer each one before forming a final answer. "
-            "Always use search_documents to retrieve information before answering — never answer from general knowledge. "
+            "Always use search_documents to retrieve information before answering. "
+            "Never answer from general knowledge. "
             "Use get_filter_context before search_documents when the query involves specific metadata (company, year, document type, etc.). "
-            "If no relevant documents are found, say so — do not guess or fabricate an answer. "
+            "If no relevant documents are found, say so. Do not guess or fabricate an answer. "
             "Always cite the source document in your answer."
         ),
     )
@@ -169,9 +171,10 @@ Register both tools and give the agent a minimal system prompt:
         system_prompt=(
             "You are a helpful document assistant. "
             "For complex questions, break them down into simple sub-questions and answer each one before forming a final answer. "
-            "Always use search_documents to retrieve information before answering — never answer from general knowledge. "
+            "Always use search_documents to retrieve information before answering. "
+            "Never answer from general knowledge. "
             "Use get_filter_context before search_documents when the query involves specific metadata (company, year, document type, etc.). "
-            "If no relevant documents are found, say so — do not guess or fabricate an answer. "
+            "If no relevant documents are found, say so. Do not guess or fabricate an answer. "
             "Always cite the source document in your answer."
         ),
     )
@@ -191,9 +194,10 @@ Register both tools and give the agent a minimal system prompt:
         system_prompt=(
             "You are a helpful document assistant. "
             "For complex questions, break them down into simple sub-questions and answer each one before forming a final answer. "
-            "Always use search_documents to retrieve information before answering — never answer from general knowledge. "
+            "Always use search_documents to retrieve information before answering. "
+            "Never answer from general knowledge. "
             "Use get_filter_context before search_documents when the query involves specific metadata (company, year, document type, etc.). "
-            "If no relevant documents are found, say so — do not guess or fabricate an answer. "
+            "If no relevant documents are found, say so. Do not guess or fabricate an answer. "
             "Always cite the source document in your answer."
         ),
     )
@@ -233,8 +237,9 @@ agent = create_agent(
     system_prompt=(
         "You are a helpful document assistant. "
         "For complex questions, break them down into simple sub-questions and answer each one before forming a final answer. "
-        "Always use search_documents to retrieve information before answering — never answer from general knowledge. "
-        "If no relevant documents are found, say so — do not guess or fabricate an answer. "
+        "Always use search_documents to retrieve information before answering. "
+        "Never answer from general knowledge. "
+        "If no relevant documents are found, say so. Do not guess or fabricate an answer. "
         "Always cite the source document in your answer."
     ),
     checkpointer=checkpointer,
@@ -249,7 +254,7 @@ response = agent.invoke(
 )
 print(response["messages"][-1].content)
 
-# Turn 2 — agent remembers the previous question
+# Turn 2: the agent remembers the previous question
 response = agent.invoke(
     {"messages": [HumanMessage("How does that compare to Microsoft?")]},
     config=config,
@@ -289,8 +294,9 @@ agent = create_agent(
     system_prompt=(
         "You are a helpful document assistant. "
         "For complex questions, break them down into simple sub-questions and answer each one before forming a final answer. "
-        "Always use search_documents to retrieve information before answering — never answer from general knowledge. "
-        "If no relevant documents are found, say so — do not guess or fabricate an answer. "
+        "Always use search_documents to retrieve information before answering. "
+        "Never answer from general knowledge. "
+        "If no relevant documents are found, say so. Do not guess or fabricate an answer. "
         "Always cite the source document in your answer. "
         "CRITICAL: You MUST output your final answer using the provided structured response format. Do not return plain text."
     ),
@@ -307,7 +313,7 @@ print(f"Confidence: {result.confidence}")
 ```
 
 !!! tip "Pydantic `Field` descriptions matter"
-    The `description` on each field is part of the schema sent to the model. Clear descriptions — especially on constrained fields like `confidence` — significantly improve output reliability.
+    The `description` on each field is part of the schema sent to the model. Clear descriptions, especially on constrained fields like `confidence`, significantly improve output reliability.
 
 ---
 
@@ -321,8 +327,8 @@ python examples/rag_agent.py
 
 ```python
 """
-RAG Agent — RAGWire + LangChain create_agent
-============================================
+RAG Agent: RAGWire + LangChain create_agent
+===========================================
 Prerequisites:
   pip install "ragwire[openai]" fastembed langgraph
   export OPENAI_API_KEY="sk-..."
@@ -407,9 +413,10 @@ agent = create_agent(
     system_prompt=(
         "You are a helpful financial document assistant. "
         "For complex questions, break them down into simple sub-questions and answer each one before forming a final answer. "
-        "Always use search_documents to retrieve information before answering — never answer from general knowledge. "
+        "Always use search_documents to retrieve information before answering. "
+        "Never answer from general knowledge. "
         "Use get_filter_context before search_documents when the query involves specific metadata (company, year, document type, etc.). "
-        "If no relevant documents are found, say so — do not guess or fabricate an answer. "
+        "If no relevant documents are found, say so. Do not guess or fabricate an answer. "
         "Always cite the source document in your answer."
     ),
     checkpointer=checkpointer,

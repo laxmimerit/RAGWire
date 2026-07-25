@@ -1,6 +1,6 @@
 # RAGWire with Ollama
 
-Ollama lets you run LLMs and embedding models locally — no API key, no cost, no data leaving your machine.
+Ollama lets you run LLMs and embedding models locally, with no API key, no cost and no data leaving your machine.
 
 ## Prerequisites
 
@@ -37,7 +37,7 @@ ollama pull qwen3-embedding:4b      # 2.5GB, higher quality
 ollama pull qwen3-embedding:8b      # 4.7GB, best quality, 40K context
 
 # Chat
-ollama pull llama3.1                # Meta, 8B/70B sizes — most popular
+ollama pull llama3.1                # Meta, 8B/70B sizes, the most popular
 ollama pull qwen3                   # Alibaba, dense + MoE variants
 ollama pull deepseek-r1             # Reasoning model
 ollama pull gemma3                  # Google, runs on single GPU
@@ -130,8 +130,9 @@ agent = create_agent(
     tools=[search_documents],
     system_prompt=(
         "You are a helpful document assistant. "
-        "Always use search_documents to retrieve information before answering — never answer from general knowledge. "
-        "If no relevant documents are found, say so — do not guess or fabricate an answer. "
+        "Always use search_documents to retrieve information before answering. "
+        "Never answer from general knowledge. "
+        "If no relevant documents are found, say so. Do not guess or fabricate an answer. "
         "Always cite the source document in your answer."
     ),
     checkpointer=InMemorySaver(),
@@ -153,4 +154,4 @@ See [RAG Agent](rag_agent.md) for the full guide including multi-turn memory and
 
 - `num_ctx` must be large enough to fit your chunk size. Default `10000` chars → set `num_ctx: 16384` or higher.
 - Ollama runs on `http://localhost:11434` by default. If you changed the port, update `base_url`.
-- For GPU acceleration, Ollama detects CUDA/Metal automatically — no extra config needed.
+- For GPU acceleration, Ollama detects CUDA and Metal automatically, with no extra config.

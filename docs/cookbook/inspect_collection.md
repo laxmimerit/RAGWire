@@ -37,7 +37,7 @@ print(values)
 # }
 ```
 
-`get_field_values` uses Qdrant's native facet API — fast and exact regardless of collection size. Results are ordered by frequency (most common values first).
+`get_field_values` uses Qdrant's native facet API, which is fast and exact regardless of collection size. Results are ordered by frequency (most common values first).
 
 ## Single Field Shorthand
 

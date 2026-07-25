@@ -4,7 +4,7 @@ Use OpenAI for both embeddings and the metadata extraction LLM.
 
 ## Prerequisites
 
-- OpenAI API key — [platform.openai.com](https://platform.openai.com)
+- OpenAI API key from [platform.openai.com](https://platform.openai.com)
 - RAGWire installed: `pip install "ragwire[openai]"`
 - Qdrant running: `docker run -d -p 6333:6333 qdrant/qdrant`
 
@@ -41,7 +41,7 @@ embeddings:
 
 llm:
   provider: "openai"
-  model: "gpt-5.4-nano"             # Latest — fast, affordable, good for metadata extraction
+  model: "gpt-5.4-nano"             # Latest: fast, affordable, good for metadata extraction
   # model: "gpt-4o-mini"            # Previous generation
 
 vectorstore:
@@ -83,9 +83,9 @@ python examples/basic_usage.py
 
 | Model | Dimensions | Notes |
 |---|---|---|
-| `text-embedding-3-small` | 1536 | Best price/performance — recommended |
+| `text-embedding-3-small` | 1536 | Best price/performance, and the recommended choice |
 | `text-embedding-3-large` | 3072 | Highest quality, multilingual |
-| `text-embedding-ada-002` | 1536 | Legacy — avoid for new projects |
+| `text-embedding-ada-002` | 1536 | Legacy; avoid for new projects |
 
 ## 6. Build a RAG Agent
 
@@ -118,8 +118,9 @@ agent = create_agent(
     tools=[search_documents],
     system_prompt=(
         "You are a helpful document assistant. "
-        "Always use search_documents to retrieve information before answering — never answer from general knowledge. "
-        "If no relevant documents are found, say so — do not guess or fabricate an answer. "
+        "Always use search_documents to retrieve information before answering. "
+        "Never answer from general knowledge. "
+        "If no relevant documents are found, say so. Do not guess or fabricate an answer. "
         "Always cite the source document in your answer."
     ),
     checkpointer=InMemorySaver(),
@@ -140,4 +141,4 @@ See [RAG Agent](rag_agent.md) for the full guide including multi-turn memory and
 ## Notes
 
 - If you change embedding model after ingestion, set `force_recreate: true` once to rebuild the collection (dimensions will differ).
-- The API key can also be passed directly in config: `api_key: "sk-..."` — but environment variables are preferred.
+- The API key can also be passed directly in config as `api_key: "sk-..."`, but environment variables are preferred.

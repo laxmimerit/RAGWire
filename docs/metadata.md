@@ -1,6 +1,6 @@
-# Metadata — Schema, Extraction & Filtering
+# Metadata: Schema, Extraction and Filtering
 
-Understanding metadata is critical for building precise RAG applications. RAGWire automatically extracts and stores metadata on every chunk — and you can filter by it at query time.
+Understanding metadata is critical for building precise RAG applications. RAGWire automatically extracts and stores metadata on every chunk, and you can filter by it at query time.
 
 ---
 
@@ -11,7 +11,7 @@ Every chunk stored in Qdrant carries the following metadata fields:
 ### LLM-Extracted Fields
 Extracted once per document from the first chunk using your configured LLM.
 
-!!! note "Default schema — Finance"
+!!! note "Default schema: finance"
     The fields below are the **default** metadata schema, designed for financial documents. You are not locked into these fields.
     RAGWire lets you define any fields you need via a simple YAML file. See [Custom Metadata](custom_metadata.md) for details.
 
@@ -19,8 +19,8 @@ Extracted once per document from the first chunk using your configured LLM.
 |---|---|---|---|
 | `company_name` | `str` | `"apple"` | Company name, normalized to lowercase |
 | `doc_type` | `str` | `"10-k"` | Document type (`10-k`, `10-q`, `8-k`) |
-| `fiscal_quarter` | `str` | `"q1"` | Fiscal quarter (`q1`–`q4`) or `null` |
-| `fiscal_year` | `list[int]` | `[2025]` | Fiscal year(s) covered by the document |
+| `fiscal_quarter` | `str` | `"q1"` | Fiscal quarter (`q1` to `q4`) or `null` |
+| `fiscal_year` | `int` | `2025` | Fiscal year covered by the document |
 
 ### File-Level Fields
 Set automatically from the file at ingestion time.
@@ -30,7 +30,7 @@ Set automatically from the file at ingestion time.
 | `source` | `str` | `"/data/Apple_10k_2025.pdf"` | Full file path |
 | `file_name` | `str` | `"Apple_10k_2025.pdf"` | Original filename |
 | `file_type` | `str` | `"pdf"` | File extension |
-| `file_hash` | `str` | `"abc123..."` | SHA256 hash — used for deduplication |
+| `file_hash` | `str` | `"abc123..."` | SHA256 hash, used for deduplication |
 
 ### Chunk-Level Fields
 Set per chunk at ingestion time.
@@ -64,7 +64,7 @@ Example output:
     "company_name": "apple",
     "doc_type": "10-k",
     "fiscal_quarter": None,
-    "fiscal_year": [2025],
+    "fiscal_year": 2025,
     "source": "/data/Apple_10k_2025.pdf",
     "file_name": "Apple_10k_2025.pdf",
     "file_type": "pdf",
@@ -81,7 +81,7 @@ Example output:
 
 ## Discovering Available Fields and Values
 
-RAGWire provides two ways to inspect fields — use the right one for your purpose:
+RAGWire provides two ways to inspect fields. Use the right one for your purpose:
 
 | Method | Returns | Use for |
 |---|---|---|
@@ -89,11 +89,11 @@ RAGWire provides two ways to inspect fields — use the right one for your purpo
 | `rag.discover_metadata_fields()` | All fields including system fields | Collection inspection, debugging |
 
 ```python
-# Filterable fields only — use these for filter prompts
+# Filterable fields only. Use these for filter prompts.
 rag.filter_fields
 # → ['company_name', 'doc_type', 'fiscal_quarter', 'fiscal_year']
 
-# All fields — includes file_hash, chunk_id, source, created_at, etc.
+# All fields, including file_hash, chunk_id, source, created_at and so on
 rag.discover_metadata_fields()
 # → ['company_name', 'doc_type', 'fiscal_year', 'file_name', 'file_hash', 'chunk_id', ...]
 
@@ -106,7 +106,7 @@ rag.get_field_values("file_name", limit=200)
 # → ['Apple_10k_2025.pdf', 'Microsoft_10k_2025.pdf', ...]
 ```
 
-Results are ordered by frequency — most common values first.
+Results are ordered by frequency, most common values first.
 
 ---
 
@@ -124,13 +124,13 @@ RAGWire supports three filtering modes:
     No filter extraction happens automatically unless `auto_filter: true` is set in `config.yaml`. For agents, keep the default and use `extract_filters()` or `get_filter_context()` to control extraction explicitly.
 
 ```python
-# Explicit — LLM extraction skipped entirely
+# Explicit filters skip LLM extraction entirely
 results = rag.retrieve("What is the revenue?", filters={"company_name": "apple"})
 
-# Auto-filter — requires auto_filter: true in config.yaml
+# Auto-filter requires auto_filter: true in config.yaml
 results = rag.retrieve("What is Apple's revenue for 2025?")
 
-# Agent-controlled — extract, inspect, adjust, then retrieve
+# Agent-controlled: extract, inspect, adjust, then retrieve
 filters = rag.extract_filters("What is Apple's revenue for 2025?")
 # → {"company_name": "apple", "fiscal_year": 2025}
 results = rag.retrieve("What is Apple's revenue for 2025?", filters=filters)
@@ -161,14 +161,14 @@ results = rag.retrieve(
 ### Filter by fiscal year
 
 ```python
-# Single year — pass as int
+# Single year, passed as an int
 results = rag.retrieve(
     "What is the net income?",
     top_k=5,
     filters={"fiscal_year": 2025}
 )
 
-# Multiple years — matches documents covering ANY of the years (OR logic)
+# Multiple years match documents covering ANY of the years (OR logic)
 results = rag.retrieve(
     "Compare net income across 2023 and 2024",
     top_k=10,
@@ -214,7 +214,7 @@ results = rag.hybrid_search(
 
 ## Agent-Controlled Filtering
 
-For agents, keep `auto_filter` off and use two tools — one for metadata awareness, one for retrieval:
+For agents, keep `auto_filter` off and use two tools: one for metadata awareness, one for retrieval.
 
 ### Two-tool pattern (recommended)
 
@@ -227,7 +227,7 @@ def get_filter_context(query: str) -> str:
 
     Call this before search_documents when the query involves specific metadata
     (company, year, document type, etc.). Use it to decide what filters to apply.
-    Safe to call per sub-query in multi-query flows — always fresh from Qdrant.
+    Safe to call per sub-query in multi-query flows, since it always reads fresh from Qdrant.
     """
     return rag.get_filter_context(query)
 
@@ -252,7 +252,7 @@ Agent flow:
 2. Agent calls search_documents("Apple revenue 2025", filters={"company_name": "apple", "fiscal_year": 2025})
 ```
 
-The agent calls `get_filter_context` only when metadata is relevant — skips it for purely semantic queries. For multi-query tasks each sub-query gets its own fresh context.
+The agent calls `get_filter_context` only when metadata is relevant, and skips it for purely semantic queries. For multi-query tasks each sub-query gets its own fresh context.
 
 ### What `get_filter_context()` returns
 

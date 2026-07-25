@@ -1,6 +1,6 @@
 # Build a Metadata-Aware Filtered Chatbot
 
-The agent is told what companies, doc types, and fiscal years exist in the collection — then it decides which filters to pass when calling the search tool. This gives the agent full control over retrieval precision.
+The agent is told what companies, doc types and fiscal years exist in the collection, then decides which filters to pass when calling the search tool. This gives the agent full control over retrieval precision.
 
 ```python
 from typing import Optional
@@ -19,8 +19,8 @@ filter_context = "\n".join(f"- {field}: {vals}" for field, vals in values.items(
 
 SYSTEM_PROMPT = f"""
 You are a financial document assistant.
-Always use search_documents to retrieve information before answering — never answer from general knowledge.
-If no relevant documents are found, say so — do not guess or fabricate an answer.
+Always use search_documents to retrieve information before answering. Never answer from general knowledge.
+If no relevant documents are found, say so. Do not guess or fabricate an answer.
 Always cite the source document in your answer.
 
 Available data in the knowledge base:
@@ -28,7 +28,7 @@ Available data in the knowledge base:
 
 When calling search_documents, pass the appropriate filters based on what the user is asking about.
 Match filter values exactly as shown above.
-Only pass filters that are clearly relevant — omit filters when the query is broad.
+Only pass filters that are clearly relevant. Omit filters when the query is broad.
 """
 
 @tool
@@ -63,10 +63,10 @@ print(response["messages"][-1].text)
 
 ## Why This Works
 
-1. `get_field_values()` fetches the actual values stored in your collection — no hardcoding
+1. `get_field_values()` fetches the actual values stored in your collection, so nothing is hardcoded
 2. The system prompt tells the agent exactly what companies, years, and doc types exist
 3. The agent reads the query, decides which filters apply, and passes them explicitly to `search_documents`
-4. `retrieve()` applies those filters directly — no guessing, no LLM-based auto-extraction
+4. `retrieve()` applies those filters directly, with no guessing and no LLM-based auto-extraction
 
 This is more reliable than `auto_filter` because the agent reasons about filters using the full conversation context, not just the current query string.
 

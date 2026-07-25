@@ -1,6 +1,6 @@
 # Switch from OpenAI to Local Ollama
 
-Swap your embedding and LLM to run fully offline with no API costs. Only `config.yaml` changes — your Python code stays the same.
+Swap your embedding and LLM to run fully offline with no API costs. Only `config.yaml` changes; your Python code stays the same.
 
 ```yaml
 embeddings:

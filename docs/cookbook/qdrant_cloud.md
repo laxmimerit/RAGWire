@@ -1,11 +1,11 @@
 # Use Qdrant Cloud (Free Tier)
 
-Run RAGWire against a hosted Qdrant cluster — no Docker, no local storage, fully managed. Qdrant Cloud offers a free tier with 1 GB storage, enough for millions of vectors.
+Run RAGWire against a hosted Qdrant cluster: no Docker, no local storage, fully managed. Qdrant Cloud offers a free tier with 1 GB storage, enough for millions of vectors.
 
 ## 1. Create a Free Cluster
 
 1. Sign up at [cloud.qdrant.io](https://cloud.qdrant.io)
-2. Create a cluster — select the **Free** tier
+2. Create a cluster and select the **Free** tier
 3. Copy your **Cluster URL** (e.g. `https://xyz-abc.qdrant.io`) and generate an **API Key**
 
 ## 2. Configure RAGWire
@@ -32,7 +32,7 @@ RAGWire loads `.env` automatically via `python-dotenv` at startup.
 
 ## 3. Run
 
-No other changes needed — the rest of your code is identical to a local setup:
+No other changes are needed. The rest of your code is identical to a local setup:
 
 ```python
 from ragwire import RAGWire

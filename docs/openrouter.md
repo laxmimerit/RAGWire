@@ -1,13 +1,13 @@
 # RAGWire with OpenRouter
 
-Use [OpenRouter](https://openrouter.ai) for both embeddings and the metadata extraction LLM. OpenRouter gives you a single API key and access to models from many providers — including free-tier models.
+Use [OpenRouter](https://openrouter.ai) for both embeddings and the metadata extraction LLM. OpenRouter gives you a single API key and access to models from many providers, including free-tier models.
 
 RAGWire uses the dedicated **`ChatOpenRouter`** integration for the LLM (so structured metadata extraction works reliably) and the official **`openrouter` Python SDK** for embeddings.
 
 ## Prerequisites
 
-- OpenRouter API key — [openrouter.ai/settings/keys](https://openrouter.ai/settings/keys)
-- **Python 3.10 or higher** — required by `langchain-openrouter`
+- OpenRouter API key from [openrouter.ai/settings/keys](https://openrouter.ai/settings/keys)
+- **Python 3.10 or higher**, required by `langchain-openrouter`
 - RAGWire installed: `pip install "ragwire[openrouter]"`
 - Qdrant running: `docker run -d -p 6333:6333 qdrant/qdrant`
 
@@ -46,8 +46,8 @@ embeddings:
   provider: "openrouter"
   model: "nvidia/llama-nemotron-embed-vl-1b-v2:free"   # 2048-dim, free
   api_key: "${OPENROUTER_API_KEY}"
-  # batch_size: 16        # optional — inputs per request (default 100)
-  # dimensions: 2048      # optional — only if the model supports it
+  # batch_size: 16        # optional: inputs per request (default 100)
+  # dimensions: 2048      # optional: only if the model supports it
 
 llm:
   provider: "openrouter"
@@ -95,8 +95,8 @@ python examples/basic_usage.py
 |---|---|---|---|
 | Embeddings | `nvidia/llama-nemotron-embed-vl-1b-v2:free` | 2048 | Free tier |
 | Embeddings | `openai/text-embedding-3-small` | 1536 | Paid, via OpenRouter |
-| LLM | `poolside/laguna-m.1:free` | — | Free tier |
-| LLM | `anthropic/claude-sonnet-4.5` | — | Paid, via OpenRouter |
+| LLM | `poolside/laguna-m.1:free` | n/a | Free tier |
+| LLM | `anthropic/claude-sonnet-4.5` | n/a | Paid, via OpenRouter |
 
 Browse all models at [openrouter.ai/models](https://openrouter.ai/models). Filter embedding models with `?fmt=cards&output_modalities=embeddings`.
 
@@ -131,8 +131,9 @@ agent = create_agent(
     tools=[search_documents],
     system_prompt=(
         "You are a helpful document assistant. "
-        "Always use search_documents to retrieve information before answering — never answer from general knowledge. "
-        "If no relevant documents are found, say so — do not guess or fabricate an answer. "
+        "Always use search_documents to retrieve information before answering. "
+        "Never answer from general knowledge. "
+        "If no relevant documents are found, say so. Do not guess or fabricate an answer. "
         "Always cite the source document in your answer."
     ),
     checkpointer=InMemorySaver(),
@@ -152,7 +153,7 @@ See [RAG Agent](rag_agent.md) for the full guide including multi-turn memory and
 
 ## Notes
 
-- **Mixing providers is fine** — e.g. OpenRouter for the LLM and Ollama for embeddings, or vice versa.
-- If you change embedding model after ingestion, set `force_recreate: true` once to rebuild the collection (dimensions will differ — the `nvidia/...` model is 2048-dim).
-- The API key can also be passed directly in config: `api_key: "sk-or-v1-..."` — but environment variables are preferred.
+- **Mixing providers is fine.** You can use OpenRouter for the LLM and Ollama for embeddings, or the reverse.
+- If you change embedding model after ingestion, set `force_recreate: true` once to rebuild the collection, since the dimensions differ (the `nvidia/...` model is 2048-dim).
+- The API key can also be passed directly in config as `api_key: "sk-or-v1-..."`, but environment variables are preferred.
 - Embeddings go through the official `openrouter` SDK with `encoding_format="float"`. RAGWire does **not** route OpenRouter embeddings through the OpenAI client (which mis-parses OpenRouter's base64 responses).

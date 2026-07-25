@@ -2,7 +2,7 @@
 
 FastEmbed is a lightweight, fast embedding library by Qdrant. It runs locally with no API key and is optimized for CPU inference.
 
-> FastEmbed is also used internally for sparse (keyword) vectors when hybrid search is enabled — that part is automatic and requires no extra config.
+> FastEmbed is also used internally for sparse (keyword) vectors when hybrid search is enabled. That part is automatic and requires no extra config.
 
 ## Prerequisites
 
@@ -109,5 +109,5 @@ Full list: [qdrant.github.io/fastembed/examples/Supported_Models](https://qdrant
 ## Notes
 
 - Models are downloaded and cached locally on first use.
-- FastEmbed uses ONNX Runtime — fast on CPU without requiring PyTorch or CUDA.
+- FastEmbed uses ONNX Runtime, so it is fast on CPU without requiring PyTorch or CUDA.
 - If you change the model after ingestion, set `force_recreate: true` once to rebuild the collection.

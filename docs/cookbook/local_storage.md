@@ -1,6 +1,6 @@
 # Use Qdrant Without Docker (Local File Storage)
 
-No Docker needed — Qdrant can store vectors in a local folder.
+No Docker needed: Qdrant can store vectors in a local folder.
 
 ```yaml
 vectorstore:

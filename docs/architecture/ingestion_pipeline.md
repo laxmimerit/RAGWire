@@ -13,7 +13,7 @@ flowchart TD
     B["Compute SHA256\nof file bytes\nsha256_file_from_path()"]
     B --> C{Hash already\nin Qdrant?}
 
-    C -->|Yes| SKIP(["SKIP — already ingested\nskipped += 1"])
+    C -->|Yes| SKIP(["SKIP: already ingested\nskipped += 1"])
     C -->|No| D
 
     D["Load document\nMarkItDownLoader.load()\nFile → Markdown text"]
@@ -53,7 +53,7 @@ flowchart LR
     Qdrant -->|"not found"| Ingest["Proceed with ingestion"]
 ```
 
-The hash is computed by streaming the file in 8 KB chunks — memory-safe for large PDFs. The same hash is stored as `file_hash` in every chunk's metadata, so a single Qdrant scroll query can check for existence.
+The hash is computed by streaming the file in 8 KB chunks, which stays memory-safe for large PDFs. The same hash is stored as `file_hash` in every chunk's metadata, so a single Qdrant scroll query can check for existence.
 
 ---
 

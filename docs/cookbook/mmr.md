@@ -1,6 +1,6 @@
 # Get Diverse Results with MMR
 
-By default, `retrieve()` returns the top-N most similar chunks — which can be nearly identical if they come from the same page. Use MMR (Maximal Marginal Relevance) to get results spread across different parts of the document.
+By default, `retrieve()` returns the top-N most similar chunks, which can be nearly identical if they come from the same page. Use MMR (Maximal Marginal Relevance) to get results spread across different parts of the document.
 
 ## Quick Setup via Config
 
@@ -44,8 +44,8 @@ for doc in results:
 
 **Recommended starting values:**
 
-- `fetch_k = 3–4x k` (e.g. `k=5, fetch_k=20`)
-- `lambda_mult = 0.3–0.5` for a balanced diversity/relevance trade-off
+- `fetch_k = 3 to 4x k` (e.g. `k=5, fetch_k=20`)
+- `lambda_mult = 0.3 to 0.5` for a balanced diversity and relevance trade-off
 
 ## When to Use MMR
 

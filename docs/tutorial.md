@@ -12,7 +12,7 @@ This tutorial walks you through a complete RAG pipeline from scratch using RAGWi
 
 ---
 
-## Step 1 — Install RAGWire
+## Step 1: Install RAGWire
 
 ```bash
 pip install "ragwire[ollama]"
@@ -23,7 +23,7 @@ pip install fastembed
 
 ---
 
-## Step 2 — Start Qdrant
+## Step 2: Start Qdrant
 
 Qdrant is the vector database where your document chunks are stored.
 
@@ -45,9 +45,9 @@ You should see:
 
 ---
 
-## Step 3 — Pull Ollama Models
+## Step 3: Pull Ollama Models
 
-You need two models — one for embeddings, one for metadata extraction.
+You need two models: one for embeddings, one for metadata extraction.
 
 ```bash
 ollama pull nomic-embed-text       # Embedding model (274MB)
@@ -62,7 +62,7 @@ ollama list
 
 ---
 
-## Step 4 — Create Configuration
+## Step 4: Create Configuration
 
 Create a `config.yaml` file in your project directory:
 
@@ -105,7 +105,7 @@ logging:
 
 ---
 
-## Step 5 — Add Documents
+## Step 5: Add Documents
 
 Create a `data/` folder and place your PDF (or DOCX, XLSX, etc.) inside:
 
@@ -118,14 +118,14 @@ your-project/
 
 ---
 
-## Step 6 — Run the Pipeline
+## Step 6: Run the Pipeline
 
 Create a Python script `run.py`:
 
 ```python
 from ragwire import RAGWire
 
-# Initialize — loads config, connects to Qdrant, initializes models
+# Initialize: loads config, connects to Qdrant, initializes models
 rag = RAGWire("config.yaml")
 
 # Ingest documents
@@ -153,11 +153,11 @@ Chunks    : 42
 ```
 
 !!! tip "Deduplication"
-    Run the script a second time — the file will be skipped automatically because RAGWire checks the SHA256 hash before ingesting.
+    Run the script a second time and the file is skipped automatically, because RAGWire checks the SHA256 hash before ingesting.
 
 ---
 
-## Step 7 — Retrieve Documents
+## Step 7: Retrieve Documents
 
 Add retrieval to your script:
 
@@ -188,7 +188,7 @@ for query in queries:
 
 ---
 
-## Step 8 — Explore Component Usage
+## Step 8: Explore Component Usage
 
 You can also use individual components directly:
 
@@ -234,7 +234,7 @@ print(f"Retrieved: {len(results)} chunks")
 
 ---
 
-## Step 9 — Hybrid Search
+## Step 9: Hybrid Search
 
 Hybrid search combines dense (semantic) and sparse (keyword) vectors for better recall. It is enabled by default when `use_sparse: true` and `search_type: "hybrid"` are set in `config.yaml`.
 
@@ -254,9 +254,9 @@ for doc in results:
 
 ---
 
-## Step 10 — Switch Providers
+## Step 10: Switch Providers
 
-Switching providers only requires changing `config.yaml` — no code changes needed.
+Switching providers only requires changing `config.yaml`, with no code changes.
 
 === "Ollama (local)"
 
@@ -320,7 +320,7 @@ Switching providers only requires changing `config.yaml` — no code changes nee
     ```
 
 !!! warning "Switching embedding models"
-    If you change the embedding model, you must set `force_recreate: true` in `vectorstore` once to rebuild the collection — then set it back to `false`.
+    If you change the embedding model, you must set `force_recreate: true` in `vectorstore` once to rebuild the collection, then set it back to `false`.
 
 ---
 

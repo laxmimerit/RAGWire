@@ -2,11 +2,11 @@
 
 Use Anthropic Claude as the metadata extraction LLM paired with any embedding provider.
 
-> Anthropic does not provide embedding models. You need a separate embedding provider — Ollama (local/free) or OpenAI are recommended.
+> Anthropic does not provide embedding models. You need a separate embedding provider; Ollama (local and free) or OpenAI are recommended.
 
 ## Prerequisites
 
-- Anthropic API key — [console.anthropic.com](https://console.anthropic.com)
+- Anthropic API key from [console.anthropic.com](https://console.anthropic.com)
 - RAGWire installed: `pip install "ragwire[anthropic]"`
 - Qdrant running: `docker run -d -p 6333:6333 qdrant/qdrant`
 
@@ -40,7 +40,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 ## 3. Configuration
 
-### Claude LLM + Ollama Embeddings (recommended — free embeddings)
+### Claude LLM + Ollama Embeddings (recommended, because embeddings stay free)
 
 ```yaml
 embeddings:
@@ -50,7 +50,7 @@ embeddings:
 
 llm:
   provider: "anthropic"
-  model: "claude-haiku-4-5-20251001"   # Fastest, cheapest — ideal for extraction
+  model: "claude-haiku-4-5-20251001"   # Fastest and cheapest, ideal for extraction
   # model: "claude-sonnet-4-6"         # Best speed/intelligence balance
   # model: "claude-opus-4-6"           # Most intelligent
 
@@ -116,11 +116,11 @@ python examples/basic_usage.py
 
 | Model | Context | Price (in/out per MTok) | Notes |
 |---|---|---|---|
-| `claude-haiku-4-5-20251001` | 200K | $1 / $5 | Fastest, cheapest — recommended for extraction |
+| `claude-haiku-4-5-20251001` | 200K | $1 / $5 | Fastest and cheapest; recommended for extraction |
 | `claude-sonnet-4-6` | 1M | $3 / $15 | Best speed/intelligence balance |
 | `claude-opus-4-6` | 1M | $5 / $25 | Most intelligent |
 
 ## Notes
 
-- The API key can also be passed directly in config: `api_key: "sk-ant-..."` — but environment variables are preferred.
-- Claude Haiku is the recommended model for metadata extraction — it is fast, cheap, and follows JSON instructions reliably.
+- The API key can also be passed directly in config as `api_key: "sk-ant-..."`, but environment variables are preferred.
+- Claude Haiku is the recommended model for metadata extraction, because it is fast, cheap and follows JSON instructions reliably.

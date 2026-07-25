@@ -2,11 +2,11 @@
 
 Groq provides ultra-fast LLM inference. Use it as the metadata extraction LLM paired with any embedding provider.
 
-> Groq does not provide embedding models. You need a separate embedding provider — Ollama (local/free) or OpenAI are recommended.
+> Groq does not provide embedding models. You need a separate embedding provider; Ollama (local and free) or OpenAI are recommended.
 
 ## Prerequisites
 
-- Groq API key — [console.groq.com](https://console.groq.com)
+- Groq API key from [console.groq.com](https://console.groq.com)
 - RAGWire installed: `pip install "ragwire[groq]"`
 - Qdrant running: `docker run -d -p 6333:6333 qdrant/qdrant`
 
@@ -40,7 +40,7 @@ GROQ_API_KEY=gsk_...
 
 ## 3. Configuration
 
-### Groq LLM + Ollama Embeddings (recommended — free embeddings)
+### Groq LLM + Ollama Embeddings (recommended, because embeddings stay free)
 
 ```yaml
 embeddings:
@@ -50,7 +50,7 @@ embeddings:
 
 llm:
   provider: "groq"
-  model: "qwen/qwen3-32b"            # Latest — strong quality, thinking mode support
+  model: "qwen/qwen3-32b"            # Latest: strong quality, thinking mode support
   # model: "llama-3.3-70b-versatile" # High quality alternative
 
 vectorstore:
@@ -115,7 +115,7 @@ python examples/basic_usage.py
 
 | Model | Context | Speed | Notes |
 |---|---|---|---|
-| `qwen/qwen3-32b` | 131K | — | Latest — recommended, thinking mode support |
+| `qwen/qwen3-32b` | 131K | not published | Latest and recommended; supports thinking mode |
 | `llama-3.3-70b-versatile` | 131K | ~280 tok/s | High quality alternative |
 | `llama-3.1-8b-instant` | 131K | ~560 tok/s | Ultra-fast |
 | `openai/gpt-oss-120b` | 131K | ~500 tok/s | High quality |
@@ -125,5 +125,5 @@ Full list: [console.groq.com/docs/models](https://console.groq.com/docs/models)
 
 ## Notes
 
-- The API key can also be passed directly in config: `api_key: "gsk_..."` — but environment variables are preferred.
-- Groq's free tier has generous rate limits — well suited for development and testing.
+- The API key can also be passed directly in config as `api_key: "gsk_..."`, but environment variables are preferred.
+- Groq's free tier has generous rate limits, which suits development and testing.

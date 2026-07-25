@@ -1,6 +1,6 @@
 # Preview Documents Before Ingesting
 
-Load and inspect extracted text before committing to the vector store — useful for debugging loader issues or verifying OCR quality.
+Load and inspect extracted text before committing to the vector store. This helps when debugging loader issues or verifying OCR quality.
 
 ## Single File
 
@@ -34,7 +34,7 @@ for r in results:
     print(f"{r['file_name']}: {status}")
 ```
 
-`extensions` is optional — omit it to load all supported formats (`.pdf`, `.docx`, `.xlsx`, `.pptx`, `.txt`, `.md`).
+`extensions` is optional; omit it to load all supported formats (`.pdf`, `.docx`, `.xlsx`, `.pptx`, `.txt`, `.md`).
 
 ## Result Object
 
@@ -51,6 +51,6 @@ Each result dict contains:
 ## Common Use Cases
 
 - **Verify OCR quality** on scanned PDFs before ingesting
-- **Debug missing content** — check if a section appears in the extracted text
-- **Estimate chunk counts** — `len(text) / chunk_size` gives a rough estimate
+- **Debug missing content**: check whether a section appears in the extracted text
+- **Estimate chunk counts**: `len(text) / chunk_size` gives a rough estimate
 - **Filter files** before ingestion based on content patterns
