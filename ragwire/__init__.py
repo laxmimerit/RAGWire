@@ -48,6 +48,7 @@ from .retriever.rerank import (
     get_reranker,
 )
 from .utils.logging import setup_logging, setup_colored_logging, get_logger
+from .eval import GoldenSet, GoldenQuery, evaluate, sweep
 
 __all__ = [
     # Core
@@ -81,6 +82,11 @@ __all__ = [
     "CohereReranker",
     "CrossEncoderReranker",
     "get_reranker",
+    # Evaluation
+    "GoldenSet",
+    "GoldenQuery",
+    "evaluate",
+    "sweep",
     # Utilities
     "setup_logging",
     "setup_colored_logging",

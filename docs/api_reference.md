@@ -1042,6 +1042,127 @@ logging:
 
 ---
 
+## Evaluation API
+
+`ragwire.eval` scores retrieval against a golden set. No extra install is needed. See [Measure Retrieval Quality](cookbook/evaluation.md) for the guide.
+
+```python
+from ragwire.eval import GoldenSet, evaluate, sweep
+```
+
+---
+
+### GoldenSet
+
+A list of queries paired with the documents that should be retrieved for them.
+
+#### `GoldenSet.from_file(path)`
+
+Load a golden set from YAML or JSON.
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `path` | `str` \| `Path` | Yes | n/a | Path to a `.yaml`, `.yml` or `.json` file |
+
+**Returns:** `GoldenSet`
+
+**Raises:** `FileNotFoundError` if the file is missing, `ValueError` if an entry has no `expected` key or an empty query.
+
+The file is either a bare list of entries, or a mapping with a `queries` key plus `match_field` and `match_mode`:
+
+```yaml
+- query: "What was Apple's net income in fiscal 2025?"
+  expected: ["apple_10k_2025.pdf"]
+  filters: {company_name: "apple"}   # optional, passed to retrieve()
+  note: "vague phrasing, fails first when chunk_size grows"  # optional
+```
+
+| Entry key | Type | Required | Description |
+|---|---|---|---|
+| `query` | `str` | Yes | The search query |
+| `expected` | `str` \| `list[str]` | Yes | Identifiers that count as a correct hit. A single string is accepted unwrapped. |
+| `filters` | `dict` | No | Metadata filters passed to `retrieve()` for this query |
+| `note` | `str` | No | Free text. Ignored by scoring. |
+
+| Set-level key | Default | Description |
+|---|---|---|
+| `match_field` | `"source"` | Metadata field compared against `expected` |
+| `match_mode` | `"basename"` | `"basename"` \| `"exact"` \| `"contains"` |
+
+#### `GoldenSet.from_data(data)`
+
+Same as `from_file` but takes already-parsed data. Useful in tests.
+
+---
+
+### evaluate
+
+#### `evaluate(rag, golden, top_k, label, **retrieve_kwargs)`
+
+Run every golden query and score what comes back.
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `rag` | `RAGWire` | Yes | n/a | The pipeline to evaluate |
+| `golden` | `GoldenSet` | Yes | n/a | Queries to run |
+| `top_k` | `int` | No | `5` | How many documents to retrieve and score at |
+| `label` | `str` | No | `"default"` | Name for this run, shown in output tables |
+| `**retrieve_kwargs` | | No | nothing | Passed to `retrieve()`, so `rerank=False` works here |
+
+**Returns:** `EvalResult`
+
+| Attribute | Type | Description |
+|---|---|---|
+| `metrics` | `dict[str, float]` | Averaged `recall`, `mrr`, `hit_rate`, `precision` |
+| `per_query` | `list[QueryResult]` | One entry per golden query |
+| `failures` | `list[QueryResult]` | Queries that retrieved nothing correct |
+| `to_table()` | `str` | Formatted summary, also what `print()` shows |
+
+Each `QueryResult` carries `query`, `expected`, `retrieved` (rank-ordered, with `"<miss>"` for documents that matched nothing), `metrics` and `missed`.
+
+A query that raises during retrieval is logged and scored as zero rather than aborting the run.
+
+---
+
+### sweep
+
+#### `sweep(rag, golden, variants, top_k)`
+
+Evaluate several retrieval settings against the same golden set.
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `rag` | `RAGWire` | Yes | n/a | The pipeline to evaluate |
+| `golden` | `GoldenSet` | Yes | n/a | Queries to run |
+| `variants` | `dict[str, dict]` | Yes | n/a | Label to `retrieve()` kwargs. The first entry is the baseline later rows are compared against. |
+| `top_k` | `int` | No | `5` | Default cutoff, overridable per variant |
+
+**Returns:** `SweepResult`, with `.results`, `.best` and `.to_table()`.
+
+```python
+print(sweep(rag, golden, {
+    "no rerank": {"rerank": False},
+    "reranked":  {"rerank": True},
+}))
+```
+
+---
+
+### Metric functions
+
+Exported for building custom reports. Each takes `retrieved` in rank order and `expected` as the correct set, plus an optional `k` cutoff.
+
+| Function | Returns |
+|---|---|
+| `recall_at_k(retrieved, expected, k)` | Fraction of expected documents found |
+| `precision_at_k(retrieved, expected, k)` | Fraction of results that were correct |
+| `hit_rate_at_k(retrieved, expected, k)` | `1.0` if anything correct was found |
+| `reciprocal_rank(retrieved, expected, k)` | `1 / rank` of the first correct result |
+| `score_query(retrieved, expected, k)` | All four as a dict |
+| `mean_metrics(per_query)` | Averages a list of metric dicts |
+
+---
+
 ## Low-level / Advanced API
 
 These APIs are exported for advanced use cases such as custom pipelines, direct vector store access, or building on top of RAGWire internals. Most users will not need these directly.

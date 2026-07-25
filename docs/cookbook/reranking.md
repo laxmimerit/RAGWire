@@ -142,5 +142,6 @@ For an interactive chatbot this is usually invisible next to the LLM call that f
 
 ## See also
 
+- [Measure Retrieval Quality](evaluation.md) to check whether reranking helped on your corpus
 - [Tune Retrieval Quality](tune_retrieval.md) for chunk size, `top_k` and search type
 - [Diverse Results (MMR)](mmr.md) for the diversity problem, which reranking does not solve

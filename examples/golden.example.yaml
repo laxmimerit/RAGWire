@@ -1,0 +1,59 @@
+# Example golden set for ragwire.eval
+#
+# A golden set is a list of queries paired with the documents that should come
+# back for them. Twenty entries written by someone who knows the corpus beats
+# a thousand generated ones, because the point is to capture judgement the
+# system cannot infer on its own.
+#
+# Run it with:
+#     from ragwire import RAGWire
+#     from ragwire.eval import GoldenSet, evaluate
+#     print(evaluate(RAGWire("config.yaml"), GoldenSet.from_file("golden.yaml")))
+
+# The simplest form is a bare list. "expected" holds the file names that
+# should be retrieved, compared on file name alone so paths do not matter.
+- query: "What was Apple's net income in fiscal 2025?"
+  expected: ["apple_10k_2025.pdf"]
+
+# A question can legitimately have more than one right source. Recall counts
+# how many of them were found.
+- query: "How did Amazon describe AWS growth this year?"
+  expected:
+    - "amazon_10q_q3_2025.pdf"
+    - "amazon_10k_2025.pdf"
+
+# Filters are passed straight to retrieve(), so you can evaluate the filtered
+# path your application actually uses rather than unfiltered search.
+- query: "What risks were disclosed?"
+  expected: ["nvidia_10k_2025.pdf"]
+  filters:
+    company_name: "nvidia"
+    fiscal_year: 2025
+
+# "note" is for your future self. It never affects scoring.
+- query: "operating margin drivers"
+  expected: ["apple_10k_2025.pdf"]
+  note: >
+    Deliberately vague phrasing with no company named. This is the case that
+    fails first when chunk_size grows too large.
+
+# A single file does not have to be wrapped in a list.
+- query: "How many employees does Microsoft have?"
+  expected: "microsoft_10k_2025.pdf"
+
+# --------------------------------------------------------------------------
+# Scoring on something other than the file name
+# --------------------------------------------------------------------------
+# The list form above is the whole file. To change how a match is judged, use
+# the mapping form instead and put your entries under "queries":
+#
+#   match_field: "company_name"   # metadata field compared against "expected"
+#   match_mode: "exact"           # "basename" (default) | "exact" | "contains"
+#   queries:
+#     - query: "What was net income?"
+#       expected: ["apple"]
+#
+# match_mode controls the comparison:
+#   basename   file names only, case insensitive. The default.
+#   exact      the stored value verbatim, including any path.
+#   contains   the expected value appears anywhere in the stored value.

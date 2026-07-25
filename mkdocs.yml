@@ -81,6 +81,7 @@ nav:
     - Update Documents: cookbook/update_documents.md
     - Tune Retrieval Quality: cookbook/tune_retrieval.md
     - Reranking: cookbook/reranking.md
+    - Measure Retrieval Quality: cookbook/evaluation.md
     - Inspect Your Collection: cookbook/inspect_collection.md
     - Diverse Results (MMR): cookbook/mmr.md
     - Preview Documents: cookbook/preview_documents.md
