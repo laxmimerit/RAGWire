@@ -43,6 +43,7 @@ from ..loaders.markitdown_loader import MarkItDownLoader
 from ..processing.splitter import get_splitter, get_markdown_splitter
 from ..processing.hashing import sha256_file_from_path, sha256_chunk
 from ..metadata.extractor import MetadataExtractor
+from ..metadata.schema import DocumentMetadata
 from ..embeddings.factory import get_embedding
 from ..vectorstores.qdrant_store import QdrantStore
 from ..retriever.hybrid import get_retriever, hybrid_search
@@ -597,6 +598,13 @@ class RAGWire:
                 "metadata_status": "ok" if metadata_ok else "failed",
                 **llm_metadata,
             }
+
+            # Validate the system fields before they reach the store. Custom
+            # schema fields pass through untouched (extra="allow"); what this
+            # catches is a custom field colliding with a system field name,
+            # which would silently corrupt provenance. The payload itself is
+            # stored unchanged so no nulls are introduced for absent fields.
+            DocumentMetadata(**chunk_metadata)
 
             documents.append(Document(page_content=chunk_text, metadata=chunk_metadata))
 

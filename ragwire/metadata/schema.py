@@ -14,11 +14,17 @@ class DocumentMetadata(BaseModel):
     """
     Metadata schema for RAG documents.
 
-    Finance-specific fields:
+    Every chunk written by the pipeline is validated against this model, so the
+    system fields below are guaranteed present and correctly typed on retrieval.
+    ``extra: "allow"`` means fields from a custom metadata schema pass through
+    untouched — this model owns the system fields, not the semantic ones.
+
+    Finance-specific fields (populated by the built-in FinancialMetadata schema;
+    absent when a custom metadata YAML is configured):
         company_name: Company name (e.g., "apple", "microsoft")
         doc_type: Document type (10-K, 10-Q, 8-K)
         fiscal_quarter: Fiscal quarter (q1, q2, q3, q4)
-        fiscal_year: Fiscal year(s) covered by the document
+        fiscal_year: Fiscal year covered by the document
 
     File-level fields:
         source: Source path or URL of the document
@@ -32,15 +38,22 @@ class DocumentMetadata(BaseModel):
         chunk_index: Position of this chunk within the document
         total_chunks: Total number of chunks in the document
 
+    Status:
+        metadata_status: "ok", or "failed" when LLM extraction did not succeed
+                         and the chunk carries no semantic metadata
+
     Timestamps:
         created_at: ISO format timestamp of ingestion
     """
 
-    # Finance-specific metadata
+    # Finance-specific metadata.
+    # NOTE: these types must match FinancialMetadata in metadata/extractor.py —
+    # that model is what the LLM actually populates. fiscal_year is a scalar int
+    # there, and Qdrant indexes it as a scalar integer.
     company_name: Optional[str] = Field(default=None, description="Company name (normalized to lowercase)")
     doc_type: Optional[str] = Field(default=None, description="Document type (10-K, 10-Q, 8-K)")
     fiscal_quarter: Optional[str] = Field(default=None, description="Fiscal quarter (q1-q4)")
-    fiscal_year: Optional[List[int]] = Field(default=None, description="Fiscal year(s) covered")
+    fiscal_year: Optional[int] = Field(default=None, description="Fiscal year covered")
 
     # File-level metadata
     source: str = Field(..., description="Source file path")
@@ -53,6 +66,12 @@ class DocumentMetadata(BaseModel):
     chunk_hash: str = Field(..., description="SHA256 hash of chunk content")
     chunk_index: int = Field(default=0, description="Position of chunk within the document")
     total_chunks: int = Field(default=1, description="Total chunks in the document")
+
+    # Extraction status
+    metadata_status: str = Field(
+        default="ok",
+        description="'ok', or 'failed' if LLM metadata extraction did not succeed",
+    )
 
     # Timestamps
     created_at: Optional[str] = Field(

@@ -39,64 +39,70 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-    # Core dependencies
-    "langchain>=0.1.0",
-    "langchain-core>=0.1.0",
-    "langchain-community>=0.0.0",
-    "langchain-text-splitters>=0.0.1",
-    
-    # Vector database
-    "qdrant-client>=1.6.0",
-    "langchain-qdrant>=0.1.0",
-    
+    # Core dependencies.
+    # langchain-core must be >=1.0: AIMessage.text is a property there, and was
+    # a method in 0.3.x — filter extraction breaks on older releases.
+    "langchain>=1.0.0,<2.0.0",
+    "langchain-core>=1.0.0,<2.0.0",
+    "langchain-community>=0.4.0,<1.0.0",
+    "langchain-text-splitters>=1.0.0,<2.0.0",
+
+    # Vector database.
+    # qdrant-client must be >=1.12 for the facet API used by get_field_values().
+    "qdrant-client>=1.12.0,<2.0.0",
+    "langchain-qdrant>=1.0.0,<2.0.0",
+
     # Document processing
-    "markitdown[pdf]>=0.0.1",
-    
+    "markitdown[pdf]>=0.1.0,<1.0.0",
+
     # Configuration
     "pyyaml>=6.0",
     "python-dotenv>=1.0.0",
-    
+
     # Data validation
-    "pydantic>=2.0.0",
-    
+    "pydantic>=2.0.0,<3.0.0",
+
     # Progress bars
     "tqdm>=4.66.0",
 ]
 
 [project.optional-dependencies]
+# Provider extras. Floors are set to the first release line that targets
+# langchain-core 1.x — older releases resolve but fail at runtime.
+
 # OpenAI embeddings
 openai = [
-    "langchain-openai>=0.0.0",
+    "langchain-openai>=1.0.0,<2.0.0",
 ]
 
 # HuggingFace embeddings
 huggingface = [
-    "langchain-huggingface>=0.0.0",
+    "langchain-huggingface>=1.0.0,<2.0.0",
 ]
 
 # Ollama embeddings
 ollama = [
-    "langchain-ollama>=0.0.0",
+    "langchain-ollama>=1.0.0,<2.0.0",
 ]
 
 # Google/Gemini embeddings and LLM
 google = [
-    "langchain-google-genai>=0.0.0",
+    "langchain-google-genai>=3.0.0,<5.0.0",
 ]
 
 # FastEmbed for sparse vectors
 fastembed = [
-    "fastembed>=0.2.0",
+    "fastembed>=0.4.0,<1.0.0",
 ]
 
 # Groq LLM
 groq = [
-    "langchain-groq>=0.0.0",
+    "langchain-groq>=1.0.0,<2.0.0",
 ]
 
 # Anthropic LLM
 anthropic = [
-    "langchain-anthropic>=0.0.0",
+    "langchain-anthropic>=1.0.0,<2.0.0",
 ]
 
 # OpenRouter LLM (ChatOpenRouter) + embeddings (official openrouter SDK)
@@ -168,4 +174,6 @@ testpaths = ["tests"]
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
-addopts = "-v --cov=ragwire --cov-report=term-missing"
+# Coverage is opt-in: `pytest --cov=ragwire --cov-report=term-missing`.
+# Putting it in addopts makes a plain `pytest` fail unless pytest-cov is installed.
+addopts = "-v"
