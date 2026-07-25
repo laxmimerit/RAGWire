@@ -1,7 +1,7 @@
-# Video 12 — Interactive Workflow Builder with LangGraph + Streamlit
+# Video 12: Interactive Workflow Builder with LangGraph + Streamlit
 
 **Framework**: LangGraph + Streamlit
-**Application**: Visual human-in-the-loop document workflow — user approves each step before the agent proceeds
+**Application**: Visual human-in-the-loop document workflow where the user approves each step before the agent proceeds
 **Difficulty**: Advanced
 
 ---
@@ -269,7 +269,7 @@ if state:
         selections = []
         for i, doc in enumerate(state["documents"]):
             include = st.checkbox(
-                f"[{i}] {doc.metadata.get('file_name', 'doc')} — {doc.page_content[:100]}...",
+                f"[{i}] {doc.metadata.get('file_name', 'doc')}: {doc.page_content[:100]}...",
                 value=True, key=f"doc_{i}"
             )
             if include:
@@ -322,7 +322,7 @@ if state:
 ## What to Explain in Video
 
 1. What is human-in-the-loop and why it matters for RAG (5 min)
-2. LangGraph `interrupt()` mechanism — how it pauses execution (7 min)
+2. The LangGraph `interrupt()` mechanism, and how it pauses execution (7 min)
 3. `interrupt_before` vs `interrupt_after` (3 min)
 4. Resuming a graph with `invoke(human_input)` (5 min)
 5. Streamlit `st.rerun()` to update UI after graph steps (5 min)

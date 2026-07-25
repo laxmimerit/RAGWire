@@ -1,4 +1,4 @@
-# Video 10 — Customer Support Knowledge Base with LangChain
+# Video 10: Customer Support Knowledge Base with LangChain
 
 **Framework**: LangChain
 **Application**: Support bot backed by RAGWire that handles queries, escalates edge cases, and logs unresolved tickets
@@ -51,7 +51,7 @@ tickets = {}
 def search_knowledge_base(query: str, category: str = None) -> str:
     """
     Search the support knowledge base for answers.
-    category: optional filter — 'faq', 'troubleshooting', 'billing', 'product'
+    category: optional filter, one of 'faq', 'troubleshooting', 'billing', 'product'
     Returns relevant support documentation passages.
     """
     filters = {}
@@ -217,10 +217,10 @@ if __name__ == "__main__":
 
 ## What to Explain in Video
 
-1. Support bot architecture — classify then retrieve (5 min)
-2. Knowledge base structure — how to organize support docs for RAG (5 min)
+1. Support bot architecture: classify, then retrieve (5 min)
+2. Knowledge base structure, and how to organize support docs for RAG (5 min)
 3. Intent classification as routing logic (5 min)
-4. Escalation detection — when to create a ticket (5 min)
+4. Escalation detection, and when to create a ticket (5 min)
 5. Per-customer session isolation with `thread_id` (3 min)
 6. Production considerations: DB for tickets, logging, analytics (5 min)
 7. Live demo with angry customer scenario (7 min)

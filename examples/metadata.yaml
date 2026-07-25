@@ -5,9 +5,9 @@ prompt: |
   ## Extraction Rules
   1. **Be thorough**: Extract every field you can find. A field should only be null if the information is completely absent.
   2. **Be precise**: Extract exactly what is stated. Do not infer, assume, or hallucinate values not present in the document.
-  3. **Lists**: Scan the entire document and extract ALL matching values — not just the first occurrence.
+  3. **Lists**: Scan the entire document and extract ALL matching values, not just the first occurrence.
   4. **Strings**: Normalize to lowercase. Trim extra whitespace.
-  5. **Integers**: Return the numeric value only — no units, symbols, or surrounding text.
+  5. **Integers**: Return the numeric value only, with no units, symbols or surrounding text.
   6. **Null**: Return null only when the field is genuinely not mentioned anywhere in the document.
 
 fields:
@@ -23,6 +23,6 @@ fields:
     type: integer
 
   - name: research_focus
-    description: "List of all primary research topics covered, in lowercase-hyphenated format. Not limited to the examples — extract any focus area mentioned in the paper."
+    description: "List of all primary research topics covered, in lowercase-hyphenated format. Not limited to the examples; extract any focus area mentioned in the paper."
     type: list
     values: ["muscle-growth", "recovery", "performance", "endurance", "cognitive-function", "fat-loss", "safety", "hormonal"]

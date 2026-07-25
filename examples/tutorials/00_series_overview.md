@@ -1,4 +1,4 @@
-# RAGWire YouTube Tutorial Series — 15 Agentic Applications
+# RAGWire YouTube Tutorial Series: 15 Agentic Applications
 
 > Build production-grade AI agents with RAGWire + LangChain, LangGraph, CrewAI, Chainlit, Streamlit, and more.
 

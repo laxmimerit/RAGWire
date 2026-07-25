@@ -1,8 +1,8 @@
-# Video 06 — Self-Correcting RAG Agent with LangGraph
+# Video 06: Self-Correcting RAG Agent with LangGraph
 
 **Framework**: LangGraph
 **Application**: Agentic RAG that grades its own answers, rewrites queries, and retries until confidence threshold is met
-**Difficulty**: Intermediate–Advanced
+**Difficulty**: Intermediate to Advanced
 
 ---
 
@@ -99,7 +99,7 @@ def generate(state: CorrectionState) -> CorrectionState:
 
 
 def grade_answer(state: CorrectionState) -> CorrectionState:
-    """Score answer quality — does it actually answer the original question?"""
+    """Score answer quality: does it actually answer the original question?"""
     prompt = f"""Evaluate if this answer adequately addresses the question.
 Question: {state['original_query']}
 Answer: {state['answer']}
@@ -236,10 +236,10 @@ if __name__ == "__main__":
 
 ## What to Explain in Video
 
-1. Why naive RAG fails — the relevance gap problem (5 min)
-2. LLM-as-judge pattern — grading docs and answers (7 min)
-3. Query rewriting — how and why it improves retrieval (5 min)
-4. Loop detection in LangGraph — `MAX_ITERATIONS` guard (3 min)
+1. Why naive RAG fails: the relevance gap problem (5 min)
+2. The LLM-as-judge pattern for grading docs and answers (7 min)
+3. Query rewriting, and why it improves retrieval (5 min)
+4. Loop detection in LangGraph with the `MAX_ITERATIONS` guard (3 min)
 5. JSON mode for structured LLM output (3 min)
 6. Visualizing the correction loop with Mermaid (3 min)
 7. Live demo showing iteration trace (9 min)

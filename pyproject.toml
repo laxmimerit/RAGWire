@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ragwire"
 version = "1.4.0"
-description = "RAGWire — Production-grade RAG toolkit for document ingestion and retrieval with hybrid search support"
+description = "Production-grade RAG toolkit for document ingestion and retrieval with hybrid search support"
 readme = "README.md"
 license = "MIT"
 authors = [
@@ -41,7 +41,7 @@ requires-python = ">=3.10"
 dependencies = [
     # Core dependencies.
     # langchain-core must be >=1.0: AIMessage.text is a property there, and was
-    # a method in 0.3.x — filter extraction breaks on older releases.
+    # a method in 0.3.x, so filter extraction breaks on older releases.
     "langchain>=1.0.0,<2.0.0",
     "langchain-core>=1.0.0,<2.0.0",
     "langchain-community>=0.4.0,<1.0.0",
@@ -68,7 +68,7 @@ dependencies = [
 
 [project.optional-dependencies]
 # Provider extras. Floors are set to the first release line that targets
-# langchain-core 1.x — older releases resolve but fail at runtime.
+# langchain-core 1.x. Older releases resolve but fail at runtime.
 
 # OpenAI embeddings
 openai = [

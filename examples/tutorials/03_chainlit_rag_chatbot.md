@@ -1,8 +1,8 @@
-# Video 03 — Conversational RAG Chatbot with Chainlit
+# Video 03: Conversational RAG Chatbot with Chainlit
 
 **Framework**: Chainlit
 **Application**: Streaming document chatbot with conversation history, source citations, and file upload
-**Difficulty**: Beginner–Intermediate
+**Difficulty**: Beginner to Intermediate
 
 ---
 
@@ -90,7 +90,7 @@ async def on_start():
 
     # Proactively ask for file upload on session start (Chainlit v2 preferred pattern)
     files = await cl.AskFileMessage(
-        content="Upload PDF/DOCX files to get started (optional — skip by typing a question):",
+        content="Upload PDF/DOCX files to get started (optional: skip by typing a question):",
         accept=["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 "text/plain", "text/markdown"],
         max_files=10,
@@ -128,7 +128,7 @@ async def on_message(message: cl.Message):
     sources = []
     for i, doc in enumerate(docs, 1):
         meta = doc.metadata
-        label = f"[{i}] {meta.get('file_name', 'source')} — {meta.get('company_name', '')}"
+        label = f"[{i}] {meta.get('file_name', 'source')}: {meta.get('company_name', '')}"
         sources.append(cl.Text(name=label, content=doc.page_content, display="side"))
 
     context = "\n\n---\n\n".join(d.page_content for d in docs)
@@ -184,7 +184,7 @@ async def on_message(message: cl.Message):
 
 ## What to Explain in Video
 
-1. Chainlit vs Streamlit — when to use each (3 min)
+1. Chainlit vs Streamlit, and when to use each (3 min)
 2. `cl.user_session` for per-user RAGWire instances (5 min)
 3. File upload handling and temp directory pattern (5 min)
 4. Async streaming with `llm.astream()` (5 min)

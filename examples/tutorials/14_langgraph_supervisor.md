@@ -1,4 +1,4 @@
-# Video 14 — Hierarchical Supervisor Multi-Agent System with LangGraph
+# Video 14: Hierarchical Supervisor Multi-Agent System with LangGraph
 
 **Framework**: LangGraph
 **Application**: A supervisor agent that dynamically routes complex queries to specialized sub-agents (Financial, Legal, Technical, Summary)
@@ -10,10 +10,10 @@
 
 A hierarchical multi-agent system where:
 - **Supervisor** receives any query and decides which specialist to call
-- **Financial Agent** — handles revenue, margins, guidance, valuations
-- **Legal/Risk Agent** — handles risk factors, legal proceedings, compliance
-- **Technical Agent** — handles product descriptions, R&D, technology strategy
-- **Summary Agent** — handles general overview and executive summary requests
+- **Financial Agent**: handles revenue, margins, guidance and valuations
+- **Legal/Risk Agent**: handles risk factors, legal proceedings and compliance
+- **Technical Agent**: handles product descriptions, R&D and technology strategy
+- **Summary Agent**: handles general overview and executive summary requests
 - Supervisor synthesizes outputs from multiple agents into one answer
 
 ---
@@ -315,10 +315,10 @@ if __name__ == "__main__":
 
 ## What to Explain in Video
 
-1. Hierarchical agent patterns — supervisor vs peer agents (5 min)
-2. Agent factory function — DRY principle for agents (5 min)
-3. Supervisor prompt design — what makes routing reliable (7 min)
+1. Hierarchical agent patterns: supervisor vs peer agents (5 min)
+2. The agent factory function, and applying DRY to agents (5 min)
+3. Supervisor prompt design, and what makes routing reliable (7 min)
 4. `add_conditional_edges` with many targets (5 min)
-5. The `synthesize` node — combining multi-agent outputs (5 min)
-6. Loop guards — preventing infinite routing (3 min)
+5. The `synthesize` node for combining multi-agent outputs (5 min)
+6. Loop guards for preventing infinite routing (3 min)
 7. Live demo showing routing trace with different query types (10 min)

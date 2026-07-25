@@ -1,12 +1,12 @@
 prompt: |
-  You are parsing an SEC filing. This document IS an SEC filing — treat it as such.
+  You are parsing an SEC filing. This document IS an SEC filing, so treat it as such.
   Extract the four fields below. All values must be lowercase strings.
 
   **company_name**: The company that filed this document.
   Scan for "registrant", the title block, or the company name printed above the form number.
   Use the full legal name. Example: "AMAZON.COM, INC." → 'amazon.com inc.'
 
-  **doc_type**: The SEC form type. It will appear as one of these — map it exactly:
+  **doc_type**: The SEC form type. It will appear as one of these, so map it exactly:
   "Form 10-K" or "Annual Report on Form 10-K" → '10-k'
   "Form 10-Q" or "Quarterly Report on Form 10-Q" → '10-q'
   "Form 8-K" or "Current Report on Form 8-K" → '8-k'

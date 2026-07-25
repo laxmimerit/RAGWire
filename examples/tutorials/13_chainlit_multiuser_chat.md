@@ -1,8 +1,8 @@
-# Video 13 — Multi-User Document Chat with Chainlit
+# Video 13: Multi-User Document Chat with Chainlit
 
 **Framework**: Chainlit
 **Application**: Authenticated multi-user chat where each user has isolated document collections and conversation history
-**Difficulty**: Intermediate–Advanced
+**Difficulty**: Intermediate to Advanced
 
 ---
 
@@ -49,7 +49,7 @@ enable_telemetry = false
 multi_modal = true
 
 [auth]
-# Custom auth — implemented in app.py via @cl.password_auth_callback
+# Custom auth, implemented in app.py via @cl.password_auth_callback
 ```
 
 ---
@@ -135,7 +135,7 @@ async def on_start():
 
     greeting = f"Hello **{username}**! "
     if role == "admin":
-        greeting += "You have admin access — you can view collection stats."
+        greeting += "You have admin access, so you can view collection stats."
     else:
         greeting += "Upload documents or ask questions about your files."
 
@@ -149,7 +149,7 @@ async def on_start():
     except Exception:
         pass
 
-    # Offer file upload on start (Chainlit v2 AskFileMessage — preferred pattern)
+    # Offer file upload on start (Chainlit v2 AskFileMessage is the preferred pattern)
     if role != "admin":
         files = await cl.AskFileMessage(
             content="Upload documents to your private collection (optional):",
@@ -255,8 +255,8 @@ async def handle_admin_command(command: str, pipeline: RAGWire):
     elif cmd == "/help":
         await cl.Message(content=(
             "**Admin Commands:**\n"
-            "- `/stats` — Show collection metadata statistics\n"
-            "- `/help` — Show this help"
+            "- `/stats`: Show collection metadata statistics\n"
+            "- `/help`: Show this help"
         )).send()
 
     else:

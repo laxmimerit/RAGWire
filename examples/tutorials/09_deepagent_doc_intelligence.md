@@ -1,8 +1,8 @@
-# Video 09 — Autonomous Document Intelligence Agent with DeepAgent
+# Video 09: Autonomous Document Intelligence Agent with DeepAgent
 
 **Framework**: DeepAgent (deep-agent / AutoGen-style autonomous loop)
 **Application**: Fully autonomous agent that ingests, analyzes, and produces structured reports without human input
-**Difficulty**: Intermediate–Advanced
+**Difficulty**: Intermediate to Advanced
 
 ---
 
@@ -138,7 +138,7 @@ Workflow:
 4. Execute multiple targeted searches to gather evidence
 5. Extract structured data for key metrics
 6. When confident, write the final report (use write_report)
-7. After writing the report, STOP — your job is done.
+7. After writing the report, STOP. Your job is done.
 
 Be systematic, thorough, and cite evidence. Self-terminate after writing the report."""
 
@@ -227,9 +227,9 @@ if __name__ == "__main__":
 
 ## What to Explain in Video
 
-1. What "autonomous agent" means — observe, think, act loop (5 min)
-2. Tool design for autonomous agents — enabling vs constraining (7 min)
-3. Self-termination — why `write_report` is the stop signal (5 min)
+1. What "autonomous agent" means: the observe, think, act loop (5 min)
+2. Tool design for autonomous agents: enabling vs constraining (7 min)
+3. Self-termination, and why `write_report` is the stop signal (5 min)
 4. Tracing agent reasoning from message history (5 min)
-5. When autonomous agents go wrong — common failure modes (5 min)
+5. When autonomous agents go wrong: common failure modes (5 min)
 6. Live demo with trace output showing agent planning (13 min)

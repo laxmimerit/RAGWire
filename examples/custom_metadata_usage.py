@@ -1,6 +1,6 @@
 """
-Custom Metadata Example — RAGWire
-==================================
+Custom Metadata Example for RAGWire
+===================================
 Demonstrates custom metadata extraction using a domain-specific metadata.yaml.
 
 Setup:
@@ -46,7 +46,7 @@ for err in stats.get("errors", []):
 # 3. Inspect extracted metadata
 # ------------------------------------------------------------------ #
 logger.info("\n" + "=" * 60)
-logger.info("SECTION 1 — Extracted Custom Metadata")
+logger.info("SECTION 1: Extracted Custom Metadata")
 logger.info("=" * 60)
 
 results = rag.retrieve("organization policy", top_k=1)
@@ -60,7 +60,7 @@ if results:
 # 4. Retrieve with explicit filters
 # ------------------------------------------------------------------ #
 logger.info("\n" + "=" * 60)
-logger.info("SECTION 2 — Explicit Custom Filters")
+logger.info("SECTION 2: Explicit Custom Filters")
 logger.info("=" * 60)
 
 logger.info("\nFilter: doc_type=policy")

@@ -1,4 +1,4 @@
-# Video 15 — Production Full-Stack RAG App with FastAPI + Streamlit
+# Video 15: Production Full-Stack RAG App with FastAPI + Streamlit
 
 **Framework**: FastAPI (backend) + Streamlit (frontend)
 **Application**: Production-grade RAG system with REST API backend, async ingestion queue, and Streamlit frontend
@@ -11,11 +11,11 @@
 A production-ready 2-tier architecture:
 
 **Backend (FastAPI)**:
-- `POST /ingest` — async document ingestion with job tracking
-- `GET /ingest/{job_id}` — check ingestion status
-- `POST /query` — query with optional filters, returns sources + answer
-- `GET /collections` — list available collections and stats
-- `DELETE /collection/{name}` — remove a collection
+- `POST /ingest`: async document ingestion with job tracking
+- `GET /ingest/{job_id}`: check ingestion status
+- `POST /query`: query with optional filters; returns sources and answer
+- `GET /collections`: list available collections and stats
+- `DELETE /collection/{name}`: remove a collection
 - Background task queue for ingestion jobs
 
 **Frontend (Streamlit)**:
@@ -269,7 +269,7 @@ API_BASE = "http://localhost:8000"
 st.set_page_config(page_title="RAGWire App", layout="wide")
 st.title("RAGWire Document Intelligence")
 
-# Sidebar — upload
+# Sidebar: upload
 with st.sidebar:
     st.header("Upload Documents")
     files = st.file_uploader("Select files", accept_multiple_files=True, type=["pdf", "docx", "txt"])
@@ -317,7 +317,7 @@ with st.sidebar:
             if selected:
                 selected_filters[field] = selected
 
-# Main — chat
+# Main area: chat
 query = st.chat_input("Ask a question...")
 if query:
     with st.chat_message("user"):
@@ -352,11 +352,11 @@ if query:
 ## Running the App
 
 ```bash
-# Terminal 1 — Start backend
+# Terminal 1: start the backend
 cd backend
 uvicorn main:app --reload --port 8000
 
-# Terminal 2 — Start frontend
+# Terminal 2: start the frontend
 cd frontend
 streamlit run app.py
 ```

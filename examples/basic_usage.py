@@ -4,7 +4,7 @@ Example: Basic RAG Pipeline Usage
 Demonstrates the full RAG rag:
 1. Initialize with config.yaml
 2. Ingest PDF documents from examples/data/
-3. Retrieve relevant chunks — plain and with metadata filters
+3. Retrieve relevant chunks, plain and with metadata filters
 4. Display results with full metadata
 """
 
@@ -58,7 +58,7 @@ def main():
     rag = RAGWire(str(CONFIG_PATH))
 
     # ------------------------------------------------------------------ #
-    # 2a. Ingest via directory (new helper — scans examples/data/ for you)
+    # 2a. Ingest via directory (a helper that scans examples/data/ for you)
     # ------------------------------------------------------------------ #
     logger.info("\nIngesting documents from directory...")
     stats = rag.ingest_directory(str(DATA_DIR))
@@ -85,7 +85,7 @@ def main():
     # 3. Basic retrieval (no filters)
     # ------------------------------------------------------------------ #
     logger.info("\n" + "=" * 60)
-    logger.info("SECTION 1 — Basic Retrieval (no filters)")
+    logger.info("SECTION 1: Basic Retrieval (no filters)")
     logger.info("=" * 60)
 
     queries = [
@@ -106,7 +106,7 @@ def main():
     # 4. Retrieval with metadata filters
     # ------------------------------------------------------------------ #
     logger.info("\n" + "=" * 60)
-    logger.info("SECTION 2 — Retrieval with Metadata Filters")
+    logger.info("SECTION 2: Retrieval with Metadata Filters")
     logger.info("=" * 60)
 
     # Get company name and year from the first ingested doc's metadata
@@ -115,7 +115,7 @@ def main():
     year = sample[0].metadata.get("fiscal_year") if sample else None
     year_val = year[0] if isinstance(year, list) and year else year
 
-    logger.info(f"\nDetected — company: {company}, fiscal_year: {year_val}")
+    logger.info(f"\nDetected company: {company}, fiscal_year: {year_val}")
 
     # Filter by company
     logger.info(f"\nQuery: 'total revenue'  |  filter: company_name={company}")
@@ -143,7 +143,7 @@ def main():
     # 5. Hybrid search
     # ------------------------------------------------------------------ #
     logger.info("\n" + "=" * 60)
-    logger.info("SECTION 3 — Hybrid Search")
+    logger.info("SECTION 3: Hybrid Search")
     logger.info("=" * 60)
 
     hybrid_query = f"{company} revenue fiscal {year_val}" if company else "revenue fiscal year"
@@ -156,7 +156,7 @@ def main():
     # 6. Metadata inspection
     # ------------------------------------------------------------------ #
     logger.info("\n" + "=" * 60)
-    logger.info("SECTION 4 — Full Metadata Inspection")
+    logger.info("SECTION 4: Full Metadata Inspection")
     logger.info("=" * 60)
 
     results = rag.retrieve("revenue", top_k=1)

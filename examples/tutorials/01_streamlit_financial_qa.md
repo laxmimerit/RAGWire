@@ -1,4 +1,4 @@
-# Video 01 — Financial Document Q&A App with Streamlit
+# Video 01: Financial Document Q&A App with Streamlit
 
 **Framework**: Streamlit
 **Application**: Ask questions over SEC 10-K / 10-Q filings with metadata-aware retrieval
@@ -53,7 +53,7 @@ def load_pipeline():
 
 pipeline = load_pipeline()
 
-# Sidebar — ingest
+# Sidebar: ingest
 with st.sidebar:
     st.header("Ingest Documents")
     uploaded = st.file_uploader("Upload PDFs", type=["pdf"], accept_multiple_files=True)
@@ -71,7 +71,7 @@ with st.sidebar:
     company = st.text_input("Company name (optional)")
     year = st.number_input("Fiscal year (0 = any)", min_value=0, max_value=2100, value=0)
 
-# Main — chat
+# Main area: chat
 query = st.chat_input("Ask a question about the documents...")
 if query:
     filters = {}
@@ -106,7 +106,7 @@ if query:
             with st.expander("Source chunks"):
                 for i, doc in enumerate(docs, 1):
                     meta = doc.metadata
-                    st.markdown(f"**[{i}]** `{meta.get('file_name', 'unknown')}` — "
+                    st.markdown(f"**[{i}]** `{meta.get('file_name', 'unknown')}`: "
                                 f"{meta.get('company_name', '')} {meta.get('fiscal_year', '')}")
                     st.text(doc.page_content[:300] + "...")
 ```

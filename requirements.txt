@@ -2,7 +2,7 @@
 # Install with: pip install -r requirements.txt
 #
 # Floors mirror pyproject.toml. They are the versions RAGWire is tested against,
-# not aspirational minimums — langchain-core <1.0 in particular resolves fine
+# not aspirational minimums. langchain-core <1.0 in particular resolves fine
 # but fails at runtime (AIMessage.text was a method there, not a property).
 
 # Core dependencies
@@ -49,7 +49,7 @@ langchain-groq>=1.0.0,<2.0.0
 # Optional: Anthropic LLM
 langchain-anthropic>=1.0.0,<2.0.0
 
-# Optional: OpenRouter support — LLM (ChatOpenRouter) + embeddings (openrouter SDK)
+# Optional: OpenRouter support for the LLM (ChatOpenRouter) and embeddings (openrouter SDK)
 # NOTE: langchain-openrouter requires Python >= 3.10
 langchain-openrouter>=0.2.0,<1.0.0
 openrouter>=0.9.0,<1.0.0

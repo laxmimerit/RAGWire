@@ -1,19 +1,19 @@
-# Video 08 — Automated Investment Report Generator with CrewAI
+# Video 08: Automated Investment Report Generator with CrewAI
 
 **Framework**: CrewAI
-**Application**: Automated equity research report pipeline — ingests 10-K filings, produces investor-grade PDF report
-**Difficulty**: Intermediate–Advanced
+**Application**: Automated equity research report pipeline that ingests 10-K filings and produces an investor-grade PDF report
+**Difficulty**: Intermediate to Advanced
 
 ---
 
 ## What You'll Build
 
 A CrewAI crew that runs a full investment research pipeline:
-1. **Data Collector** — ingests and indexes SEC filings automatically
-2. **Financial Analyst** — extracts financial metrics (revenue, margins, debt)
-3. **Risk Analyst** — identifies and scores risk factors from filings
-4. **Investment Strategist** — synthesizes buy/hold/sell recommendation
-5. **Report Writer** — generates a formatted markdown investment memo
+1. **Data Collector**: ingests and indexes SEC filings automatically
+2. **Financial Analyst**: extracts financial metrics such as revenue, margins and debt
+3. **Risk Analyst**: identifies and scores risk factors from filings
+4. **Investment Strategist**: synthesizes a buy, hold or sell recommendation
+5. **Report Writer**: generates a formatted markdown investment memo
 
 ---
 
@@ -252,7 +252,7 @@ if __name__ == "__main__":
 
 1. Sell-side research report structure (5 min)
 2. Splitting financial vs risk analysis into separate agents (5 min)
-3. `output_file` parameter — auto-save task output (3 min)
+3. The `output_file` parameter for auto-saving task output (3 min)
 4. How context chaining works in CrewAI (5 min)
 5. LLM temperature for financial precision (2 min)
 6. Live demo generating Apple investment memo (15 min)

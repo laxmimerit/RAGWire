@@ -58,14 +58,14 @@ embeddings:
   # dimensions: 2048                   # optional, only if the model supports it
 
 # =================================================================
-# LLM — used for metadata extraction on every ingested document
+# LLM: used for metadata extraction on every ingested document
 # =================================================================
 llm:
   # --- Ollama (local) ---
   provider: "ollama"
   model: "qwen3.5:9b"
   base_url: "http://localhost:11434"
-  num_ctx: 16384         # Context window — must fit your largest chunk
+  num_ctx: 16384         # Context window. Must fit your largest chunk.
 
   # --- OpenAI ---
   # provider: "openai"
@@ -102,7 +102,7 @@ retriever:
   search_type: "hybrid"   # "similarity" | "mmr" | "hybrid" (hybrid requires use_sparse: true)
   top_k: 5
   auto_filter: false       # If true, LLM automatically extracts metadata filters from every query.
-                           # Default false — use rag.extract_filters(query) to let an agent decide.
+                           # Default false. Call rag.extract_filters(query) to let an agent decide.
 
 # =================================================================
 # Logging

@@ -12,7 +12,7 @@
 # If you provide a custom prompt_template, the fields list is ignored.
 
 # -------------------------------------------------------
-# Field definitions — used to auto-generate the prompt
+# Field definitions, used to auto-generate the prompt
 # -------------------------------------------------------
 fields:
   - name: organization

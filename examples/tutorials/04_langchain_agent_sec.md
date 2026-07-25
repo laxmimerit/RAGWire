@@ -1,4 +1,4 @@
-# Video 04 — SEC Filing Analyzer Agent with LangChain
+# Video 04: SEC Filing Analyzer Agent with LangChain
 
 **Framework**: LangChain (tool-calling agent)
 **Application**: Autonomous agent with RAGWire tools to analyze SEC filings and answer complex financial queries
@@ -50,7 +50,7 @@ config = Config("config.yaml")
 pipeline = RAGWire(config)
 llm = ChatOllama(model="qwen2.5:7b")
 
-# Tool 1 — understand what metadata is available
+# Tool 1: understand what metadata is available
 @tool
 def get_filter_context(query: str) -> str:
     """
@@ -60,7 +60,7 @@ def get_filter_context(query: str) -> str:
     """
     return pipeline.get_filter_context(query)
 
-# Tool 2 — search documents with optional filters
+# Tool 2: search documents with optional filters
 @tool
 def search_documents(query: str, filters: dict = None) -> str:
     """
@@ -81,7 +81,7 @@ def search_documents(query: str, filters: dict = None) -> str:
 
     return "\n\n---\n\n".join(results)
 
-# Tool 3 — compare across companies
+# Tool 3: compare across companies
 @tool
 def compare_companies(query: str, companies: list[str]) -> str:
     """
@@ -117,7 +117,7 @@ agent = create_agent(
 def chat(thread_id: str = "analyst-1"):
     """Interactive SEC filing analysis session."""
     config = {"configurable": {"thread_id": thread_id}}
-    print("SEC Filing Analyzer — type 'quit' to exit\n")
+    print("SEC Filing Analyzer. Type 'quit' to exit.\n")
 
     while True:
         query = input("You: ").strip()
@@ -161,9 +161,9 @@ You: What guidance did Apple give for Q1 2025?
 ## What to Explain in Video
 
 1. Why agents need two tools (context + search) not one (5 min)
-2. `get_filter_context()` internals — what it returns (5 min)
+2. `get_filter_context()` internals and what it returns (5 min)
 3. LangChain `@tool` decorator and docstring importance (5 min)
 4. `create_agent` vs custom LangGraph graph (5 min)
 5. `InMemorySaver` for persistent conversation threads (3 min)
-6. Tool chaining — how the agent plans multi-step queries (5 min)
+6. Tool chaining, and how the agent plans multi-step queries (5 min)
 7. Live demo with Apple 10-K (7 min)

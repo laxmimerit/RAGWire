@@ -1,8 +1,8 @@
-# Video 02 — Multi-Document Research Assistant with Streamlit
+# Video 02: Multi-Document Research Assistant with Streamlit
 
 **Framework**: Streamlit
 **Application**: Research paper explorer with custom metadata, MMR diversity retrieval, and citation export
-**Difficulty**: Beginner–Intermediate
+**Difficulty**: Beginner to Intermediate
 
 ---
 
@@ -74,7 +74,7 @@ def load_pipeline():
 
 pipeline = load_pipeline()
 
-# Sidebar — metadata exploration
+# Sidebar: metadata exploration
 with st.sidebar:
     st.header("Explore Collection")
 
@@ -91,7 +91,7 @@ with st.sidebar:
     selected_topics = st.multiselect("Filter by topic", topics)
     year_range = st.slider("Publication year", 2000, 2025, (2020, 2025))
 
-# Main — chat + results
+# Main area: chat and results
 query = st.text_input("Search research papers...", placeholder="e.g. transformer attention mechanisms")
 
 if query:
@@ -157,7 +157,7 @@ if query:
 
 1. Why custom metadata schemas matter for research (3 min)
 2. Writing `metadata.yaml` with types and descriptions (5 min)
-3. MMR vs similarity vs hybrid — when to use each (7 min)
+3. MMR vs similarity vs hybrid, and when to use each (7 min)
 4. `discover_metadata_fields()` and `get_field_values()` for dynamic UIs (5 min)
 5. Building multi-select filters in Streamlit (5 min)
 6. Citation export feature (5 min)

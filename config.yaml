@@ -39,13 +39,13 @@ embeddings:
   base_url: "http://localhost:11434"
 
 # =================================================================
-# LLM — used for metadata extraction on every ingested document
+# LLM: used for metadata extraction on every ingested document
 # =================================================================
 llm:
   provider: "ollama"
   model: "qwen3.5:9b"
   base_url: "http://localhost:11434"
-  num_ctx: 16384         # Context window — must fit your largest chunk
+  num_ctx: 16384         # Context window. Must fit your largest chunk.
 
 # =================================================================
 # Metadata Extraction (optional)
@@ -62,7 +62,7 @@ vectorstore:
   url: "http://localhost:6333"
   collection_name: "financial_docs"
   use_sparse: true       # true enables hybrid search (requires: pip install fastembed)
-  force_recreate: false  # Set true ONLY to wipe and rebuild the collection — destroys all ingested data
+  force_recreate: false  # Set true ONLY to wipe and rebuild. Destroys all ingested data.
 
 # =================================================================
 # Retriever
@@ -71,7 +71,7 @@ retriever:
   search_type: "hybrid"   # "similarity" | "mmr" | "hybrid" (hybrid requires use_sparse: true)
   top_k: 5
   auto_filter: false       # If true, LLM automatically extracts metadata filters from every query.
-                           # Default false — use rag.extract_filters(query) to let an agent decide.
+                           # Default false. Call rag.extract_filters(query) to let an agent decide.
 
 # =================================================================
 # Logging

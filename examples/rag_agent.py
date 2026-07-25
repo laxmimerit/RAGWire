@@ -1,6 +1,6 @@
 """
-RAG Agent — RAGWire + LangChain create_agent
-============================================
+RAG Agent: RAGWire + LangChain create_agent
+===========================================
 Prerequisites:
   pip install "ragwire[openai]" fastembed langgraph
   export OPENAI_API_KEY="sk-..."
@@ -84,9 +84,10 @@ agent = create_agent(
     tools=[get_filter_context, search_documents],
     system_prompt=(
         "You are a helpful financial document assistant. "
-        "Always use search_documents to retrieve information before answering — never answer from general knowledge. "
+        "Always use search_documents to retrieve information before answering. "
+        "Never answer from general knowledge. "
         "Use get_filter_context before search_documents when the query involves specific metadata (company, year, document type, etc.). "
-        "If no relevant documents are found, say so — do not guess or fabricate an answer. "
+        "If no relevant documents are found, say so. Do not guess or fabricate an answer. "
         "Always cite the source document in your answer."
     ),
     checkpointer=checkpointer,

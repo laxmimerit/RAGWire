@@ -1,4 +1,4 @@
-# Video 05 — Stateful RAG Pipeline with LangGraph
+# Video 05: Stateful RAG Pipeline with LangGraph
 
 **Framework**: LangGraph
 **Application**: Typed stateful graph that orchestrates ingestion → retrieval → generation with routing logic
@@ -9,11 +9,11 @@
 ## What You'll Build
 
 A LangGraph graph with explicit nodes and typed state:
-- `route` node — classifies query as "factual", "comparative", or "summary"
-- `retrieve` node — runs RAGWire hybrid search with auto-filters
-- `grade_docs` node — filters out irrelevant retrieved chunks
-- `generate` node — produces final answer
-- `fallback` node — handles no-result cases
+- `route` node: classifies the query as "factual", "comparative" or "summary"
+- `retrieve` node: runs RAGWire hybrid search with auto-filters
+- `grade_docs` node: filters out irrelevant retrieved chunks
+- `generate` node: produces the final answer
+- `fallback` node: handles no-result cases
 
 ---
 
@@ -207,10 +207,10 @@ if __name__ == "__main__":
 
 ## What to Explain in Video
 
-1. Why LangGraph over plain Python — state visibility, debugging (5 min)
-2. `TypedDict` state design — what goes in state (5 min)
-3. Routing node pattern — classify before retrieve (5 min)
-4. Document grading — why not all retrieved docs are useful (5 min)
-5. Conditional edges — `should_fallback` routing (5 min)
+1. Why LangGraph over plain Python: state visibility and debugging (5 min)
+2. `TypedDict` state design, and what belongs in state (5 min)
+3. The routing node pattern: classify before retrieve (5 min)
+4. Document grading, and why not all retrieved docs are useful (5 min)
+5. Conditional edges and `should_fallback` routing (5 min)
 6. Drawing the graph with `graph.get_graph().draw_mermaid()` (3 min)
 7. Live demo with trace output (7 min)

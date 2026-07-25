@@ -1,4 +1,4 @@
-# ragwire — Setup Complete
+# ragwire: Setup Complete
 
 ## Package Structure
 
@@ -84,7 +84,7 @@ pip install -e ".[all]"
 # Qdrant (Docker)
 docker run -p 6333:6333 qdrant/qdrant
 
-# Ollama — pull models
+# Ollama: pull models
 ollama pull qwen3-embedding:0.6b
 ollama pull qwen3.5:9b
 ```
@@ -183,14 +183,14 @@ retriever:
   search_type: "similarity"
   top_k: 5
 
-# Hybrid — requires use_sparse: true + pip install fastembed
+# Hybrid search requires use_sparse: true and pip install fastembed
 retriever:
   search_type: "hybrid"
   top_k: 5
 vectorstore:
   use_sparse: true
 
-# MMR — diverse results
+# MMR returns diverse results
 retriever:
   search_type: "mmr"
   top_k: 5

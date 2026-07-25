@@ -1,4 +1,4 @@
-# Video 07 — Multi-Agent Research Team with CrewAI
+# Video 07: Multi-Agent Research Team with CrewAI
 
 **Framework**: CrewAI
 **Application**: 3-agent crew (Researcher, Analyst, Writer) that produces a structured research brief from documents
@@ -9,9 +9,9 @@
 ## What You'll Build
 
 A CrewAI crew of 3 specialized agents that collaborate sequentially:
-1. **Researcher** — retrieves relevant document passages using RAGWire tools
-2. **Analyst** — synthesizes findings, identifies patterns and key insights
-3. **Writer** — produces a polished, structured research brief in markdown
+1. **Researcher**: retrieves relevant document passages using RAGWire tools
+2. **Analyst**: synthesizes findings and identifies patterns and key insights
+3. **Writer**: produces a polished, structured research brief in markdown
 
 ---
 
@@ -167,7 +167,7 @@ def build_crew(research_question: str) -> Crew:
         4. Derive strategic implications
         5. Rate confidence level (High/Medium/Low) for each finding
 
-        Build on the researcher's findings — do not re-search.
+        Build on the researcher's findings. Do not re-search.
         """,
         expected_output="Structured analysis with key findings, trends, and confidence ratings",
         agent=analyst,
@@ -235,10 +235,10 @@ if __name__ == "__main__":
 
 ## What to Explain in Video
 
-1. CrewAI architecture — agents, tasks, tools, process (5 min)
+1. CrewAI architecture: agents, tasks, tools and process (5 min)
 2. Wrapping RAGWire in `BaseTool` with Pydantic schema (7 min)
-3. Agent role design — why backstories matter for LLM behavior (5 min)
-4. Task `context` parameter — how agents share knowledge (5 min)
+3. Agent role design, and why backstories matter for LLM behavior (5 min)
+4. The task `context` parameter, and how agents share knowledge (5 min)
 5. Sequential vs hierarchical process (3 min)
-6. Reading CrewAI verbose output — understanding agent reasoning (5 min)
+6. Reading CrewAI verbose output to understand agent reasoning (5 min)
 7. Live demo (10 min)

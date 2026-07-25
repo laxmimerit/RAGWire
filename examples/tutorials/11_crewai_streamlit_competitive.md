@@ -1,8 +1,8 @@
-# Video 11 — Competitive Intelligence Dashboard with CrewAI + Streamlit
+# Video 11: Competitive Intelligence Dashboard with CrewAI + Streamlit
 
 **Framework**: CrewAI + Streamlit
 **Application**: Multi-agent competitive analysis that runs in the background and displays results in a live dashboard
-**Difficulty**: Intermediate–Advanced
+**Difficulty**: Intermediate to Advanced
 
 ---
 
@@ -235,7 +235,7 @@ if st.session_state.get("running"):
 
 ## What to Explain in Video
 
-1. Problem: CrewAI blocks — how to run async in Streamlit (5 min)
+1. The problem of CrewAI blocking, and how to run async in Streamlit (5 min)
 2. `threading.Thread` + `queue.Queue` pattern (5 min)
 3. `step_callback` for real-time agent monitoring (5 min)
 4. Streamlit `st.session_state` for cross-rerun data (5 min)
