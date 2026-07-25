@@ -17,6 +17,20 @@ splitter:
   strategy: "markdown"   # "markdown" | "recursive"
 
 # =================================================================
+# Ingestion (all optional, safe defaults shown)
+# =================================================================
+# ingestion:
+#   workers: 1            # Documents prepared in parallel. Loading, splitting and
+#                         # the LLM metadata call dominate ingest time, so raising
+#                         # this speeds up large batches. Writes stay sequential.
+#                         # Keep at 1 for local file storage (single-process only).
+#   batch_size: 64        # Chunks per write request
+#   retries: 2            # Retries per write, with exponential backoff
+#   replace_changed: true # If a file changed since last ingest, delete the old
+#                         # version's chunks instead of storing both
+#   dedup_chunks: false   # Drop repeated chunks within a document (boilerplate)
+
+# =================================================================
 # Embedding Model (Ollama - local)
 # =================================================================
 embeddings:

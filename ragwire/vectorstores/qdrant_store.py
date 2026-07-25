@@ -72,7 +72,24 @@ class QdrantStore:
 
         else:
             # Local file-based storage (path may not exist yet — qdrant creates it)
-            self.client = QdrantClient(path=url)
+            try:
+                self.client = QdrantClient(path=url)
+            except Exception as e:
+                if "already accessed" in str(e).lower() or "lock" in str(e).lower():
+                    raise RuntimeError(
+                        f"Local Qdrant storage at '{url}' is already in use by "
+                        "another process.\n"
+                        "Local storage allows exactly one reader/writer, so this "
+                        "happens with multi-worker servers (gunicorn/uvicorn "
+                        "--workers 2), a second script, or a notebook still "
+                        "holding the directory.\n"
+                        "Either close the other process, or run a Qdrant server "
+                        "and point vectorstore.url at it:\n"
+                        "  docker run -p 6333:6333 qdrant/qdrant\n"
+                        "  vectorstore:\n"
+                        "    url: http://localhost:6333"
+                    ) from e
+                raise
             self.is_local = True
             logger.info(f"Using local Qdrant storage at {url}")
             logger.info(
@@ -341,6 +358,61 @@ class QdrantStore:
             wait=True,
         )
         logger.info(f"Deleted {count} chunk(s) for file_hash {file_hash[:12]}…")
+        return count
+
+    def delete_by_source(
+        self, source: str, except_file_hash: Optional[str] = None
+    ) -> int:
+        """
+        Delete stored chunks by their source path, optionally sparing one version.
+
+        Deduplication is keyed on file content, so an edited document hashes
+        differently and would otherwise be stored *alongside* its previous
+        version — leaving the old text retrievable forever. Passing the new hash
+        as ``except_file_hash`` removes only the stale copies.
+
+        Args:
+            source: Source path recorded in chunk metadata
+            except_file_hash: File hash to preserve (the version being written)
+
+        Returns:
+            Number of chunks deleted
+        """
+        from qdrant_client.http import models as rest
+
+        if not self.collection_name or not self.collection_exists():
+            return 0
+
+        must = [
+            rest.FieldCondition(
+                key="metadata.source", match=rest.MatchValue(value=source)
+            )
+        ]
+        must_not = []
+        if except_file_hash:
+            must_not.append(
+                rest.FieldCondition(
+                    key="metadata.file_hash",
+                    match=rest.MatchValue(value=except_file_hash),
+                )
+            )
+
+        selector = rest.Filter(must=must, must_not=must_not or None)
+
+        count = self.client.count(
+            collection_name=self.collection_name,
+            count_filter=selector,
+            exact=True,
+        ).count
+        if count == 0:
+            return 0
+
+        self.client.delete(
+            collection_name=self.collection_name,
+            points_selector=selector,
+            wait=True,
+        )
+        logger.info(f"Deleted {count} stale chunk(s) for source: {source}")
         return count
 
     def get_collection_info(self, collection_name: Optional[str] = None) -> dict:

@@ -12,10 +12,9 @@ Coordinates all components of the RAG system:
 
 import json
 import logging
-import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, List, Dict, Any, TypedDict
+from typing import Optional, List, Dict, Any, TypedDict, Iterable, Iterator
 
 
 class IngestError(TypedDict):
@@ -33,6 +32,9 @@ class IngestStats(TypedDict):
     #: These are counted in `processed` — the text is searchable, but they will
     #: not match any metadata filter until re-ingested.
     metadata_failed: int
+    #: Documents whose content changed since a previous ingest, where the older
+    #: version's chunks were removed before writing the new one.
+    replaced: int
     errors: List[IngestError]
 
 from langchain_core.prompts import ChatPromptTemplate
@@ -41,7 +43,8 @@ from langchain_core.prompts import ChatPromptTemplate
 from .config import Config
 from ..loaders.markitdown_loader import MarkItDownLoader
 from ..processing.splitter import get_splitter, get_markdown_splitter
-from ..processing.hashing import sha256_file_from_path, sha256_chunk
+from ..processing.hashing import sha256_file_from_path, sha256_chunk, sha256_text
+from ..utils.retry import retry_call
 from ..metadata.extractor import MetadataExtractor
 from ..metadata.schema import DocumentMetadata
 from ..embeddings.factory import get_embedding
@@ -72,6 +75,15 @@ class RAGWire:
         >>> results = rag.retrieve("What is Amazon's revenue?")
     """
 
+    # Ingestion defaults. Set from config in _initialize_ingestion(); declared
+    # here so the values are always present and conservative.
+    _workers = 1
+    _batch_size = 64
+    _write_retries = 2
+    _replace_changed = True
+    _dedup_chunks = False
+    _metadata_retries = 2
+
     def __init__(self, config_path: str):
         """
         Initialize the RAG pipeline.
@@ -95,6 +107,7 @@ class RAGWire:
         self._initialize_logging()
         self._initialize_loader()
         self._initialize_splitter()
+        self._initialize_ingestion()
         self._initialize_embeddings()
         self._initialize_llm()
         self._initialize_vectorstore()
@@ -141,6 +154,28 @@ class RAGWire:
             self.splitter = get_markdown_splitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
 
         logger.info(f"Text splitter initialized (strategy={strategy}, chunk_size={chunk_size})")
+
+    def _initialize_ingestion(self) -> None:
+        """Read the optional [ingestion] config block."""
+        cfg = self.config.get("ingestion", {}) or {}
+
+        self._workers = max(1, int(cfg.get("workers", 1)))
+        self._batch_size = max(1, int(cfg.get("batch_size", 64)))
+        self._write_retries = max(0, int(cfg.get("retries", 2)))
+        self._replace_changed = bool(cfg.get("replace_changed", True))
+        self._dedup_chunks = bool(cfg.get("dedup_chunks", False))
+
+        if self._workers > 1:
+            logger.info(
+                f"Ingestion will prepare up to {self._workers} documents "
+                "concurrently (loading, splitting and metadata extraction). "
+                "Vector store writes stay sequential."
+            )
+        logger.info(
+            f"Ingestion configured (workers={self._workers}, "
+            f"batch_size={self._batch_size}, retries={self._write_retries}, "
+            f"replace_changed={self._replace_changed})"
+        )
 
     def _initialize_embeddings(self) -> None:
         """Initialize embedding model."""
@@ -347,6 +382,7 @@ class RAGWire:
             "failed": 0,
             "chunks_created": 0,
             "metadata_failed": 0,
+            "replaced": 0,
             "errors": [],
         }
 
@@ -358,80 +394,11 @@ class RAGWire:
         except ImportError:
             file_iter = file_paths
 
-        for file_path in file_iter:
-            file_hash = None
-            try:
-                # File-level deduplication. A previous run that died partway
-                # leaves chunks behind — those must be cleared and re-ingested,
-                # not mistaken for a finished document.
-                file_hash = sha256_file_from_path(file_path)
-                status, stored, expected = self.vectorstore_wrapper.get_ingest_status(
-                    file_hash
-                )
-
-                if status == "complete":
-                    logger.info(f"Skipping (already ingested): {file_path}")
-                    stats["skipped"] += 1
-                    continue
-
-                if status == "partial":
-                    logger.warning(
-                        f"Found incomplete ingest for {file_path} "
-                        f"({stored}/{expected} chunks) — clearing and re-ingesting"
-                    )
-                    self.vectorstore_wrapper.delete_by_file_hash(file_hash)
-
-                # Load document
-                result = self.loader.load(file_path)
-
-                if not result["success"]:
-                    stats["failed"] += 1
-                    stats["errors"].append(
-                        {"file": file_path, "error": result["error"]}
-                    )
-                    logger.error(f"Failed to load {file_path}: {result['error']}")
-                    continue
-
-                # Process document (pass pre-computed hash to avoid re-reading file)
-                chunks, metadata_ok = self._process_document(
-                    text=result["text_content"],
-                    file_path=file_path,
-                    file_name=result["file_name"],
-                    file_type=result["file_type"],
-                    file_hash=file_hash,
-                )
-
-                if not chunks:
-                    # Scanned/image-only PDFs and empty files land here. Counting
-                    # them in neither processed nor failed makes them invisible.
-                    error = "no extractable text (possibly a scanned or image-only document)"
-                    stats["failed"] += 1
-                    stats["errors"].append({"file": file_path, "error": error})
-                    logger.error(f"Failed to process {file_path}: {error}")
-                    continue
-
-                self.vectorstore.add_documents(chunks)
-                stats["chunks_created"] += len(chunks)
-                stats["processed"] += 1
-                if not metadata_ok:
-                    stats["metadata_failed"] += 1
-                logger.info(f"Processed {file_path}: {len(chunks)} chunks")
-
-            except Exception as e:
-                stats["failed"] += 1
-                stats["errors"].append({"file": file_path, "error": str(e)})
-                logger.error(f"Error processing {file_path}: {e}", exc_info=True)
-
-                # Roll back anything that landed before the failure, so the file
-                # is retried cleanly next run instead of being skipped as done.
-                if file_hash:
-                    try:
-                        self.vectorstore_wrapper.delete_by_file_hash(file_hash)
-                    except Exception as cleanup_error:
-                        logger.warning(
-                            f"Could not roll back partial ingest for {file_path}: "
-                            f"{cleanup_error}"
-                        )
+        # Documents are prepared concurrently (loading, splitting and the LLM
+        # metadata call dominate wall-clock) but written sequentially, so stats,
+        # ordering and rollback stay simple to reason about.
+        for prepared in self._prepare_documents(file_iter):
+            self._write_prepared(prepared, stats)
 
         # Create payload indexes for all metadata fields so facet API works
         all_fields = self.vectorstore_wrapper.get_metadata_keys()
@@ -443,7 +410,7 @@ class RAGWire:
         logger.info(
             f"Ingestion complete: {stats['processed']}/{stats['total']} documents "
             f"({stats['skipped']} skipped, {stats['failed']} failed, "
-            f"{stats['chunks_created']} chunks)"
+            f"{stats['replaced']} replaced, {stats['chunks_created']} chunks)"
         )
         if stats["metadata_failed"]:
             logger.warning(
@@ -452,6 +419,198 @@ class RAGWire:
                 "with rag.reingest_documents([...]) once the LLM is reachable."
             )
         return stats
+
+    def _prepare_documents(self, file_paths: Iterable[str]) -> Iterator[dict]:
+        """
+        Yield a prepared record per file: hash, chunks and what to do with them.
+
+        Everything here is read-only with respect to the vector store, which is
+        what makes it safe to run concurrently. With workers=1 the work happens
+        inline and lazily, so a long ingest still streams progress.
+
+        Args:
+            file_paths: Paths to prepare (may be a tqdm-wrapped iterable)
+
+        Yields:
+            Dicts as returned by _prepare_document()
+        """
+        if self._workers == 1:
+            for file_path in file_paths:
+                yield self._prepare_document(file_path)
+            return
+
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=self._workers) as pool:
+            # map keeps input order, so results are written deterministically
+            yield from pool.map(self._prepare_document, file_paths)
+
+    def _prepare_document(self, file_path: str) -> dict:
+        """
+        Hash, dedup-check, load, split and extract metadata for one file.
+
+        Runs in a worker thread when workers > 1, so it must not write to the
+        vector store. Failures are captured in the returned record rather than
+        raised, so one bad file cannot abort the pool.
+
+        Args:
+            file_path: Path to the document
+
+        Returns:
+            Dict with keys: file, hash, chunks, metadata_ok, error, action,
+            stored, expected. ``action`` is one of "skip", "write" or "error".
+        """
+        record = {
+            "file": file_path, "hash": None, "chunks": None,
+            "metadata_ok": True, "error": None, "action": "error",
+            "stored": 0, "expected": None, "was_partial": False,
+        }
+
+        try:
+            file_hash = sha256_file_from_path(file_path)
+            record["hash"] = file_hash
+
+            # A previous run that died partway leaves chunks behind — those must
+            # be cleared and re-ingested, not mistaken for a finished document.
+            status, stored, expected = self.vectorstore_wrapper.get_ingest_status(
+                file_hash
+            )
+            record["stored"], record["expected"] = stored, expected
+
+            if status == "complete":
+                record["action"] = "skip"
+                return record
+            record["was_partial"] = status == "partial"
+
+            result = self.loader.load(file_path)
+            if not result["success"]:
+                record["error"] = result["error"]
+                return record
+
+            chunks, metadata_ok = self._process_document(
+                text=result["text_content"],
+                file_path=file_path,
+                file_name=result["file_name"],
+                file_type=result["file_type"],
+                file_hash=file_hash,
+            )
+            record["metadata_ok"] = metadata_ok
+
+            if not chunks:
+                # Scanned/image-only PDFs and empty files land here. Counting
+                # them in neither processed nor failed makes them invisible.
+                record["error"] = (
+                    "no extractable text (possibly a scanned or image-only document)"
+                )
+                return record
+
+            record["chunks"] = chunks
+            record["action"] = "write"
+            return record
+
+        except Exception as e:
+            logger.debug(f"Preparation failed for {file_path}: {e}", exc_info=True)
+            record["error"] = str(e)
+            return record
+
+    def _write_prepared(self, record: dict, stats: IngestStats) -> None:
+        """
+        Write one prepared document to the vector store and update stats.
+
+        Sequential by design: it owns every mutation of both the collection and
+        the stats dict, so there is exactly one place where partial state can be
+        created and rolled back.
+
+        Args:
+            record: A record from _prepare_document()
+            stats: Stats dict mutated in place
+        """
+        file_path = record["file"]
+        file_hash = record["hash"]
+
+        if record["action"] == "skip":
+            logger.info(f"Skipping (already ingested): {file_path}")
+            stats["skipped"] += 1
+            return
+
+        if record["action"] == "error":
+            stats["failed"] += 1
+            stats["errors"].append({"file": file_path, "error": record["error"]})
+            logger.error(f"Failed to process {file_path}: {record['error']}")
+            return
+
+        chunks = record["chunks"]
+        try:
+            if record["was_partial"]:
+                logger.warning(
+                    f"Found incomplete ingest for {file_path} "
+                    f"({record['stored']}/{record['expected']} chunks) "
+                    "— clearing and re-ingesting"
+                )
+                self.vectorstore_wrapper.delete_by_file_hash(file_hash)
+
+            if self._replace_changed:
+                # The file's content changed, so its hash changed too. Without
+                # this the previous version stays in the collection alongside
+                # the new one and keeps surfacing in results.
+                stale = self.vectorstore_wrapper.delete_by_source(
+                    file_path, except_file_hash=file_hash
+                )
+                if stale:
+                    stats["replaced"] += 1
+                    logger.info(
+                        f"Replaced {stale} chunk(s) from a previous version of "
+                        f"{file_path}"
+                    )
+
+            self._write_chunks(chunks, file_path)
+
+            stats["chunks_created"] += len(chunks)
+            stats["processed"] += 1
+            if not record["metadata_ok"]:
+                stats["metadata_failed"] += 1
+            logger.info(f"Processed {file_path}: {len(chunks)} chunks")
+
+        except Exception as e:
+            stats["failed"] += 1
+            stats["errors"].append({"file": file_path, "error": str(e)})
+            logger.error(f"Error writing {file_path}: {e}", exc_info=True)
+
+            # Roll back anything that landed before the failure, so the file is
+            # retried cleanly next run instead of being skipped as done.
+            if file_hash:
+                try:
+                    self.vectorstore_wrapper.delete_by_file_hash(file_hash)
+                except Exception as cleanup_error:
+                    logger.warning(
+                        f"Could not roll back partial ingest for {file_path}: "
+                        f"{cleanup_error}"
+                    )
+
+    def _write_chunks(self, chunks: List[Any], file_path: str) -> None:
+        """
+        Add chunks to the vector store in retried batches.
+
+        A single add_documents call for a large document is one oversized
+        request that can exceed body limits or time out; batching also means a
+        transient failure retries a batch rather than the whole document.
+
+        Args:
+            chunks: Documents to write
+            file_path: Used only in log messages
+        """
+        total_batches = (len(chunks) + self._batch_size - 1) // self._batch_size
+
+        for index in range(total_batches):
+            start = index * self._batch_size
+            batch = chunks[start : start + self._batch_size]
+            retry_call(
+                lambda b=batch: self.vectorstore.add_documents(b),
+                attempts=self._write_retries + 1,
+                description=(
+                    f"write batch {index + 1}/{total_batches} of {file_path}"
+                ),
+            )
 
     def ingest_directory(
         self,
@@ -489,7 +648,8 @@ class RAGWire:
             logger.warning(f"No supported files found in {directory} (extensions: {exts})")
             return {
                 "total": 0, "processed": 0, "skipped": 0,
-                "failed": 0, "chunks_created": 0, "metadata_failed": 0, "errors": [],
+                "failed": 0, "chunks_created": 0, "metadata_failed": 0,
+                "replaced": 0, "errors": [],
             }
 
         logger.info(f"Found {len(file_paths)} file(s) in {directory}")
@@ -580,6 +740,9 @@ class RAGWire:
         # first chunk alone was too little context to reliably find all fields.
         llm_metadata, metadata_ok = self._extract_metadata_with_retry(text, file_name)
 
+        if self._dedup_chunks:
+            chunk_texts = self._drop_duplicate_chunks(chunk_texts, file_name)
+
         documents = []
         for i, chunk_text in enumerate(chunk_texts):
             chunk_id = f"{file_hash}_{i}"
@@ -592,6 +755,10 @@ class RAGWire:
                 "file_hash": file_hash,
                 "chunk_id": chunk_id,
                 "chunk_hash": chunk_hash,
+                # Hash of the text alone. chunk_hash mixes in chunk_id, so it
+                # differs for identical text; this one is comparable across
+                # chunks and documents.
+                "content_hash": sha256_text(chunk_text),
                 "chunk_index": i,
                 "total_chunks": len(chunk_texts),
                 "created_at": datetime.now(timezone.utc).isoformat(),
@@ -610,6 +777,41 @@ class RAGWire:
 
         return (documents, metadata_ok)
 
+    @staticmethod
+    def _drop_duplicate_chunks(chunk_texts: List[str], file_name: str) -> List[str]:
+        """
+        Remove repeated chunks within a single document, keeping the first.
+
+        Long filings repeat boilerplate (cover blocks, legends, disclaimers)
+        across sections, and those near-identical chunks crowd out real content
+        in top-k results. Comparison is exact on the stripped text, so this only
+        removes genuine duplicates.
+
+        Scope is deliberately one document: cross-document deduplication would
+        need a lookup per chunk against the whole collection, which costs far
+        more than it saves at ingest time.
+
+        Args:
+            chunk_texts: Chunk texts in document order
+            file_name: Used only in the log message
+
+        Returns:
+            Chunk texts with later exact duplicates removed
+        """
+        seen = set()
+        unique = []
+        for text in chunk_texts:
+            key = sha256_text(text.strip())
+            if key in seen:
+                continue
+            seen.add(key)
+            unique.append(text)
+
+        dropped = len(chunk_texts) - len(unique)
+        if dropped:
+            logger.info(f"Dropped {dropped} duplicate chunk(s) from {file_name}")
+        return unique
+
     def _extract_metadata_with_retry(self, text: str, file_name: str) -> tuple:
         """
         Extract metadata, retrying transient LLM failures with backoff.
@@ -626,30 +828,21 @@ class RAGWire:
         Returns:
             Tuple of (metadata dict, ok) — ok is False when every attempt failed.
         """
-        attempts = max(1, self._metadata_retries + 1)
-        last_error = None
-
-        for attempt in range(1, attempts + 1):
-            try:
-                metadata = self.extract_metadata(text)
-                logger.debug(f"LLM metadata for {file_name}: {metadata}")
-                return (metadata, True)
-            except Exception as e:
-                last_error = e
-                if attempt < attempts:
-                    delay = 2 ** (attempt - 1)
-                    logger.warning(
-                        f"Metadata extraction failed for {file_name} "
-                        f"(attempt {attempt}/{attempts}): {e} — retrying in {delay}s"
-                    )
-                    time.sleep(delay)
-
-        logger.error(
-            f"Metadata extraction failed for {file_name} after {attempts} attempts: "
-            f"{last_error}. Ingesting without metadata — this document will not "
-            "match metadata filters until it is re-ingested."
-        )
-        return ({}, False)
+        try:
+            metadata = retry_call(
+                lambda: self.extract_metadata(text),
+                attempts=max(1, self._metadata_retries + 1),
+                description=f"metadata extraction for {file_name}",
+            )
+            logger.debug(f"LLM metadata for {file_name}: {metadata}")
+            return (metadata, True)
+        except Exception as e:
+            logger.error(
+                f"Metadata extraction failed for {file_name}: {e}. "
+                "Ingesting without metadata, so this document will not match "
+                "metadata filters until it is re-ingested."
+            )
+            return ({}, False)
 
     @property
     def filter_fields(self) -> List[str]:

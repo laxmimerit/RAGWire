@@ -483,7 +483,7 @@ def test_b5_empty_document_yields_no_chunks(monkeypatch):
 
 
 def test_b4_metadata_retry_eventually_succeeds(monkeypatch):
-    monkeypatch.setattr("ragwire.core.pipeline.time.sleep", lambda s: None)
+    monkeypatch.setattr("ragwire.utils.retry.time.sleep", lambda s: None)
     extractor = _FlakyExtractor(failures=1)
     rag = _pipeline_for_processing(extractor, retries=2)
 
@@ -496,7 +496,7 @@ def test_b4_metadata_retry_eventually_succeeds(monkeypatch):
 
 
 def test_b4_exhausted_retries_tag_the_document(monkeypatch):
-    monkeypatch.setattr("ragwire.core.pipeline.time.sleep", lambda s: None)
+    monkeypatch.setattr("ragwire.utils.retry.time.sleep", lambda s: None)
     extractor = _FlakyExtractor(failures=99)
     rag = _pipeline_for_processing(extractor, retries=2)
 
@@ -511,7 +511,7 @@ def test_b4_exhausted_retries_tag_the_document(monkeypatch):
 
 
 def test_b3_every_chunk_records_total_chunks(monkeypatch):
-    monkeypatch.setattr("ragwire.core.pipeline.time.sleep", lambda s: None)
+    monkeypatch.setattr("ragwire.utils.retry.time.sleep", lambda s: None)
     rag = _pipeline_for_processing(_FlakyExtractor(failures=0))
 
     chunks, _ = _process(rag, "word " * 500)
