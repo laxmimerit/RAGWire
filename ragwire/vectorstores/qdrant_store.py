@@ -415,6 +415,54 @@ class QdrantStore:
         logger.info(f"Deleted {count} stale chunk(s) for source: {source}")
         return count
 
+    def list_sources(self) -> List[str]:
+        """
+        Return every distinct source path stored in the collection.
+
+        Unlike :meth:`get_field_values`, this scrolls the whole collection with
+        no cap. Reconciliation needs the complete set: a source missing from a
+        truncated listing looks like a source that was never ingested, and
+        would be re-ingested on every sync.
+
+        Returns:
+            Distinct ``metadata.source`` values, in first-seen order
+
+        Example:
+            >>> store.list_sources()
+            ['data/apple_10k.pdf', 'data/amazon_10q.pdf']
+        """
+        if not self.collection_name or not self.collection_exists():
+            return []
+
+        sources: List[str] = []
+        seen = set()
+        offset = None
+
+        while True:
+            batch, offset = self.client.scroll(
+                collection_name=self.collection_name,
+                limit=256,
+                offset=offset,
+                with_payload=True,
+                with_vectors=False,
+            )
+            if not batch:
+                break
+
+            for point in batch:
+                metadata = (point.payload or {}).get("metadata", {})
+                if not isinstance(metadata, dict):
+                    continue
+                source = metadata.get("source")
+                if source and source not in seen:
+                    seen.add(source)
+                    sources.append(source)
+
+            if offset is None:
+                break
+
+        return sources
+
     def get_collection_info(self, collection_name: Optional[str] = None) -> dict:
         """
         Get information about a collection.

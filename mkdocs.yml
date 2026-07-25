@@ -81,6 +81,7 @@ nav:
     - Qdrant Cloud (Free Tier): cookbook/qdrant_cloud.md
     - Multi-Collection Setup: cookbook/multi_collection.md
     - Update Documents: cookbook/update_documents.md
+    - Sync Sources: cookbook/syncing_sources.md
     - Tune Retrieval Quality: cookbook/tune_retrieval.md
     - Reranking: cookbook/reranking.md
     - Measure Retrieval Quality: cookbook/evaluation.md

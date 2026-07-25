@@ -83,6 +83,26 @@ retriever:
   #   # Requires: pip install ragwire[rerank]   (or ragwire[cohere])
 
 # =================================================================
+# Sources (optional, used by rag.sync())
+# =================================================================
+# Ingestion only ever adds. sync() reconciles instead: new files are
+# ingested, changed files replace their older version, and files that no
+# longer exist at any source are removed from the collection.
+# sources:
+#   - type: local
+#     path: "./documents"
+#     recursive: true
+#     # extensions: [".pdf", ".md"]   # defaults to the loader.extensions list
+#
+#   - type: s3                        # needs: pip install ragwire[s3]
+#     bucket: "my-filings"
+#     prefix: "2026/"
+#     cache_dir: ".ragwire_cache"     # objects are downloaded here first
+#     # region: "us-east-1"
+#     # aws_access_key_id: "${AWS_ACCESS_KEY_ID}"      # omit to use the
+#     # aws_secret_access_key: "${AWS_SECRET_ACCESS_KEY}"  # normal boto3 chain
+
+# =================================================================
 # Answer generation (rag.query)
 # =================================================================
 # Entirely optional. Omit the block and these defaults apply.

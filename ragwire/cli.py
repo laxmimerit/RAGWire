@@ -61,6 +61,22 @@ def build_parser() -> argparse.ArgumentParser:
         "--recursive", action="store_true", help="Scan subdirectories too"
     )
 
+    # ---------------------------------------------------------------- sync
+    sync_parser = subcommands.add_parser(
+        "sync", help="Reconcile the collection against its configured sources"
+    )
+    _add_config_arg(sync_parser)
+    sync_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Report what would change without writing or deleting anything",
+    )
+    sync_parser.add_argument(
+        "--no-delete",
+        action="store_true",
+        help="Do not remove documents that no source lists any more",
+    )
+
     # ---------------------------------------------------------------- eval
     eval_parser = subcommands.add_parser(
         "eval", help="Score retrieval against a golden set"
@@ -107,14 +123,37 @@ def _cmd_ingest(args: argparse.Namespace) -> int:
         stats = rag.ingest_documents([str(target)])
 
     print(
-        f"ingested={stats['ingested']} skipped={stats['skipped']} "
-        f"failed={len(stats.get('errors', []))}"
+        f"processed={stats['processed']} skipped={stats['skipped']} "
+        f"replaced={stats['replaced']} failed={stats['failed']} "
+        f"chunks={stats['chunks_created']}"
     )
     for error in stats.get("errors", []):
-        print(f"  failed: {error.get('file')}: {error.get('error')}", file=sys.stderr)
+        print(f"  failed: {error['file']}: {error['error']}", file=sys.stderr)
 
     # A run where every file failed should not look like success to a shell.
-    return 1 if stats.get("errors") and not stats["ingested"] else 0
+    return 1 if stats["failed"] and not stats["processed"] else 0
+
+
+def _cmd_sync(args: argparse.Namespace) -> int:
+    from .core.pipeline import RAGWire
+
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+
+    rag = RAGWire(args.config)
+    stats = rag.sync(delete_missing=not args.no_delete, dry_run=args.dry_run)
+
+    prefix = "would " if args.dry_run else ""
+    print(
+        f"listed={stats['listed']} {prefix}processed={stats['processed']} "
+        f"skipped={stats['skipped']} replaced={stats['replaced']} "
+        f"{prefix}deleted={stats['deleted']} failed={stats['failed']}"
+    )
+    for warning in stats["warnings"]:
+        print(f"  warning: {warning}", file=sys.stderr)
+    for error in stats["errors"]:
+        print(f"  failed: {error['file']}: {error['error']}", file=sys.stderr)
+
+    return 1 if stats["failed"] and not stats["processed"] else 0
 
 
 def _cmd_eval(args: argparse.Namespace) -> int:
@@ -162,6 +201,9 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if args.command == "ingest":
         return _cmd_ingest(args)
+
+    if args.command == "sync":
+        return _cmd_sync(args)
 
     if args.command == "eval":
         return _cmd_eval(args)

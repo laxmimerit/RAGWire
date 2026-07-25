@@ -128,6 +128,7 @@ RAGWire is in beta and designed for developers building production-style RAG sys
 - **Advanced Retrieval**: similarity, MMR, and hybrid search with metadata filtering
 - **Grounded Answers**: `rag.query()` returns cited answers and refuses when the documents come up short
 - **MCP Server**: `ragwire mcp serve` exposes a collection to Claude Desktop, Claude Code and Cursor
+- **Source Sync**: `rag.sync()` reconciles against local folders and S3, including deletions
 - **Reranking**: optional cross-encoder second stage, local and API-key-free by default
 - **Evaluation**: recall@k, MRR and config sweeps against your own golden set
 - **SHA256 Deduplication**: at both file and chunk level

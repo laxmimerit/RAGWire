@@ -37,6 +37,28 @@ class IngestStats(TypedDict):
     replaced: int
     errors: List[IngestError]
 
+
+class SyncStats(TypedDict):
+    """What one reconciliation run did."""
+
+    #: Files the sources reported
+    listed: int
+    #: Documents newly written
+    processed: int
+    #: Documents already present and unchanged
+    skipped: int
+    #: Documents whose content changed, replacing an older version
+    replaced: int
+    #: Documents removed because they no longer exist at any source
+    deleted: int
+    #: Chunks removed by those deletions
+    deleted_chunks: int
+    failed: int
+    chunks_created: int
+    #: Sources whose deletions were held back for safety, with the reason
+    warnings: List[str]
+    errors: List[IngestError]
+
 from langchain_core.prompts import ChatPromptTemplate
 
 # Import pipeline components
@@ -53,6 +75,7 @@ from ..retriever.hybrid import get_retriever, hybrid_search
 from ..retriever.rerank import get_reranker, resolve_fetch_k
 from ..generation.answer import Answer
 from ..generation.generator import AnswerGenerator
+from ..sources.base import build_sources
 
 logger = logging.getLogger(__name__)
 
@@ -116,6 +139,7 @@ class RAGWire:
         self._initialize_vectorstore()
         self._initialize_retriever()
         self._initialize_generation()
+        self._initialize_sources()
 
         logger.info("RAG pipeline initialized successfully")
 
@@ -386,6 +410,14 @@ class RAGWire:
             max_context_chars=cfg.get("max_context_chars", 12000),
             system_prompt=cfg.get("system_prompt"),
         )
+
+    def _initialize_sources(self) -> None:
+        """Build the sources sync() reconciles against, if any are configured."""
+        self.sources = build_sources(self.config.get("sources"))
+        if self.sources:
+            logger.info(
+                f"Sources configured: {', '.join(s.name for s in self.sources)}"
+            )
 
     def ingest_documents(self, file_paths: List[str]) -> IngestStats:
         """
@@ -1105,6 +1137,173 @@ class RAGWire:
         logger.info(f"Retrieved {len(results)} documents for query: {query[:50]}...")
 
         return results
+
+    @staticmethod
+    def _path_forms(path: str) -> set:
+        """
+        The strings a given file might have been stored under.
+
+        Chunks record whatever path string was passed to ingest, which may be
+        relative while a later sync lists absolute paths, or vice versa. Sync
+        compares both forms so a path style change does not read as "every
+        document was deleted".
+        """
+        forms = {path, path.replace("\\", "/")}
+        try:
+            resolved = str(Path(path).resolve())
+            forms.add(resolved)
+            forms.add(resolved.replace("\\", "/"))
+        except (OSError, ValueError):
+            # An unresolvable path still has its literal form to compare on.
+            pass
+        return forms
+
+    def sync(
+        self,
+        sources: Optional[List[Any]] = None,
+        delete_missing: bool = True,
+        dry_run: bool = False,
+    ) -> SyncStats:
+        """
+        Reconcile the collection against its configured sources.
+
+        Ingestion alone only ever adds. A document deleted at the source keeps
+        answering queries forever, and nothing surfaces that it should not.
+        Sync closes that gap: new files are ingested, changed files replace
+        their older version, and files that no longer exist anywhere are
+        removed from the collection.
+
+        Args:
+            sources: Sources to reconcile against. Uses the ``sources`` config
+                block when not given.
+            delete_missing: Whether to remove documents no source lists any
+                more. Set False to make sync additive.
+            dry_run: Report what would happen without writing or deleting
+                anything.
+
+        Returns:
+            A SyncStats describing the run
+
+        Raises:
+            ValueError: If no sources are configured or passed
+
+        Example:
+            >>> stats = rag.sync()
+            >>> print(stats["processed"], stats["deleted"])
+            3 1
+
+            >>> # See what a sync would do before letting it run
+            >>> rag.sync(dry_run=True)["deleted"]
+            1
+        """
+        sources = sources if sources is not None else self.sources
+        if not sources:
+            raise ValueError(
+                "sync() needs at least one source. Add a 'sources' block to "
+                "your config, or pass sources= directly."
+            )
+
+        stats: SyncStats = {
+            "listed": 0, "processed": 0, "skipped": 0, "replaced": 0,
+            "deleted": 0, "deleted_chunks": 0, "failed": 0,
+            "chunks_created": 0, "warnings": [], "errors": [],
+        }
+
+        listed: List[str] = []
+        listing_failed = False
+
+        for source in sources:
+            try:
+                files = source.list_files()
+            except Exception as exc:
+                # A source that cannot be listed is not a source with no files.
+                # Record it and suppress deletion, or a network blip would
+                # empty the collection.
+                logger.error(f"Could not list source {source.name}: {exc}")
+                stats["errors"].append({"file": source.name, "error": str(exc)})
+                stats["failed"] += 1
+                listing_failed = True
+                continue
+
+            if not files:
+                stats["warnings"].append(
+                    f"{source.name} listed no files, so its deletions were held back"
+                )
+                listing_failed = True
+
+            listed.extend(files)
+
+        stats["listed"] = len(listed)
+        logger.info(f"Sync listed {len(listed)} file(s) across {len(sources)} source(s)")
+
+        if listed and not dry_run:
+            ingested = self.ingest_documents(listed)
+            stats["processed"] = ingested["processed"]
+            stats["skipped"] = ingested["skipped"]
+            stats["replaced"] = ingested["replaced"]
+            stats["failed"] += ingested["failed"]
+            stats["chunks_created"] = ingested["chunks_created"]
+            stats["errors"].extend(ingested["errors"])
+
+        if delete_missing:
+            self._sync_deletions(listed, stats, dry_run, listing_failed)
+
+        logger.info(
+            f"Sync complete: processed={stats['processed']} skipped={stats['skipped']} "
+            f"replaced={stats['replaced']} deleted={stats['deleted']}"
+        )
+        return stats
+
+    def _sync_deletions(
+        self,
+        listed: List[str],
+        stats: SyncStats,
+        dry_run: bool,
+        listing_failed: bool,
+    ) -> None:
+        """
+        Remove stored documents that no source lists any more.
+
+        Deletion is the only destructive half of a sync, so it is the half
+        that needs guard rails. Any source that failed to list, or listed
+        nothing, suppresses deletion entirely for the run: those two cases are
+        indistinguishable from "everything was deleted at the source", and
+        acting on that guess would empty the collection.
+        """
+        if listing_failed:
+            message = "Deletions skipped: at least one source failed to list or was empty"
+            logger.warning(message)
+            if message not in stats["warnings"]:
+                stats["warnings"].append(message)
+            return
+
+        stored = self.vectorstore_wrapper.list_sources()
+        if not stored:
+            return
+
+        keep = set()
+        for path in listed:
+            keep |= self._path_forms(path)
+
+        orphaned = [source for source in stored if source not in keep]
+        if not orphaned:
+            return
+
+        if dry_run:
+            stats["deleted"] = len(orphaned)
+            for source in orphaned:
+                logger.info(f"Would delete: {source}")
+            return
+
+        for source in orphaned:
+            removed = self.vectorstore_wrapper.delete_by_source(source)
+            if removed:
+                stats["deleted"] += 1
+                stats["deleted_chunks"] += removed
+                logger.info(f"Deleted {removed} chunk(s) for removed document: {source}")
+
+        if stats["deleted"]:
+            self._stored_values_cache = None
 
     def _resolve_filters(
         self, question: str, filters: Optional[Dict[str, Any]]

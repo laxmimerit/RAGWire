@@ -32,7 +32,7 @@ except PackageNotFoundError:
 __author__ = "KGP Talkie Private Limited"
 
 from .core.config import Config
-from .core.pipeline import RAGWire, IngestStats, IngestError
+from .core.pipeline import RAGWire, IngestStats, IngestError, SyncStats
 from .metadata.schema import DocumentMetadata
 from .metadata.extractor import MetadataExtractor, FinancialMetadata
 from .loaders.markitdown_loader import MarkItDownLoader
@@ -50,6 +50,7 @@ from .retriever.rerank import (
 from .utils.logging import setup_logging, setup_colored_logging, get_logger
 from .eval import GoldenSet, GoldenQuery, evaluate, sweep
 from .generation import Answer, Citation, AnswerGenerator
+from .sources import Source, LocalSource, build_sources
 
 __all__ = [
     # Core
@@ -57,6 +58,11 @@ __all__ = [
     "RAGWire",
     "IngestStats",
     "IngestError",
+    "SyncStats",
+    # Sources
+    "Source",
+    "LocalSource",
+    "build_sources",
     # Metadata
     "DocumentMetadata",
     "MetadataExtractor",

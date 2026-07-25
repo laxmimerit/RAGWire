@@ -219,6 +219,43 @@ for doc in results:
 
 ---
 
+#### `rag.sync(sources, delete_missing, dry_run)`
+
+Reconcile the collection against its configured sources: ingest what is new, replace what changed, remove what is gone. See [Sync Sources](cookbook/syncing_sources.md).
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `sources` | `list[Source]` | No | config value | Sources to reconcile against. Uses the `sources` config block when not given. |
+| `delete_missing` | `bool` | No | `true` | Remove documents no source lists any more |
+| `dry_run` | `bool` | No | `false` | Report what would happen without writing or deleting |
+
+**Returns:** `SyncStats`
+
+| Key | Description |
+|---|---|
+| `listed` | Files the sources reported |
+| `processed` | Documents newly written |
+| `skipped` | Documents already present and unchanged |
+| `replaced` | Documents whose content changed |
+| `deleted` | Documents removed because no source lists them |
+| `deleted_chunks` | Chunks removed by those deletions |
+| `failed` | Files that could not be processed |
+| `chunks_created` | Chunks written |
+| `warnings` | Deletions held back for safety, with the reason |
+| `errors` | `{"file": ..., "error": ...}` entries |
+
+**Raises:** `ValueError` if no sources are configured or passed.
+
+!!! warning "Deletion is suppressed when a source cannot be trusted"
+    If any source fails to list, or lists zero files, sync deletes nothing that run and records why in `warnings`. An unreachable bucket and an emptied bucket look identical from the outside, and acting on the wrong reading would empty your collection. Ingestion still runs.
+
+```python
+stats = rag.sync(dry_run=True)   # look first
+stats = rag.sync()               # then commit
+```
+
+---
+
 #### `rag.query(question, top_k, filters, rerank)`
 
 Answer a question from the collection, with citations. See [Answer Questions](cookbook/answering_questions.md).
@@ -681,6 +718,43 @@ Install the provider you chose: `pip install ragwire[rerank]` for `cross_encoder
 
 ---
 
+### `sources` section
+
+Optional. A list of places `rag.sync()` reconciles the collection against. See [Sync Sources](cookbook/syncing_sources.md).
+
+Every entry needs a `type`. Remaining keys are that type's own settings, plus `extensions` and `name`, which every source accepts.
+
+**`type: local`**
+
+| Key | Required | Default | Description |
+|---|---|---|---|
+| `path` | Yes | n/a | Directory or single file |
+| `recursive` | No | `false` | Descend into subdirectories |
+| `extensions` | No | all | Extensions to include, with or without the leading dot |
+
+**`type: s3`** (needs `pip install ragwire[s3]`)
+
+| Key | Required | Default | Description |
+|---|---|---|---|
+| `bucket` | Yes | n/a | Bucket name |
+| `prefix` | No | `""` | Key prefix. Empty means the whole bucket. |
+| `cache_dir` | No | `.ragwire_cache` | Where objects are downloaded before ingestion |
+| `region` | No | boto3 default | AWS region |
+| `endpoint_url` | No | AWS | Point at MinIO, R2, B2 or another S3-compatible store |
+| `aws_access_key_id` / `aws_secret_access_key` | No | boto3 chain | Explicit credentials |
+
+```yaml
+sources:
+  - type: local
+    path: "./documents"
+    recursive: true
+  - type: s3
+    bucket: "my-filings"
+    prefix: "2026/"
+```
+
+---
+
 ### `generation` section
 
 Entirely optional. Omit the block and the defaults apply. Controls `rag.query()` only.
@@ -1126,6 +1200,7 @@ Installing the package puts a `ragwire` command on your PATH.
 | `ragwire --version` | Print the installed version |
 | `ragwire mcp serve [--config CONFIG] [--name NAME]` | Run the MCP server over stdio. Requires `pip install ragwire[mcp]`. See [MCP Server](cookbook/mcp_server.md). |
 | `ragwire ingest PATH [--config CONFIG] [--recursive]` | Ingest a file or directory |
+| `ragwire sync [--config CONFIG] [--dry-run] [--no-delete]` | Reconcile the collection against its configured sources |
 | `ragwire eval GOLDEN [--config CONFIG] [--top-k K] [--compare-rerank]` | Score retrieval against a golden set |
 
 `--config` defaults to `config.yaml` for every subcommand.
