@@ -1,8 +1,9 @@
 name: Publish to PyPI
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - "v*"
 
 jobs:
   test:
@@ -20,6 +21,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
+      # The tag now triggers the publish, but the version shipped to PyPI still
+      # comes from pyproject.toml. Fail loudly when the two disagree.
+      - name: Check tag matches pyproject version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PROJECT=$(python -c "import tomllib,pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
+          echo "tag=$TAG pyproject=$PROJECT"
+          test "$TAG" = "$PROJECT"
 
       - name: Install build
         run: pip install build
