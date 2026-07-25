@@ -219,6 +219,57 @@ for doc in results:
 
 ---
 
+#### `rag.query(question, top_k, filters, rerank)`
+
+Answer a question from the collection, with citations. See [Answer Questions](cookbook/answering_questions.md).
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `question` | `str` | Yes | n/a | The question to answer |
+| `top_k` | `int` | No | config value | How many chunks to ground the answer in |
+| `filters` | `dict` | No | `None` | Metadata filters. Extracted automatically when `auto_filter: true`. |
+| `rerank` | `bool` | No | config value | Override reranking, as in `retrieve()` |
+
+**Returns:** `Answer`
+
+| Attribute | Type | Description |
+|---|---|---|
+| `text` | `str` | The answer, or an explanation of why none could be given |
+| `citations` | `list[Citation]` | The sources actually cited, in order of first reference |
+| `documents` | `list[Document]` | Everything retrieved, cited or not |
+| `filters_used` | `dict` \| `None` | Filters applied during retrieval |
+| `refused` | `bool` | True when the sources did not support an answer |
+| `confidence` | `float` | Fraction of sentences carrying a citation. Groundedness, not accuracy. |
+| `sources` | `list[str]` | Distinct files cited |
+| `formatted()` | `str` | The answer with a numbered source list appended |
+| `to_dict()` | `dict` | Serialised for logging or an API response |
+
+Each `Citation` has `index`, `source`, `text`, `snippet`, `metadata` and `score` (the rerank score, when one exists).
+
+An `Answer` is falsy when it was refused, so `if not answer:` handles the unanswerable case. `query()` never raises for a question the documents cannot answer.
+
+```python
+answer = rag.query("What was Apple's net income in fiscal 2025?")
+
+if not answer:
+    print("Not in the collection")
+else:
+    print(answer.formatted())
+    print(f"grounded: {answer.confidence:.0%}")
+```
+
+---
+
+#### `rag.aquery(question, top_k, filters, rerank)`
+
+Async version of `query()`. Same parameters, same return type. Only the LLM call is awaited; retrieval runs synchronously.
+
+```python
+answer = await rag.aquery("What was net income?")
+```
+
+---
+
 #### `rag.hybrid_search(query, k, filters)`
 
 Perform hybrid search combining dense (semantic) and sparse (keyword) vectors. Requires `use_sparse: true` in config.
@@ -627,6 +678,30 @@ Install the provider you chose: `pip install ragwire[rerank]` for `cross_encoder
 
 !!! warning "Reranking applies to `retrieve()` only"
     `hybrid_search()` and `mmr_search()` are low-level primitives and deliberately ignore the rerank config, so they stay predictable when you compose your own pipeline.
+
+---
+
+### `generation` section
+
+Entirely optional. Omit the block and the defaults apply. Controls `rag.query()` only.
+
+| Key | Required | Default | Description |
+|---|---|---|---|
+| `max_context_chars` | No | `12000` | Total character budget for the source block sent to the LLM |
+| `system_prompt` | No | built-in | Override the grounding instructions. Use `{sentinel}` where the model should be told to refuse. |
+
+```yaml
+generation:
+  max_context_chars: 12000
+```
+
+Chunks are added to the context in rank order until the budget runs out. A chunk crossing the limit is truncated; one that would land under 200 characters is dropped instead of being given a source number. Only chunks that fit can be cited.
+
+!!! warning "Raise `llm.num_ctx` alongside `max_context_chars`"
+    A default chunk is 10,000 characters, so five of them overflow most context windows. If you raise the budget, raise the model's context window to match. Roughly four characters per token is a safe estimate.
+
+!!! warning "A custom `system_prompt` must keep `{sentinel}`"
+    It is replaced with the refusal token. Drop it and refusal detection stops working, so the model will answer from general knowledge whenever your documents come up short.
 
 ---
 

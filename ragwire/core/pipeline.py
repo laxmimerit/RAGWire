@@ -51,6 +51,8 @@ from ..embeddings.factory import get_embedding
 from ..vectorstores.qdrant_store import QdrantStore
 from ..retriever.hybrid import get_retriever, hybrid_search
 from ..retriever.rerank import get_reranker, resolve_fetch_k
+from ..generation.answer import Answer
+from ..generation.generator import AnswerGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +115,7 @@ class RAGWire:
         self._initialize_llm()
         self._initialize_vectorstore()
         self._initialize_retriever()
+        self._initialize_generation()
 
         logger.info("RAG pipeline initialized successfully")
 
@@ -260,6 +263,10 @@ class RAGWire:
                 f"Run: {install_cmd}"
             )
 
+        # Kept so query() can generate answers with the same LLM that extracts
+        # metadata, rather than asking the user to configure a second one.
+        self.llm = llm
+
         metadata_config = self.config.get("metadata", {})
         metadata_yaml = metadata_config.get("config_file") if metadata_config else None
 
@@ -370,6 +377,15 @@ class RAGWire:
                 f"Reranker initialized (provider={self.reranker.name}, "
                 f"fetch_k={resolve_fetch_k(self._rerank_config, top_k)})"
             )
+
+    def _initialize_generation(self) -> None:
+        """Build the answer generator used by query()."""
+        cfg = self.config.get("generation", {}) or {}
+        self.generator = AnswerGenerator(
+            llm=self.llm,
+            max_context_chars=cfg.get("max_context_chars", 12000),
+            system_prompt=cfg.get("system_prompt"),
+        )
 
     def ingest_documents(self, file_paths: List[str]) -> IngestStats:
         """
@@ -1089,6 +1105,112 @@ class RAGWire:
         logger.info(f"Retrieved {len(results)} documents for query: {query[:50]}...")
 
         return results
+
+    def _resolve_filters(
+        self, question: str, filters: Optional[Dict[str, Any]]
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Settle on the filters for a question before retrieval runs.
+
+        query() needs to know which filters were applied so it can report them
+        on the Answer, and filter extraction costs an LLM call. Resolving here
+        and passing the result down means retrieve() never extracts a second
+        time, since an empty dict is not None and so skips its own extraction.
+        """
+        if filters is not None or not self._auto_filter:
+            return filters
+        return self._extract_filters_from_query(question) or {}
+
+    def query(
+        self,
+        question: str,
+        top_k: Optional[int] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        rerank: Optional[bool] = None,
+    ) -> Answer:
+        """
+        Answer a question from the collection, with citations.
+
+        Retrieves the most relevant chunks and asks the configured LLM to
+        answer from those chunks alone. The model is instructed to cite every
+        claim and to refuse rather than fall back on general knowledge, so an
+        answer you get back is traceable to a source you can open.
+
+        Args:
+            question: The question to answer
+            top_k: How many chunks to ground the answer in (config default if
+                not given)
+            filters: Metadata filters. Extracted automatically when
+                ``auto_filter: true`` and none are passed.
+            rerank: Override reranking for this call, as in :meth:`retrieve`
+
+        Returns:
+            An Answer with ``.text``, ``.citations``, ``.filters_used``,
+            ``.confidence`` and ``.refused``. An unanswerable question returns
+            a refusal rather than raising, so callers do not have to catch an
+            exception to handle "I do not know".
+
+        Example:
+            >>> answer = rag.query("What was Apple's net income in 2025?")
+            >>> print(answer.text)
+            Apple reported net income of $93.7 billion [1].
+
+            >>> for citation in answer.citations:
+            ...     print(citation.index, citation.source)
+            1 apple_10k_2025.pdf
+
+            >>> if answer.refused:
+            ...     print("Not in the collection")
+        """
+        resolved = self._resolve_filters(question, filters)
+        documents = self.retrieve(
+            question, top_k=top_k, filters=resolved, rerank=rerank
+        )
+        answer = self.generator.generate(question, documents, filters_used=resolved or None)
+        logger.info(
+            f"Answered query (refused={answer.refused}, "
+            f"citations={len(answer.citations)}): {question[:50]}"
+        )
+        return answer
+
+    async def aquery(
+        self,
+        question: str,
+        top_k: Optional[int] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        rerank: Optional[bool] = None,
+    ) -> Answer:
+        """
+        Async version of :meth:`query`.
+
+        Only the generation step is awaited. Retrieval still runs
+        synchronously, so this helps most where it matters most: the LLM call
+        is the slow part, and awaiting it keeps a web server's event loop free.
+
+        Args:
+            question: The question to answer
+            top_k: How many chunks to ground the answer in
+            filters: Metadata filters
+            rerank: Override reranking for this call
+
+        Returns:
+            An Answer
+
+        Example:
+            >>> answer = await rag.aquery("What was net income?")  # doctest: +SKIP
+        """
+        resolved = self._resolve_filters(question, filters)
+        documents = self.retrieve(
+            question, top_k=top_k, filters=resolved, rerank=rerank
+        )
+        answer = await self.generator.agenerate(
+            question, documents, filters_used=resolved or None
+        )
+        logger.info(
+            f"Answered query (refused={answer.refused}, "
+            f"citations={len(answer.citations)}): {question[:50]}"
+        )
+        return answer
 
     def hybrid_search(
         self, query: str, k: int = 5, filters: Optional[Dict[str, Any]] = None

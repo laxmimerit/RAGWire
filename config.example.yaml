@@ -114,6 +114,18 @@ retriever:
   #   # Requires: pip install ragwire[rerank]   (or ragwire[cohere])
 
 # =================================================================
+# Answer generation (rag.query)
+# =================================================================
+# Entirely optional. Omit the block and these defaults apply.
+generation:
+  max_context_chars: 12000   # Total budget for the source block sent to the LLM.
+                             # Five default chunks overflow most context windows,
+                             # so chunks past the budget are dropped rather than
+                             # silently truncated by the provider.
+  # system_prompt: |         # Override the grounding instructions. Use {sentinel}
+  #   ...                    # where the model should be told to refuse.
+
+# =================================================================
 # Logging
 # =================================================================
 logging:

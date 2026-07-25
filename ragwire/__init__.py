@@ -49,6 +49,7 @@ from .retriever.rerank import (
 )
 from .utils.logging import setup_logging, setup_colored_logging, get_logger
 from .eval import GoldenSet, GoldenQuery, evaluate, sweep
+from .generation import Answer, Citation, AnswerGenerator
 
 __all__ = [
     # Core
@@ -82,6 +83,10 @@ __all__ = [
     "CohereReranker",
     "CrossEncoderReranker",
     "get_reranker",
+    # Generation
+    "Answer",
+    "Citation",
+    "AnswerGenerator",
     # Evaluation
     "GoldenSet",
     "GoldenQuery",

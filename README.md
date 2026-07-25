@@ -126,6 +126,7 @@ RAGWire is in beta and designed for developers building production-style RAG sys
 - **Multiple Embedding Providers**: Ollama, OpenAI, OpenRouter, HuggingFace, Google, FastEmbed
 - **Qdrant Vector Store**: dense, sparse, and hybrid search
 - **Advanced Retrieval**: similarity, MMR, and hybrid search with metadata filtering
+- **Grounded Answers**: `rag.query()` returns cited answers and refuses when the documents come up short
 - **Reranking**: optional cross-encoder second stage, local and API-key-free by default
 - **Evaluation**: recall@k, MRR and config sweeps against your own golden set
 - **SHA256 Deduplication**: at both file and chunk level

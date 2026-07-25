@@ -74,6 +74,7 @@ nav:
     - HuggingFace: huggingface.md
     - FastEmbed: fastembed.md
   - Cookbook:
+    - Answer Questions: cookbook/answering_questions.md
     - Switch Providers: cookbook/switch_providers.md
     - Local File Storage: cookbook/local_storage.md
     - Qdrant Cloud (Free Tier): cookbook/qdrant_cloud.md
