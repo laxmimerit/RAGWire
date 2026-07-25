@@ -513,3 +513,4 @@ These exist so "production grade" does not quietly destroy "simple setup."
 | 2026-07-25 | Documentation pass: `docs/setup.md` rewritten after finding it configured Ollama without ever telling the reader to install it or pull the models |
 | 2026-07-25 | Em and en dashes removed repo-wide (653 occurrences, 66 files), each rewritten in context rather than substituted |
 | 2026-07-25 | Fixed a doc/schema contradiction: `fiscal_year` was documented as `list[int]` in README, `docs/metadata.md`, `llms.txt`, `llms-full.txt`, `AGENT.md` and the `json_schema_extra` example, while `FinancialMetadata` declares `Optional[int]` |
+| 2026-07-25 | Version bumped to 1.4.1, carrying Phase 2 plus the documentation and dash pass |
