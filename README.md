@@ -10,7 +10,7 @@
 <p align="center">
   <a href="https://pypi.org/project/ragwire"><img src="https://img.shields.io/pypi/v/ragwire" alt="PyPI"/></a>
   <a href="https://pypi.org/project/ragwire"><img src="https://img.shields.io/pypi/pyversions/ragwire" alt="Python Versions"/></a>
-  <a href="https://pypi.org/project/ragwire"><img src="https://img.shields.io/pypi/dm/ragwire" alt="PyPI Downloads"/></a>
+  <a href="https://pepy.tech/project/ragwire"><img src="https://static.pepy.tech/badge/ragwire" alt="Downloads"/></a>
   <a href="https://github.com/laxmimerit/ragwire/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License"/></a>
   <a href="https://laxmimerit.github.io/RAGWire/"><img src="https://img.shields.io/badge/docs-live-blue" alt="Documentation"/></a>
   <a href="https://youtube.com/kgptalkie"><img src="https://img.shields.io/badge/YouTube-KGP%20Talkie-red" alt="YouTube"/></a>
