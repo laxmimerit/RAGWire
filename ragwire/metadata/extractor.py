@@ -8,7 +8,7 @@ type-safe extraction — no manual JSON parsing.
 
 import logging
 from pathlib import Path
-from typing import Optional, Dict, Any, List, Type
+from typing import Optional, Dict, Any, List, Type, get_args
 
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field, create_model
@@ -86,7 +86,18 @@ class MetadataExtractor:
         "## Extracted Metadata"
     )
 
-    def __init__(self, llm, schema_model: Optional[Type[BaseModel]] = None, prompt_template: Optional[str] = None):
+    #: Characters of document text sent to the LLM for extraction. Large enough
+    #: to cover the cover page + first section of a typical filing, small enough
+    #: to fit a modest context window alongside the schema and prompt.
+    DEFAULT_CHAR_LIMIT = 10000
+
+    def __init__(
+        self,
+        llm,
+        schema_model: Optional[Type[BaseModel]] = None,
+        prompt_template: Optional[str] = None,
+        char_limit: Optional[int] = None,
+    ):
         """
         Initialize the metadata extractor.
 
@@ -97,9 +108,14 @@ class MetadataExtractor:
             prompt_template: Custom extraction prompt. If omitted, defaults to
                              EXTRACTION_PROMPT. If provided, the document text
                              block is always appended automatically.
+            char_limit: Characters of document text passed to the LLM.
+                        Defaults to DEFAULT_CHAR_LIMIT (10,000). Raise it if your
+                        metadata appears deep in long documents and your model's
+                        context window allows.
         """
         self.llm = llm
         self.schema_model = schema_model or FinancialMetadata
+        self.char_limit = char_limit or self.DEFAULT_CHAR_LIMIT
         if prompt_template:
             self.prompt_template = prompt_template.rstrip() + "\n\n## Document\n{content}\n\n## Extracted Metadata"
         else:
@@ -107,13 +123,55 @@ class MetadataExtractor:
         self.prompt = ChatPromptTemplate.from_template(self.prompt_template)
         self._structured_llm = llm.with_structured_output(self.schema_model)
         self.fields: Optional[List[str]] = None
+        self.field_types: Dict[str, str] = self._infer_field_types(self.schema_model)
+
+    @staticmethod
+    def _infer_field_types(model: Type[BaseModel]) -> Dict[str, str]:
+        """
+        Map each schema field to the payload index type it needs in Qdrant.
+
+        Unwraps Optional[X] and List[X] down to the innermost concrete type, so
+        ``Optional[List[int]]`` and ``Optional[int]`` both resolve to "integer".
+        Anything that is not numeric is indexed as a keyword.
+
+        Args:
+            model: Pydantic model defining the metadata schema
+
+        Returns:
+            Dict mapping field name → "integer" | "float" | "keyword"
+        """
+        types: Dict[str, str] = {}
+
+        for name, field in model.model_fields.items():
+            annotation = field.annotation
+            args = get_args(annotation)
+
+            # Peel Optional[...] / List[...] wrappers until a concrete type remains
+            while args:
+                annotation = next(
+                    (a for a in args if a is not type(None)), annotation
+                )
+                args = get_args(annotation)
+
+            if annotation is bool:
+                # bool is a subclass of int — index it as a keyword, not a number
+                types[name] = "keyword"
+            elif annotation is int:
+                types[name] = "integer"
+            elif annotation is float:
+                types[name] = "float"
+            else:
+                types[name] = "keyword"
+
+        return types
 
     def extract(self, text: str, stored_values: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Extract metadata from document text.
 
         Args:
-            text: Document content to extract metadata from (first 10,000 chars used)
+            text: Document content to extract metadata from. Only the first
+                  ``self.char_limit`` characters are sent to the LLM.
             stored_values: Existing field values from the collection. When provided,
                 the LLM is instructed to reuse stored entity names for consistency
                 (e.g. always use 'apple inc.' if that is already stored).
@@ -137,7 +195,7 @@ class MetadataExtractor:
             prompt = self.prompt
 
         chain = prompt | self._structured_llm
-        result = chain.invoke({"content": text[:4000]})
+        result = chain.invoke({"content": text[: self.char_limit]})
 
         metadata = result.model_dump()
 
@@ -219,7 +277,8 @@ class MetadataExtractor:
 
         Optionally, a top-level 'prompt' key overrides the default extraction
         prompt. The document text is appended automatically — no need to include
-        a {content} placeholder.
+        a {content} placeholder. A top-level 'char_limit' key overrides how much
+        document text is sent to the LLM (default 10,000 characters).
 
         Args:
             llm: LangChain chat model instance
@@ -246,7 +305,12 @@ class MetadataExtractor:
         custom_prompt = meta_config.get("prompt")
 
         schema_model = cls._build_schema_model(fields)
-        instance = cls(llm, schema_model=schema_model, prompt_template=custom_prompt)
+        instance = cls(
+            llm,
+            schema_model=schema_model,
+            prompt_template=custom_prompt,
+            char_limit=meta_config.get("char_limit"),
+        )
         instance.fields = [f["name"] for f in fields]
 
         if custom_prompt:

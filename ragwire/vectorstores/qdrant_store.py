@@ -259,47 +259,84 @@ class QdrantStore:
 
         return self.client.get_collection(name)
 
-    def get_metadata_keys(self) -> List[str]:
+    #: How many points to sample when discovering which metadata keys exist.
+    #: One point is not enough — a field that was None for that document is
+    #: absent from its payload and would never get an index.
+    _KEY_DISCOVERY_SAMPLE = 100
+
+    def get_metadata_keys(self, sample_size: Optional[int] = None) -> List[str]:
         """
-        Scroll one point and return all metadata payload keys present in the collection.
+        Return the union of metadata payload keys across a sample of points.
+
+        Sampling several points matters: any field that happened to be null for
+        the sampled document is missing from its payload, so a single-point
+        sample silently under-reports the schema.
+
+        Args:
+            sample_size: Points to sample (defaults to _KEY_DISCOVERY_SAMPLE)
 
         Returns:
-            List of metadata field names, or empty list if collection is empty
+            Sorted list of metadata field names, or empty list if collection is empty
         """
+        if not self.collection_name or not self.collection_exists():
+            return []
+
         results, _ = self.client.scroll(
             collection_name=self.collection_name,
-            limit=1,
+            limit=sample_size or self._KEY_DISCOVERY_SAMPLE,
             with_payload=True,
             with_vectors=False,
         )
-        if not results:
-            return []
-        payload = results[0].payload or {}
-        metadata = payload.get("metadata", {})
-        return list(metadata.keys())
 
-    # Fields stored as integers in the RAGWire schema (chunk_index, total_chunks,
-    # fiscal_year are int). Everything else is indexed as KEYWORD.
-    _INTEGER_FIELDS = {"chunk_index", "total_chunks", "fiscal_year"}
+        keys = set()
+        for point in results:
+            metadata = (point.payload or {}).get("metadata", {})
+            if isinstance(metadata, dict):
+                keys.update(metadata.keys())
 
-    def create_payload_indexes(self, fields: List[str]) -> None:
+        return sorted(keys)
+
+    # Index types for the system fields RAGWire always writes. Schema-defined
+    # fields get their type from the metadata schema instead — see
+    # MetadataExtractor.field_types.
+    _SYSTEM_FIELD_TYPES = {
+        "chunk_index": "integer",
+        "total_chunks": "integer",
+    }
+
+    def create_payload_indexes(
+        self, fields: List[str], field_types: Optional[dict] = None
+    ) -> None:
         """
         Create payload indexes for a list of metadata fields.
 
-        Uses INTEGER index for known numeric fields, KEYWORD for everything else.
-        Required by Qdrant's facet API. Safe to call multiple times —
-        silently skips fields that are already indexed.
+        Required by Qdrant's facet API. Safe to call multiple times — fields that
+        are already indexed are skipped.
+
+        The index type comes from ``field_types`` when supplied (normally derived
+        from the metadata schema via MetadataExtractor.field_types). Guessing from
+        a hardcoded field-name list breaks custom schemas: an integer field
+        indexed as KEYWORD does not index its values, so facets come back empty
+        and every filter on it matches zero points.
 
         Args:
             fields: List of metadata field names (without the 'metadata.' prefix)
+            field_types: Optional mapping of field name → "integer" | "float" |
+                         "keyword". Unlisted fields default to keyword.
         """
         from qdrant_client.http import models as rest
 
+        schema_by_type = {
+            "integer": rest.PayloadSchemaType.INTEGER,
+            "float": rest.PayloadSchemaType.FLOAT,
+            "keyword": rest.PayloadSchemaType.KEYWORD,
+        }
+
+        resolved = {**self._SYSTEM_FIELD_TYPES, **(field_types or {})}
+
         for field in fields:
-            schema = (
-                rest.PayloadSchemaType.INTEGER
-                if field in self._INTEGER_FIELDS
-                else rest.PayloadSchemaType.KEYWORD
+            schema = schema_by_type.get(
+                resolved.get(field, "keyword"), rest.PayloadSchemaType.KEYWORD
             )
             try:
                 self.client.create_payload_index(
@@ -308,21 +345,40 @@ class QdrantStore:
                     field_schema=schema,
                 )
                 logger.debug(f"Payload index created for field '{field}' (type={schema})")
-            except Exception:
-                pass  # Already exists — safe to ignore
+            except Exception as e:
+                if self._is_already_exists(e):
+                    logger.debug(f"Payload index for '{field}' already exists")
+                else:
+                    # Auth failures, connection resets and schema-type conflicts
+                    # all land here. Swallowing them silently makes empty facet
+                    # results impossible to diagnose.
+                    logger.warning(
+                        f"Could not create payload index for '{field}' "
+                        f"(type={resolved.get(field, 'keyword')}): {e}"
+                    )
 
-    def get_field_values(self, fields: List[str], limit: int = 50) -> dict:
+    @staticmethod
+    def _is_already_exists(error: Exception) -> bool:
+        """Return True if a Qdrant error means the index is already present."""
+        message = str(error).lower()
+        return "already exists" in message or "already indexed" in message
+
+    def get_field_values(
+        self, fields: List[str], limit: int = 50, field_types: Optional[dict] = None
+    ) -> dict:
         """
         Return unique values for each requested field using Qdrant's facet API.
 
         Args:
             fields: List of metadata field names (without the 'metadata.' prefix)
             limit: Max unique values to return per field
+            field_types: Optional field name → index type mapping (see
+                         create_payload_indexes)
 
         Returns:
             Dict mapping field name → list of unique values
         """
-        self.create_payload_indexes(fields)
+        self.create_payload_indexes(fields, field_types=field_types)
         result = {}
         for field in fields:
             try:

@@ -6,6 +6,7 @@ to enable deduplication and change detection in the RAG pipeline.
 """
 
 import hashlib
+import hmac
 from pathlib import Path
 from typing import Union
 
@@ -113,4 +114,4 @@ def compare_hashes(hash1: str, hash2: str) -> bool:
     Returns:
         True if hashes are equal, False otherwise
     """
-    return hashlib.compare_digest(hash1.encode("utf-8"), hash2.encode("utf-8"))
+    return hmac.compare_digest(hash1.encode("utf-8"), hash2.encode("utf-8"))
