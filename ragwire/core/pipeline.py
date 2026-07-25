@@ -50,6 +50,7 @@ from ..metadata.schema import DocumentMetadata
 from ..embeddings.factory import get_embedding
 from ..vectorstores.qdrant_store import QdrantStore
 from ..retriever.hybrid import get_retriever, hybrid_search
+from ..retriever.rerank import get_reranker, resolve_fetch_k
 
 logger = logging.getLogger(__name__)
 
@@ -351,7 +352,7 @@ class RAGWire:
         )
 
     def _initialize_retriever(self) -> None:
-        """Initialize retriever."""
+        """Initialize retriever and the optional reranker."""
         retriever_config = self.config.get("retriever", {})
         search_type = retriever_config.get("search_type", "hybrid")
         top_k = retriever_config.get("top_k", 5)
@@ -359,7 +360,16 @@ class RAGWire:
         self.retriever = get_retriever(
             self.vectorstore, top_k=top_k, search_type=search_type
         )
+
+        self._rerank_config = retriever_config.get("rerank") or {}
+        self.reranker = get_reranker(self._rerank_config)
+
         logger.info(f"Retriever initialized (type={search_type}, top_k={top_k}, auto_filter={self._auto_filter})")
+        if self.reranker is not None:
+            logger.info(
+                f"Reranker initialized (provider={self.reranker.name}, "
+                f"fetch_k={resolve_fetch_k(self._rerank_config, top_k)})"
+            )
 
     def ingest_documents(self, file_paths: List[str]) -> IngestStats:
         """
@@ -997,41 +1007,85 @@ class RAGWire:
         query: str,
         top_k: Optional[int] = None,
         filters: Optional[Dict[str, Any]] = None,
+        rerank: Optional[bool] = None,
     ) -> List[Any]:
         """
         Retrieve documents for a query.
+
+        When a reranker is configured, this fetches a wider candidate pool from
+        the vector store, scores every candidate against the query with the
+        reranker, and returns the best top_k. Without one, it returns the
+        vector store's own top_k unchanged.
 
         Args:
             query: Search query string
             top_k: Number of results (uses config default if not provided)
             filters: Optional metadata filters
+            rerank: Override the configured reranking behaviour for this call.
+                Pass False to skip reranking, or True to require it and fail
+                loudly if none is configured. Defaults to whatever the config
+                says.
 
         Returns:
-            List of retrieved documents
+            List of retrieved documents. When reranked, each document carries
+            its relevance score in ``metadata["rerank_score"]``.
+
+        Raises:
+            ValueError: If rerank=True but no reranker is configured
 
         Example:
             >>> results = rag.retrieve("Amazon Q1 2024 revenue")
             >>> for doc in results:
             ...     print(doc.page_content)
+
+            >>> # Compare against the unreranked baseline
+            >>> baseline = rag.retrieve("Amazon Q1 2024 revenue", rerank=False)
         """
         if top_k is None:
             top_k = self.config.get("retriever", {}).get("top_k", 5)
 
+        if rerank is True and self.reranker is None:
+            raise ValueError(
+                "retrieve(rerank=True) requires a reranker, but none is "
+                "configured. Add a retriever.rerank block to your config."
+            )
+        reranker = None if rerank is False else self.reranker
+
         if filters is None and self._auto_filter:
             filters = self._extract_filters_from_query(query)
 
+        # Reranking can only reorder what first-stage retrieval hands it, so
+        # widen the candidate pool when one is active.
+        candidate_k = (
+            resolve_fetch_k(self._rerank_config, top_k) if reranker else top_k
+        )
+
         # Build search kwargs without mutating the shared retriever
-        search_kwargs = {**self.retriever.search_kwargs, "k": top_k}
+        search_kwargs = {**self.retriever.search_kwargs, "k": candidate_k}
         if filters:
             search_kwargs["filter"] = self._build_qdrant_filter(
                 self._normalize_filters(filters)
             )
+
+        # MMR selects k documents out of its own fetch_k pool, so that pool has
+        # to be at least as large as the candidate count we are asking for.
+        if "fetch_k" in search_kwargs:
+            search_kwargs["fetch_k"] = max(search_kwargs["fetch_k"], candidate_k)
 
         retriever = self.vectorstore.as_retriever(
             search_type=self.retriever.search_type,
             search_kwargs=search_kwargs,
         )
         results = retriever.invoke(query)
+
+        if reranker and results:
+            before = len(results)
+            results = reranker.rerank(query, results, top_n=top_k)
+            logger.info(
+                f"Reranked {before} candidates to {len(results)} using "
+                f"{reranker.name}"
+            )
+
         logger.info(f"Retrieved {len(results)} documents for query: {query[:50]}...")
 
         return results

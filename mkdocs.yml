@@ -80,6 +80,7 @@ nav:
     - Multi-Collection Setup: cookbook/multi_collection.md
     - Update Documents: cookbook/update_documents.md
     - Tune Retrieval Quality: cookbook/tune_retrieval.md
+    - Reranking: cookbook/reranking.md
     - Inspect Your Collection: cookbook/inspect_collection.md
     - Diverse Results (MMR): cookbook/mmr.md
     - Preview Documents: cookbook/preview_documents.md

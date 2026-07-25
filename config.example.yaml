@@ -104,6 +104,15 @@ retriever:
   auto_filter: false       # If true, LLM automatically extracts metadata filters from every query.
                            # Default false. Call rag.extract_filters(query) to let an agent decide.
 
+  # Optional second-stage reranking. Delete this block to turn it off.
+  # Retrieval fetches fetch_k candidates, the reranker scores each one against
+  # the query, and the best top_k are returned.
+  # rerank:
+  #   provider: "cross_encoder"        # "cross_encoder" (local, no API key) | "cohere" (hosted)
+  #   model: "BAAI/bge-reranker-base"  # cohere default: "rerank-v3.5"
+  #   fetch_k: 25                      # Candidates to rerank. Defaults to max(4 * top_k, 20).
+  #   # Requires: pip install ragwire[rerank]   (or ragwire[cohere])
+
 # =================================================================
 # Logging
 # =================================================================

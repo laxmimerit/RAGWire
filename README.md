@@ -111,7 +111,7 @@ Apple reported total net sales of ...
 | Vector database | Qdrant |
 | Embeddings | Ollama, OpenAI, OpenRouter, HuggingFace, Google, FastEmbed |
 | LLM metadata extraction | Ollama, OpenAI, OpenRouter, Gemini, Groq, Anthropic |
-| Retrieval | Similarity, MMR, hybrid dense+sparse search |
+| Retrieval | Similarity, MMR, hybrid dense+sparse search, cross-encoder reranking |
 | Configuration | YAML + environment variables |
 
 ## Project Status
@@ -126,6 +126,7 @@ RAGWire is in beta and designed for developers building production-style RAG sys
 - **Multiple Embedding Providers**: Ollama, OpenAI, OpenRouter, HuggingFace, Google, FastEmbed
 - **Qdrant Vector Store**: dense, sparse, and hybrid search
 - **Advanced Retrieval**: similarity, MMR, and hybrid search with metadata filtering
+- **Reranking**: optional cross-encoder second stage, local and API-key-free by default
 - **SHA256 Deduplication**: at both file and chunk level
 - **Directory Ingestion**: ingest an entire folder with one call, with optional recursive scan
 - **Env Var Substitution**: use `${VAR}` in `config.yaml` for secrets
@@ -370,7 +371,7 @@ ragwire/
 ├── metadata/      # Pydantic schema + LLM extractor
 ├── embeddings/    # Multi-provider embedding factory
 ├── vectorstores/  # Qdrant wrapper with hybrid search
-├── retriever/     # Similarity, MMR, hybrid retrieval
+├── retriever/     # Similarity, MMR, hybrid retrieval and reranking
 └── utils/         # Logging
 ```
 

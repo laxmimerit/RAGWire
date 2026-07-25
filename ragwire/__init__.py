@@ -41,6 +41,12 @@ from .processing.hashing import sha256_text, sha256_file_from_path, sha256_chunk
 from .embeddings.factory import get_embedding
 from .vectorstores.qdrant_store import QdrantStore
 from .retriever.hybrid import get_retriever, hybrid_search, mmr_search
+from .retriever.rerank import (
+    BaseReranker,
+    CohereReranker,
+    CrossEncoderReranker,
+    get_reranker,
+)
 from .utils.logging import setup_logging, setup_colored_logging, get_logger
 
 __all__ = [
@@ -70,6 +76,11 @@ __all__ = [
     "get_retriever",
     "hybrid_search",
     "mmr_search",
+    # Reranking
+    "BaseReranker",
+    "CohereReranker",
+    "CrossEncoderReranker",
+    "get_reranker",
     # Utilities
     "setup_logging",
     "setup_colored_logging",

@@ -168,7 +168,7 @@ stats = rag.ingest_directory("data/", extensions=[".pdf"])
 
 ---
 
-#### `rag.retrieve(query, top_k, filters)`
+#### `rag.retrieve(query, top_k, filters, rerank)`
 
 Retrieve the most relevant chunks for a query.
 
@@ -177,6 +177,7 @@ Retrieve the most relevant chunks for a query.
 | `query` | `str` | Yes | n/a | Search query |
 | `top_k` | `int` | No | config value | Number of results to return |
 | `filters` | `dict` | No | `None` | Metadata filters (see [Metadata & Filtering](metadata.md)) |
+| `rerank` | `bool` | No | config value | Override reranking for this call. `False` skips it, `True` requires it. |
 
 **Returns:** `list[Document]`
 
@@ -184,6 +185,9 @@ Each `Document` has:
 
 - `doc.page_content`: the chunk text
 - `doc.metadata`: a dict with all metadata fields (see [Metadata Schema](metadata.md#metadata-schema))
+- `doc.metadata["rerank_score"]`: the relevance score, present only when reranking ran
+
+**Reranking behaviour:** with a `retriever.rerank` block configured, `retrieve()` fetches `fetch_k` candidates from the vector store, scores each one against the query, and returns the best `top_k`. Without one it returns the vector store's own `top_k` unchanged. Passing `rerank=True` with no reranker configured raises `ValueError` rather than silently returning unreranked results. See [Reranking](cookbook/reranking.md).
 
 **Filter behaviour:**
 
@@ -582,9 +586,10 @@ Controls retrieval behaviour.
 
 | Key | Required | Default | Description |
 |---|---|---|---|
-| `search_type` | No | `"similarity"` | `"similarity"` \| `"mmr"` \| `"hybrid"` (hybrid requires `use_sparse: true`) |
+| `search_type` | No | `"hybrid"` | `"similarity"` \| `"mmr"` \| `"hybrid"` (hybrid requires `use_sparse: true`) |
 | `top_k` | No | `5` | Number of results returned by `retrieve()` |
 | `auto_filter` | No | `false` | If `true`, LLM automatically extracts metadata filters from every query passed to `retrieve()` / `hybrid_search()`. If `false`, no filter extraction happens unless `filters=` is passed explicitly or `rag.extract_filters()` is called manually. |
+| `rerank` | No | absent | Optional second-stage reranking. See below. |
 
 ```yaml
 retriever:
@@ -595,6 +600,33 @@ retriever:
 
 !!! note "Agent use case"
     Keep `auto_filter: false` when an agent is driving retrieval. Use `rag.extract_filters(query)` to let the agent inspect and adjust filters before calling `retrieve(filters=...)`.
+
+#### `retriever.rerank` subsection
+
+Omit the block entirely and no reranking happens, which is the default. Adding it is enough to switch reranking on.
+
+| Key | Required | Default | Description |
+|---|---|---|---|
+| `provider` | No | `"cross_encoder"` | `"cross_encoder"` (local, no API key) \| `"cohere"` (hosted) |
+| `model` | No | `"BAAI/bge-reranker-base"` | Cohere default is `"rerank-v3.5"` |
+| `fetch_k` | No | `max(4 * top_k, 20)` | Candidates fetched from the vector store and scored. Raised to `top_k` if set lower. |
+| `enabled` | No | `true` | Set `false` to switch reranking off while keeping the rest of the block |
+
+Any other key is passed through to the provider. `cross_encoder` also accepts `batch_size` and `device`.
+
+```yaml
+retriever:
+  top_k: 5
+  rerank:
+    provider: "cross_encoder"
+    model: "BAAI/bge-reranker-base"
+    fetch_k: 25
+```
+
+Install the provider you chose: `pip install ragwire[rerank]` for `cross_encoder`, or `pip install ragwire[cohere]` for `cohere`. Neither is pulled in by the base install. A missing package raises `ImportError` at startup rather than on the first query.
+
+!!! warning "Reranking applies to `retrieve()` only"
+    `hybrid_search()` and `mmr_search()` are low-level primitives and deliberately ignore the rerank config, so they stay predictable when you compose your own pipeline.
 
 ---
 

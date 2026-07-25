@@ -48,3 +48,7 @@ results = rag.retrieve("Apple net income 2025", top_k=3)
 
 !!! tip "Changing chunk_size requires re-ingestion"
     `chunk_size` and `chunk_overlap` only affect new ingestion runs. If you change them, set `force_recreate: true` and re-ingest your documents to apply the new chunking.
+
+## When Tuning Is Not Enough
+
+Everything above adjusts what first-stage retrieval returns. If the right chunk keeps landing at position 8 no matter how you tune, the problem is that dense retrieval never reads your query and the chunk together. That is what [reranking](reranking.md) fixes, and it is usually a larger gain than any setting on this page.
