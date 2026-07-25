@@ -1,4 +1,4 @@
-"""Smoke tests — verify all public API symbols import correctly."""
+"""Smoke tests: verify all public API symbols import correctly."""
 
 import pytest
 

@@ -1,5 +1,5 @@
 """
-RAGWire — Production-grade RAG toolkit for document ingestion and retrieval.
+RAGWire: Production-grade RAG toolkit for document ingestion and retrieval.
 
 A clean, installable Python toolkit providing:
 - Document loading and conversion (PDF, DOCX, XLSX, etc.)

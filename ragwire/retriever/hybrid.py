@@ -41,7 +41,7 @@ def get_retriever(
             search_kwargs={"k": top_k, "fetch_k": fetch_k, "lambda_mult": lambda_mult},
         )
 
-    # Both "similarity" and "hybrid" use the same retriever setup —
+    # Both "similarity" and "hybrid" use the same retriever setup, since
     # hybrid mode is configured at the vectorstore level (RetrievalMode.HYBRID)
     return vectorstore.as_retriever(
         search_type="similarity",

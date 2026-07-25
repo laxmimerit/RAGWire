@@ -29,7 +29,7 @@ class IngestStats(TypedDict):
     failed: int
     chunks_created: int
     #: Documents that were ingested but whose LLM metadata extraction failed.
-    #: These are counted in `processed` — the text is searchable, but they will
+    #: These are counted in `processed`. The text is searchable, but they will
     #: not match any metadata filter until re-ingested.
     metadata_failed: int
     #: Documents whose content changed since a previous ingest, where the older
@@ -100,7 +100,7 @@ class RAGWire:
         # Load configuration
         self.config = Config(config_path).config
 
-        # Cache for stored filter values — populated on first query, invalidated after ingestion
+        # Cache for stored filter values, populated on first query and cleared after ingestion
         self._stored_values_cache: Optional[Dict[str, Any]] = None
 
         # Initialize components
@@ -198,7 +198,9 @@ class RAGWire:
         """Initialize LLM and metadata extractor."""
         llm_config = self.config.get("llm", {})
         if not llm_config:
-            raise ValueError("No [llm] section found in config — required for metadata extraction")
+            raise ValueError(
+                "No [llm] section found in config. It is required for metadata extraction."
+            )
 
         provider = llm_config.get("provider", "ollama")
         model = llm_config.get("model")
@@ -227,8 +229,8 @@ class RAGWire:
                 llm = ChatOpenAI(model=model)
             elif provider == "openrouter":
                 # Use the dedicated ChatOpenRouter integration, NOT ChatOpenAI with a
-                # base_url override. The override approach breaks with_structured_output()
-                # — which the metadata extractor relies on. ChatOpenRouter supports
+                # base_url override. The override approach breaks with_structured_output(),
+                # which the metadata extractor relies on. ChatOpenRouter supports
                 # native structured output and tool calling.
                 # Reads the OPENROUTER_API_KEY env var when api_key is not set in config.
                 from langchain_openrouter import ChatOpenRouter
@@ -415,7 +417,7 @@ class RAGWire:
         if stats["metadata_failed"]:
             logger.warning(
                 f"{stats['metadata_failed']} document(s) were ingested without "
-                "metadata — they will not match metadata filters. Re-ingest them "
+                "metadata, so they will not match metadata filters. Re-ingest them "
                 "with rag.reingest_documents([...]) once the LLM is reachable."
             )
         return stats
@@ -470,8 +472,8 @@ class RAGWire:
             file_hash = sha256_file_from_path(file_path)
             record["hash"] = file_hash
 
-            # A previous run that died partway leaves chunks behind — those must
-            # be cleared and re-ingested, not mistaken for a finished document.
+            # A previous run that died partway leaves chunks behind, and those
+            # must be cleared, not mistaken for a finished document.
             status, stored, expected = self.vectorstore_wrapper.get_ingest_status(
                 file_hash
             )
@@ -545,7 +547,7 @@ class RAGWire:
                 logger.warning(
                     f"Found incomplete ingest for {file_path} "
                     f"({record['stored']}/{record['expected']} chunks) "
-                    "— clearing and re-ingesting"
+                    "and is being cleared and re-ingested"
                 )
                 self.vectorstore_wrapper.delete_by_file_hash(file_hash)
 
@@ -689,7 +691,7 @@ class RAGWire:
         Remove every chunk of a document from the collection.
 
         Args:
-            file_path: Path to the source file (must still exist — its hash is
+            file_path: Path to the source file (must still exist, since its hash is
                        what identifies the stored chunks)
 
         Returns:
@@ -736,7 +738,7 @@ class RAGWire:
         if not chunk_texts:
             return ([], True)
 
-        # Extract from the full document text, capped inside extract() — the
+        # Extract from the full document text, capped inside extract(). The
         # first chunk alone was too little context to reliably find all fields.
         llm_metadata, metadata_ok = self._extract_metadata_with_retry(text, file_name)
 
@@ -817,7 +819,7 @@ class RAGWire:
         Extract metadata, retrying transient LLM failures with backoff.
 
         A single timeout used to be swallowed with a warning, ingesting the
-        document with no semantic metadata — and because file-hash dedup then
+        document with no semantic metadata, and because file-hash dedup then
         skipped it on every later run, that state was permanent. Retrying first,
         and tagging what still fails, makes it both rarer and recoverable.
 
@@ -826,7 +828,7 @@ class RAGWire:
             file_name: Name used in log messages
 
         Returns:
-            Tuple of (metadata dict, ok) — ok is False when every attempt failed.
+            Tuple of (metadata dict, ok), where ok is False when every attempt failed.
         """
         try:
             metadata = retry_call(
@@ -935,7 +937,7 @@ class RAGWire:
         """Use the configured LLM to extract metadata filters from a natural language query.
 
         Passes actual stored values to the LLM so it can match exactly what's in
-        the collection — avoids mismatches like 'apple' vs 'apple inc.'.
+        the collection, which avoids mismatches like 'apple' vs 'apple inc.'.
         """
         stored_values = self._stored_values
         fields_desc = "\n".join(
@@ -950,7 +952,7 @@ class RAGWire:
             "The filters will be used to narrow down document search results.\n\n"
             "## Rules\n"
             "1. Extract a field only when the query clearly and explicitly refers to it.\n"
-            "2. Always extract the value the user asked for — but first check if it is an alias, brand name, or subsidiary of a stored value.\n"
+            "2. Always extract the value the user asked for, but first check if it is an alias, brand name, or subsidiary of a stored value.\n"
             "   If the extracted value refers to the same real-world entity as a stored value (e.g. 'google' → 'alphabet inc.', 'instagram' → 'meta'), use the stored value instead.\n"
             "   If no stored value matches, extract exactly what the user said.\n"
             "3. Learn the format and structure from stored values, then apply that same format to what the user asked for:\n"
@@ -1064,8 +1066,8 @@ class RAGWire:
 
         MetadataExtractor lowercases every string on write, and Qdrant's
         MatchValue is exact and case-sensitive. Without this, a caller passing
-        ``{"company_name": "Apple Inc."}`` — exactly what an LLM agent produces
-        from a user's question — matches zero points against the stored
+        ``{"company_name": "Apple Inc."}``, which is exactly what an LLM agent
+        produces from a user's question, matches zero points against the stored
         ``"apple inc."``.
 
         Args:
@@ -1118,7 +1120,7 @@ class RAGWire:
         Return all metadata field names present in the collection.
 
         Scrolls a single point from Qdrant to inspect its payload keys.
-        Fast — one network call regardless of collection size.
+        Fast: one network call regardless of collection size.
 
         Returns:
             List of metadata field names, or empty list if collection is empty
@@ -1138,7 +1140,7 @@ class RAGWire:
         """
         Return unique values for one or more metadata fields.
 
-        Uses Qdrant's facet API — fast and exact regardless of collection size.
+        Uses Qdrant's facet API, which is fast and exact at any collection size.
         Creates a payload index on each field automatically if one doesn't exist.
 
         Args:

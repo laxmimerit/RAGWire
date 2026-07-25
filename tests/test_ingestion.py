@@ -23,7 +23,7 @@ def no_sleep(monkeypatch):
 
 
 # --------------------------------------------------------------------------- #
-# G3 — retry with backoff
+# G3: retry with backoff
 # --------------------------------------------------------------------------- #
 
 def test_retry_returns_once_the_call_succeeds():
@@ -71,7 +71,7 @@ def test_retry_single_attempt_disables_retrying():
 
 
 # --------------------------------------------------------------------------- #
-# G13 — batched writes
+# G13: batched writes
 # --------------------------------------------------------------------------- #
 
 class _RecordingVectorStore:
@@ -133,7 +133,7 @@ def test_write_raises_once_retries_are_exhausted():
 
 
 # --------------------------------------------------------------------------- #
-# G11 — duplicate chunk removal
+# G11: duplicate chunk removal
 # --------------------------------------------------------------------------- #
 
 def test_duplicate_chunks_are_dropped_keeping_first_occurrence():
@@ -153,7 +153,7 @@ def test_dedup_keeps_distinct_chunks_untouched():
 
 
 # --------------------------------------------------------------------------- #
-# G4 — replacing a changed document
+# G4: replacing a changed document
 # --------------------------------------------------------------------------- #
 
 def _add(store, file_hash, source, count=2):
@@ -200,7 +200,7 @@ def test_delete_by_source_on_unknown_source_is_a_noop():
 
 
 # --------------------------------------------------------------------------- #
-# G2 — concurrent preparation
+# G2: concurrent preparation
 # --------------------------------------------------------------------------- #
 
 def _pipeline_with_workers(workers):

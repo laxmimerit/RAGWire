@@ -17,7 +17,7 @@ class DocumentMetadata(BaseModel):
     Every chunk written by the pipeline is validated against this model, so the
     system fields below are guaranteed present and correctly typed on retrieval.
     ``extra: "allow"`` means fields from a custom metadata schema pass through
-    untouched — this model owns the system fields, not the semantic ones.
+    untouched. This model owns the system fields, not the semantic ones.
 
     Finance-specific fields (populated by the built-in FinancialMetadata schema;
     absent when a custom metadata YAML is configured):
@@ -47,8 +47,8 @@ class DocumentMetadata(BaseModel):
     """
 
     # Finance-specific metadata.
-    # NOTE: these types must match FinancialMetadata in metadata/extractor.py —
-    # that model is what the LLM actually populates. fiscal_year is a scalar int
+    # NOTE: these types must match FinancialMetadata in metadata/extractor.py,
+    # since that model is what the LLM actually populates. fiscal_year is a scalar int
     # there, and Qdrant indexes it as a scalar integer.
     company_name: Optional[str] = Field(default=None, description="Company name (normalized to lowercase)")
     doc_type: Optional[str] = Field(default=None, description="Document type (10-K, 10-Q, 8-K)")

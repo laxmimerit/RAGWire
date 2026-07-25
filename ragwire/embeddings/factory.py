@@ -155,7 +155,7 @@ def _get_fastembed_embeddings(config: dict, **kwargs) -> Any:
 class OpenRouterEmbeddings(Embeddings):
     """LangChain-compatible embeddings backed by the official OpenRouter SDK.
 
-    Uses ``openrouter.OpenRouter().embeddings.generate`` directly — not the
+    Uses ``openrouter.OpenRouter().embeddings.generate`` directly, not the
     OpenAI client. This avoids the OpenAI client's default base64 encoding,
     which OpenRouter returns in a form the OpenAI parser rejects
     ("No embedding data received"). We always request ``encoding_format="float"``.

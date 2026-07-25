@@ -3,7 +3,7 @@ Metadata extraction using LLM with structured output.
 
 Extracts structured metadata from document content using language models.
 Uses Pydantic models and LangChain's with_structured_output for reliable,
-type-safe extraction — no manual JSON parsing.
+type-safe extraction with no manual JSON parsing.
 """
 
 import logging
@@ -39,7 +39,7 @@ class FinancialMetadata(BaseModel):
     fiscal_quarter: Optional[str] = Field(
         None,
         description=(
-            "The quarter this filing covers. Only applies to 10-Q filings — null for 10-K and 8-K. "
+            "The quarter this filing covers. Only applies to 10-Q filings, so use null for 10-K and 8-K. "
             "Look for 'quarter ended', 'three months ended', or 'Q1/Q2/Q3'. "
             "Map: first/Q1 → 'q1', second/Q2 → 'q2', third/Q3 → 'q3', fourth/Q4 → 'q4'."
         ),
@@ -58,8 +58,8 @@ class MetadataExtractor:
     """
     Extract structured metadata from documents using LLM structured output.
 
-    Uses Pydantic models with LangChain's with_structured_output — no manual
-    JSON parsing, no type coercion hacks. The LLM returns a validated,
+    Uses Pydantic models with LangChain's with_structured_output, so there is no
+    manual JSON parsing and no type coercion hacks. The LLM returns a validated,
     typed object directly.
 
     Example:
@@ -73,13 +73,13 @@ class MetadataExtractor:
         "and populate every metadata field in the schema with as much detail as the document provides.\n\n"
         "## Extraction Rules\n"
         "1. **Be thorough**: Extract every field you can find. A field should only be null if the "
-        "information is completely absent — not because you are unsure.\n"
+        "information is completely absent, not because you are unsure.\n"
         "2. **Be precise**: Extract exactly what is stated. Do not infer, assume, or hallucinate "
         "values that are not present in the document.\n"
-        "3. **Lists**: For list fields, scan the entire document and extract ALL matching values — "
+        "3. **Lists**: For list fields, scan the entire document and extract ALL matching values, "
         "not just the first occurrence.\n"
         "4. **Strings**: Normalize to lowercase. Trim extra whitespace.\n"
-        "5. **Integers**: Return the numeric value only — no units, symbols, or surrounding text.\n"
+        "5. **Integers**: Return the numeric value only, with no units, symbols, or surrounding text.\n"
         "6. **Null**: Return null only when the field is genuinely not mentioned anywhere in the document.\n\n"
         "## Document Text\n"
         "{content}\n\n"
@@ -154,7 +154,7 @@ class MetadataExtractor:
                 args = get_args(annotation)
 
             if annotation is bool:
-                # bool is a subclass of int — index it as a keyword, not a number
+                # bool is a subclass of int, so index it as a keyword rather than a number
                 types[name] = "keyword"
             elif annotation is int:
                 types[name] = "integer"
@@ -276,8 +276,8 @@ class MetadataExtractor:
           - values: list of example/allowed values (optional)
 
         Optionally, a top-level 'prompt' key overrides the default extraction
-        prompt. The document text is appended automatically — no need to include
-        a {content} placeholder. A top-level 'char_limit' key overrides how much
+        prompt. The document text is appended automatically, so there is no need to
+        include a {content} placeholder. A top-level 'char_limit' key overrides how much
         document text is sent to the LLM (default 10,000 characters).
 
         Args:
@@ -318,7 +318,7 @@ class MetadataExtractor:
         logger.debug(f"Built metadata schema from {len(fields)} field definitions: {instance.fields}")
         return instance
 
-    # Keep for backward compatibility — used by API reference docs
+    # Keep for backward compatibility; used by the API reference docs
     @classmethod
     def build_prompt_from_fields(cls, fields: List[Dict[str, Any]]) -> str:
         """Deprecated: use from_yaml() instead. Kept for backward compatibility."""

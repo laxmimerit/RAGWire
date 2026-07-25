@@ -71,7 +71,7 @@ class QdrantStore:
             logger.info(f"Connected to Qdrant at {url}")
 
         else:
-            # Local file-based storage (path may not exist yet — qdrant creates it)
+            # Local file-based storage (path may not exist yet; qdrant creates it)
             try:
                 self.client = QdrantClient(path=url)
             except Exception as e:
@@ -96,7 +96,7 @@ class QdrantStore:
                 "Local storage does not support payload indexes, so metadata "
                 "filter values are collected by scanning points instead of "
                 "Qdrant's facet API. This is exact but slower on large "
-                "collections — run a server for production workloads: "
+                "collections. Run a server for production workloads: "
                 "docker run -p 6333:6333 qdrant/qdrant"
             )
 
@@ -261,7 +261,7 @@ class QdrantStore:
         """
         Check whether any chunk of a file is present, by its SHA256 hash.
 
-        Note: presence is not the same as a complete ingest — a run that failed
+        Note: presence is not the same as a complete ingest, because a run that failed
         partway leaves chunks behind. Use get_ingest_status() to distinguish.
 
         Args:
@@ -298,7 +298,7 @@ class QdrantStore:
 
         Every chunk records the document's ``total_chunks``, so a complete ingest
         is one where the stored chunk count matches that number. A run that died
-        partway through ``add_documents`` leaves fewer — without this check the
+        partway through ``add_documents`` leaves fewer. Without this check the
         leftover chunks make the file look already-ingested and it is skipped
         forever, leaving the document permanently truncated.
 
@@ -329,7 +329,7 @@ class QdrantStore:
                 expected = metadata.get("total_chunks")
 
         if not isinstance(expected, int) or expected <= 0:
-            # No usable marker — treat presence as complete rather than
+            # No usable marker, so treat presence as complete rather than
             # re-ingesting data written by an older RAGWire version.
             return ("complete", stored, None)
 
@@ -368,7 +368,7 @@ class QdrantStore:
 
         Deduplication is keyed on file content, so an edited document hashes
         differently and would otherwise be stored *alongside* its previous
-        version — leaving the old text retrievable forever. Passing the new hash
+        version, leaving the old text retrievable forever. Passing the new hash
         as ``except_file_hash`` removes only the stale copies.
 
         Args:
@@ -452,14 +452,14 @@ class QdrantStore:
         if hasattr(vectors, "size"):
             return vectors.size
         if isinstance(vectors, dict) and vectors:
-            # Named vectors — RAGWire writes a single unnamed dense vector, but
+            # Named vectors. RAGWire writes a single unnamed dense vector, but
             # read the first entry so externally-created collections still work.
             return next(iter(vectors.values())).size
         return None
 
     #: How many points to sample when discovering which metadata keys exist.
-    #: One point is not enough — a field that was None for that document is
-    #: absent from its payload and would never get an index.
+    #: One point is not enough, because a field that was None for that document
+    #: is absent from its payload and would never get an index.
     _KEY_DISCOVERY_SAMPLE = 100
 
     def get_metadata_keys(self, sample_size: Optional[int] = None) -> List[str]:
@@ -495,7 +495,7 @@ class QdrantStore:
         return sorted(keys)
 
     # Index types for the system fields RAGWire always writes. Schema-defined
-    # fields get their type from the metadata schema instead — see
+    # fields get their type from the metadata schema instead. See
     # MetadataExtractor.field_types.
     _SYSTEM_FIELD_TYPES = {
         "chunk_index": "integer",
@@ -508,7 +508,7 @@ class QdrantStore:
         """
         Create payload indexes for a list of metadata fields.
 
-        Required by Qdrant's facet API. Safe to call multiple times — fields that
+        Required by Qdrant's facet API. Safe to call multiple times: fields that
         are already indexed are skipped.
 
         The index type comes from ``field_types`` when supplied (normally derived
@@ -525,7 +525,7 @@ class QdrantStore:
         if self.is_local:
             # Local storage accepts the call, ignores it, and emits a UserWarning
             # for every field. get_field_values() uses a scan instead.
-            logger.debug("Local Qdrant — skipping payload indexes (not supported)")
+            logger.debug("Local Qdrant does not support payload indexes, skipping")
             return
 
         from qdrant_client.http import models as rest
@@ -579,8 +579,8 @@ class QdrantStore:
 
         Uses Qdrant's facet API against a server, which is exact and fast at any
         collection size. Local file storage silently ignores payload indexes, and
-        the facet API needs them — there, values are collected by scanning points
-        instead, so metadata filtering still works out of the box.
+        the facet API needs them, so there values are collected by scanning points
+        instead and metadata filtering still works out of the box.
 
         Args:
             fields: List of metadata field names (without the 'metadata.' prefix)
@@ -671,7 +671,7 @@ class QdrantStore:
 
         if scanned >= budget:
             logger.warning(
-                f"Field-value scan stopped at {budget} points — values may be "
+                f"Field-value scan stopped at {budget} points, so values may be "
                 "incomplete. Use a Qdrant server for exact results at this size."
             )
         logger.debug(f"Scanned {scanned} point(s) for field values")

@@ -3,7 +3,7 @@ Regression tests for bugs found in the v1.3.2 audit.
 
 Each test names the bug ID from PRODUCTION_READINESS.md so a failure points
 straight at the original defect. These use an in-memory Qdrant client and stub
-objects — no server, no LLM, no network.
+objects, with no server, no LLM and no network.
 """
 
 import logging
@@ -58,7 +58,7 @@ def add_chunks(store: QdrantStore, file_hash: str, count: int, total_chunks: int
 
 
 # --------------------------------------------------------------------------- #
-# B1 — hashlib.compare_digest does not exist
+# B1: hashlib.compare_digest does not exist
 # --------------------------------------------------------------------------- #
 
 def test_b1_compare_hashes_does_not_raise():
@@ -67,7 +67,7 @@ def test_b1_compare_hashes_does_not_raise():
 
 
 # --------------------------------------------------------------------------- #
-# B3 — partial ingest must not look complete
+# B3: partial ingest must not look complete
 # --------------------------------------------------------------------------- #
 
 def test_b3_absent_file_reports_absent():
@@ -107,7 +107,7 @@ def test_b3_delete_by_file_hash_clears_only_that_file():
 
 
 def test_b3_legacy_chunks_without_total_chunks_count_as_complete():
-    """Data written by an older RAGWire has no marker — do not re-ingest it."""
+    """Data written by an older RAGWire has no marker, so do not re-ingest it."""
     store = make_store()
     store.client.upsert(
         collection_name=store.collection_name,
@@ -122,7 +122,7 @@ def test_b3_legacy_chunks_without_total_chunks_count_as_complete():
 
 
 # --------------------------------------------------------------------------- #
-# B6 — payload index type must follow the schema, not a hardcoded name list
+# B6: payload index type must follow the schema, not a hardcoded name list
 # --------------------------------------------------------------------------- #
 
 def test_b6_builtin_schema_types():
@@ -142,7 +142,7 @@ def test_b6_custom_integer_field_is_not_indexed_as_keyword():
 
     # This was the bug: publication_year fell outside the hardcoded
     # _INTEGER_FIELDS set and got a KEYWORD index, which does not index
-    # numeric values — facets came back empty and filters matched nothing.
+    # numeric values, so facets came back empty and filters matched nothing.
     assert types["publication_year"] == "integer"
     assert types["authors"] == "keyword"
     assert types["topic"] == "keyword"
@@ -190,7 +190,7 @@ def test_b6_unknown_fields_default_to_keyword():
 
 
 # --------------------------------------------------------------------------- #
-# B7 — index failures must be logged, not swallowed
+# B7: index failures must be logged, not swallowed
 # --------------------------------------------------------------------------- #
 
 def test_b7_real_failure_is_logged(caplog):
@@ -223,7 +223,7 @@ def test_b7_already_exists_is_recognised():
 
 
 # --------------------------------------------------------------------------- #
-# B8 — field discovery must not depend on a single sampled point
+# B8: field discovery must not depend on a single sampled point
 # --------------------------------------------------------------------------- #
 
 def test_b8_metadata_keys_union_across_points():
@@ -257,7 +257,7 @@ def test_b8_empty_collection_returns_empty_list():
 
 
 # --------------------------------------------------------------------------- #
-# B9 — caller-supplied filters must be normalized like extracted ones
+# B9: caller-supplied filters must be normalized like extracted ones
 # --------------------------------------------------------------------------- #
 
 def test_b9_caller_filters_are_lowercased():
@@ -267,8 +267,8 @@ def test_b9_caller_filters_are_lowercased():
         "fiscal_year": 2024,
     })
 
-    # Stored values are lowercase and Qdrant MatchValue is exact — without this
-    # an agent passing "Apple Inc." matched zero points.
+    # Stored values are lowercase and Qdrant MatchValue is exact, so without
+    # this an agent passing "Apple Inc." matched zero points.
     assert normalized == {
         "company_name": "apple inc.",
         "fiscal_quarter": ["q1", "q2"],
@@ -283,7 +283,7 @@ def test_b9_normalization_trims_whitespace_and_keeps_non_strings():
 
 
 # --------------------------------------------------------------------------- #
-# B12 — console handler must honour the configured level
+# B12: console handler must honour the configured level
 # --------------------------------------------------------------------------- #
 
 @pytest.mark.parametrize("level", ["DEBUG", "WARNING"])
@@ -294,7 +294,7 @@ def test_b12_console_handler_uses_configured_level(level):
 
 
 # --------------------------------------------------------------------------- #
-# B14 — DocumentMetadata must agree with what the LLM actually produces
+# B14: DocumentMetadata must agree with what the LLM actually produces
 # --------------------------------------------------------------------------- #
 
 def test_b14_fiscal_year_type_matches_extraction_schema():
@@ -321,7 +321,7 @@ def test_b14_custom_schema_fields_pass_through():
 
 
 # --------------------------------------------------------------------------- #
-# B13 — embedding dimension mismatch must fail at init with a clear message
+# B13: embedding dimension mismatch must fail at init with a clear message
 # --------------------------------------------------------------------------- #
 
 class _StubEmbedding:
@@ -363,7 +363,7 @@ def test_b13_unknown_stored_size_is_not_an_error():
 
 
 # --------------------------------------------------------------------------- #
-# B15 — extraction limit must match what the documentation promises
+# B15: extraction limit must match what the documentation promises
 # --------------------------------------------------------------------------- #
 
 def test_b15_default_char_limit_is_10k():
@@ -371,7 +371,7 @@ def test_b15_default_char_limit_is_10k():
 
 
 # --------------------------------------------------------------------------- #
-# G15 — local storage ignores payload indexes, so facets return nothing
+# G15: local storage ignores payload indexes, so facets return nothing
 # --------------------------------------------------------------------------- #
 
 def _store_with_values(is_local: bool) -> QdrantStore:
@@ -402,7 +402,7 @@ def test_g15_local_mode_still_returns_field_values():
 
     values = store.get_field_values(["company_name", "fiscal_year"])
 
-    # The facet API needs payload indexes, which local storage ignores — this
+    # The facet API needs payload indexes, which local storage ignores. This
     # used to come back empty, silently disabling auto_filter and
     # get_filter_context() for everyone on the default local setup.
     assert sorted(values["company_name"]) == ["acme inc.", "apple inc."]
@@ -437,7 +437,7 @@ def test_g15_missing_collection_returns_empty_values():
 
 
 # --------------------------------------------------------------------------- #
-# B4 / B5 — document processing: retries, status tagging, empty documents
+# B4 and B5: document processing, retries, status tagging, empty documents
 # --------------------------------------------------------------------------- #
 
 class _FlakyExtractor:
@@ -523,7 +523,7 @@ def test_b3_every_chunk_records_total_chunks(monkeypatch):
 
 
 # --------------------------------------------------------------------------- #
-# B11 — the tracked config must not wipe the collection on startup
+# B11: the tracked config must not wipe the collection on startup
 # --------------------------------------------------------------------------- #
 
 def test_b11_shipped_config_does_not_force_recreate():
