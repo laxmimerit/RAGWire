@@ -12,6 +12,7 @@ Coordinates all components of the RAG system:
 
 import json
 import logging
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, List, Dict, Any, TypedDict
@@ -28,6 +29,10 @@ class IngestStats(TypedDict):
     skipped: int
     failed: int
     chunks_created: int
+    #: Documents that were ingested but whose LLM metadata extraction failed.
+    #: These are counted in `processed` — the text is searchable, but they will
+    #: not match any metadata filter until re-ingested.
+    metadata_failed: int
     errors: List[IngestError]
 
 from langchain_core.prompts import ChatPromptTemplate
@@ -226,6 +231,13 @@ class RAGWire:
         else:
             self.metadata_extractor = MetadataExtractor(llm)
             self._filter_fields = ["company_name", "doc_type", "fiscal_quarter", "fiscal_year"]
+
+        # Payload index types come from the schema, so custom integer fields are
+        # indexed as integers rather than defaulting to keyword.
+        self._field_types = self.metadata_extractor.field_types
+
+        # How many times to retry metadata extraction before giving up on a file
+        self._metadata_retries = metadata_config.get("retries", 2) if metadata_config else 2
         logger.info(f"LLM initialized for metadata extraction (provider={provider}, model={model})")
 
     def _initialize_vectorstore(self) -> None:
@@ -262,12 +274,43 @@ class RAGWire:
             self.vectorstore_wrapper.create_collection(use_sparse=use_sparse)
             logger.info(f"Created new collection: {collection_name}")
         else:
+            self._check_embedding_dimension(collection_name)
             logger.info(f"Using existing collection: {collection_name}")
 
         self.vectorstore = self.vectorstore_wrapper.get_store(use_sparse=use_sparse)
         existing_fields = self.vectorstore_wrapper.get_metadata_keys()
-        self.vectorstore_wrapper.create_payload_indexes(["file_hash"] + existing_fields)
+        self.vectorstore_wrapper.create_payload_indexes(
+            ["file_hash"] + existing_fields, field_types=self._field_types
+        )
         logger.info("Vector store initialized")
+
+    def _check_embedding_dimension(self, collection_name: str) -> None:
+        """
+        Fail fast when the configured embedding model does not match the collection.
+
+        Attaching a 1024-dim model to a collection built with a 768-dim one
+        otherwise succeeds here and blows up much later inside add_documents with
+        a raw Qdrant error that names neither the model nor the fix.
+        """
+        stored_size = self.vectorstore_wrapper.get_vector_size()
+        if stored_size is None:
+            return
+
+        current_size = len(self.embedding.embed_query("test"))
+        if current_size == stored_size:
+            return
+
+        raise ValueError(
+            f"Embedding dimension mismatch for collection '{collection_name}'.\n"
+            f"  Collection was created with : {stored_size} dimensions\n"
+            f"  Configured model produces   : {current_size} dimensions "
+            f"(provider={self.config.get('embeddings', {}).get('provider')}, "
+            f"model={self.config.get('embeddings', {}).get('model')})\n"
+            "An embedding model can only query a collection built with the same model.\n"
+            "Either restore the previous embeddings.model, or set "
+            "vectorstore.force_recreate: true once to rebuild the collection "
+            "(this deletes all ingested data) and re-ingest your documents."
+        )
 
     def _initialize_retriever(self) -> None:
         """Initialize retriever."""
@@ -296,12 +339,13 @@ class RAGWire:
             >>> stats = rag.ingest_documents(["doc1.pdf", "doc2.pdf"])
             >>> print(f"Processed {stats['processed']} documents")
         """
-        stats = {
+        stats: IngestStats = {
             "total": len(file_paths),
             "processed": 0,
             "skipped": 0,
             "failed": 0,
             "chunks_created": 0,
+            "metadata_failed": 0,
             "errors": [],
         }
 
@@ -314,13 +358,27 @@ class RAGWire:
             file_iter = file_paths
 
         for file_path in file_iter:
+            file_hash = None
             try:
-                # File-level deduplication — skip if already ingested
+                # File-level deduplication. A previous run that died partway
+                # leaves chunks behind — those must be cleared and re-ingested,
+                # not mistaken for a finished document.
                 file_hash = sha256_file_from_path(file_path)
-                if self.vectorstore_wrapper.file_hash_exists(file_hash):
+                status, stored, expected = self.vectorstore_wrapper.get_ingest_status(
+                    file_hash
+                )
+
+                if status == "complete":
                     logger.info(f"Skipping (already ingested): {file_path}")
                     stats["skipped"] += 1
                     continue
+
+                if status == "partial":
+                    logger.warning(
+                        f"Found incomplete ingest for {file_path} "
+                        f"({stored}/{expected} chunks) — clearing and re-ingesting"
+                    )
+                    self.vectorstore_wrapper.delete_by_file_hash(file_hash)
 
                 # Load document
                 result = self.loader.load(file_path)
@@ -334,7 +392,7 @@ class RAGWire:
                     continue
 
                 # Process document (pass pre-computed hash to avoid re-reading file)
-                chunks = self._process_document(
+                chunks, metadata_ok = self._process_document(
                     text=result["text_content"],
                     file_path=file_path,
                     file_name=result["file_name"],
@@ -342,26 +400,56 @@ class RAGWire:
                     file_hash=file_hash,
                 )
 
-                # Add to vector store
-                if chunks:
-                    self.vectorstore.add_documents(chunks)
-                    stats["chunks_created"] += len(chunks)
-                    stats["processed"] += 1
-                    logger.info(f"Processed {file_path}: {len(chunks)} chunks")
+                if not chunks:
+                    # Scanned/image-only PDFs and empty files land here. Counting
+                    # them in neither processed nor failed makes them invisible.
+                    error = "no extractable text (possibly a scanned or image-only document)"
+                    stats["failed"] += 1
+                    stats["errors"].append({"file": file_path, "error": error})
+                    logger.error(f"Failed to process {file_path}: {error}")
+                    continue
+
+                self.vectorstore.add_documents(chunks)
+                stats["chunks_created"] += len(chunks)
+                stats["processed"] += 1
+                if not metadata_ok:
+                    stats["metadata_failed"] += 1
+                logger.info(f"Processed {file_path}: {len(chunks)} chunks")
 
             except Exception as e:
                 stats["failed"] += 1
                 stats["errors"].append({"file": file_path, "error": str(e)})
                 logger.error(f"Error processing {file_path}: {e}", exc_info=True)
 
+                # Roll back anything that landed before the failure, so the file
+                # is retried cleanly next run instead of being skipped as done.
+                if file_hash:
+                    try:
+                        self.vectorstore_wrapper.delete_by_file_hash(file_hash)
+                    except Exception as cleanup_error:
+                        logger.warning(
+                            f"Could not roll back partial ingest for {file_path}: "
+                            f"{cleanup_error}"
+                        )
+
         # Create payload indexes for all metadata fields so facet API works
         all_fields = self.vectorstore_wrapper.get_metadata_keys()
-        self.vectorstore_wrapper.create_payload_indexes(all_fields)
+        self.vectorstore_wrapper.create_payload_indexes(
+            all_fields, field_types=self._field_types
+        )
         self._stored_values_cache = None  # invalidate after ingestion
 
         logger.info(
-            f"Ingestion complete: {stats['processed']}/{stats['total']} documents"
+            f"Ingestion complete: {stats['processed']}/{stats['total']} documents "
+            f"({stats['skipped']} skipped, {stats['failed']} failed, "
+            f"{stats['chunks_created']} chunks)"
         )
+        if stats["metadata_failed"]:
+            logger.warning(
+                f"{stats['metadata_failed']} document(s) were ingested without "
+                "metadata — they will not match metadata filters. Re-ingest them "
+                "with rag.reingest_documents([...]) once the LLM is reachable."
+            )
         return stats
 
     def ingest_directory(
@@ -400,11 +488,60 @@ class RAGWire:
             logger.warning(f"No supported files found in {directory} (extensions: {exts})")
             return {
                 "total": 0, "processed": 0, "skipped": 0,
-                "failed": 0, "chunks_created": 0, "errors": [],
+                "failed": 0, "chunks_created": 0, "metadata_failed": 0, "errors": [],
             }
 
         logger.info(f"Found {len(file_paths)} file(s) in {directory}")
         return self.ingest_documents(file_paths)
+
+    def reingest_documents(self, file_paths: List[str]) -> IngestStats:
+        """
+        Force re-ingestion of documents, replacing anything already stored.
+
+        Deletes every existing chunk for each file before ingesting, so this
+        recovers documents that were stored without metadata (LLM was down) or
+        whose content has changed on disk since the last run.
+
+        Args:
+            file_paths: List of file paths to re-ingest
+
+        Returns:
+            Dictionary with ingestion statistics
+
+        Example:
+            >>> stats = rag.reingest_documents(["report.pdf"])
+        """
+        for file_path in file_paths:
+            try:
+                file_hash = sha256_file_from_path(file_path)
+                removed = self.vectorstore_wrapper.delete_by_file_hash(file_hash)
+                if removed:
+                    logger.info(f"Cleared {removed} existing chunk(s) for {file_path}")
+            except FileNotFoundError:
+                # ingest_documents reports this per-file in its error list
+                continue
+
+        return self.ingest_documents(file_paths)
+
+    def delete_document(self, file_path: str) -> int:
+        """
+        Remove every chunk of a document from the collection.
+
+        Args:
+            file_path: Path to the source file (must still exist — its hash is
+                       what identifies the stored chunks)
+
+        Returns:
+            Number of chunks deleted
+
+        Example:
+            >>> rag.delete_document("data/old_report.pdf")
+            42
+        """
+        file_hash = sha256_file_from_path(file_path)
+        removed = self.vectorstore_wrapper.delete_by_file_hash(file_hash)
+        self._stored_values_cache = None  # stored values may have changed
+        return removed
 
     def _process_document(
         self,
@@ -413,12 +550,12 @@ class RAGWire:
         file_name: str,
         file_type: str,
         file_hash: str,
-    ) -> List[Any]:
+    ) -> tuple:
         """
         Process a single document into chunks with LLM-extracted metadata.
 
-        Metadata is extracted once from the first chunk using the LLM,
-        then attached to every chunk of the document.
+        Metadata is extracted once from the document text, then attached to
+        every chunk of that document.
 
         Args:
             text: Document text content
@@ -428,22 +565,19 @@ class RAGWire:
             file_hash: Pre-computed SHA256 hash of the file
 
         Returns:
-            List of Document objects with metadata
+            Tuple of (list of Document objects, metadata_ok) where metadata_ok is
+            False if LLM extraction failed and the chunks carry no semantic metadata.
         """
         from langchain_core.documents import Document
 
-        # Split first so we can pass the first chunk to the LLM
+        # Split first so an empty document short-circuits before the LLM call
         chunk_texts = self.splitter.split_text(text)
+        if not chunk_texts:
+            return ([], True)
 
-        # Extract metadata once from the full document text (capped at 10k chars in extract())
-        # Using chunk_texts[0] (~1000 chars) was too little context to reliably find all fields
-        llm_metadata = {}
-        if chunk_texts:
-            try:
-                llm_metadata = self.extract_metadata(text)
-                logger.debug(f"LLM metadata for {file_name}: {llm_metadata}")
-            except Exception as e:
-                logger.warning(f"LLM metadata extraction failed for {file_name}: {e}")
+        # Extract from the full document text, capped inside extract() — the
+        # first chunk alone was too little context to reliably find all fields.
+        llm_metadata, metadata_ok = self._extract_metadata_with_retry(text, file_name)
 
         documents = []
         for i, chunk_text in enumerate(chunk_texts):
@@ -460,12 +594,54 @@ class RAGWire:
                 "chunk_index": i,
                 "total_chunks": len(chunk_texts),
                 "created_at": datetime.now(timezone.utc).isoformat(),
+                "metadata_status": "ok" if metadata_ok else "failed",
                 **llm_metadata,
             }
 
             documents.append(Document(page_content=chunk_text, metadata=chunk_metadata))
 
-        return documents
+        return (documents, metadata_ok)
+
+    def _extract_metadata_with_retry(self, text: str, file_name: str) -> tuple:
+        """
+        Extract metadata, retrying transient LLM failures with backoff.
+
+        A single timeout used to be swallowed with a warning, ingesting the
+        document with no semantic metadata — and because file-hash dedup then
+        skipped it on every later run, that state was permanent. Retrying first,
+        and tagging what still fails, makes it both rarer and recoverable.
+
+        Args:
+            text: Document text to extract from
+            file_name: Name used in log messages
+
+        Returns:
+            Tuple of (metadata dict, ok) — ok is False when every attempt failed.
+        """
+        attempts = max(1, self._metadata_retries + 1)
+        last_error = None
+
+        for attempt in range(1, attempts + 1):
+            try:
+                metadata = self.extract_metadata(text)
+                logger.debug(f"LLM metadata for {file_name}: {metadata}")
+                return (metadata, True)
+            except Exception as e:
+                last_error = e
+                if attempt < attempts:
+                    delay = 2 ** (attempt - 1)
+                    logger.warning(
+                        f"Metadata extraction failed for {file_name} "
+                        f"(attempt {attempt}/{attempts}): {e} — retrying in {delay}s"
+                    )
+                    time.sleep(delay)
+
+        logger.error(
+            f"Metadata extraction failed for {file_name} after {attempts} attempts: "
+            f"{last_error}. Ingesting without metadata — this document will not "
+            "match metadata filters until it is re-ingested."
+        )
+        return ({}, False)
 
     @property
     def filter_fields(self) -> List[str]:
@@ -482,7 +658,7 @@ class RAGWire:
         """Return cached stored filter values, fetching from Qdrant if needed."""
         if self._stored_values_cache is None:
             self._stored_values_cache = self.vectorstore_wrapper.get_field_values(
-                self._filter_fields, limit=50
+                self._filter_fields, limit=50, field_types=self._field_types
             )
         return self._stored_values_cache
 
@@ -606,11 +782,7 @@ class RAGWire:
             if start != -1:
                 filters, _ = json.JSONDecoder().raw_decode(text, start)
                 if filters:
-                    filters = {
-                        k: [i.lower() if isinstance(i, str) else i for i in v] if isinstance(v, list)
-                           else v.lower() if isinstance(v, str) else v
-                        for k, v in filters.items()
-                    }
+                    filters = self._normalize_filters(filters)
                     logger.info(f"Auto-extracted filters from query: {filters}")
                     return filters
         except Exception as e:
@@ -648,7 +820,9 @@ class RAGWire:
         # Build search kwargs without mutating the shared retriever
         search_kwargs = {**self.retriever.search_kwargs, "k": top_k}
         if filters:
-            search_kwargs["filter"] = self._build_qdrant_filter(filters)
+            search_kwargs["filter"] = self._build_qdrant_filter(
+                self._normalize_filters(filters)
+            )
 
         retriever = self.vectorstore.as_retriever(
             search_type=self.retriever.search_type,
@@ -675,8 +849,38 @@ class RAGWire:
         """
         if filters is None and self._auto_filter:
             filters = self._extract_filters_from_query(query)
-        qdrant_filter = self._build_qdrant_filter(filters) if filters else None
+        qdrant_filter = (
+            self._build_qdrant_filter(self._normalize_filters(filters))
+            if filters
+            else None
+        )
         return hybrid_search(self.vectorstore, query, k=k, filters=qdrant_filter)
+
+    @staticmethod
+    def _normalize_filters(filters: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Lowercase and trim string filter values to match how they are stored.
+
+        MetadataExtractor lowercases every string on write, and Qdrant's
+        MatchValue is exact and case-sensitive. Without this, a caller passing
+        ``{"company_name": "Apple Inc."}`` — exactly what an LLM agent produces
+        from a user's question — matches zero points against the stored
+        ``"apple inc."``.
+
+        Args:
+            filters: Raw filter dict from a caller or from the LLM
+
+        Returns:
+            Filter dict with string values normalized
+        """
+        def _norm(value: Any) -> Any:
+            if isinstance(value, str):
+                return value.lower().strip()
+            if isinstance(value, list):
+                return [_norm(item) for item in value]
+            return value
+
+        return {k: _norm(v) for k, v in filters.items()}
 
     @staticmethod
     def _build_qdrant_filter(filters: Dict[str, Any]) -> Any:
@@ -753,7 +957,9 @@ class RAGWire:
         """
         single = isinstance(fields, str)
         field_list = [fields] if single else fields
-        result = self.vectorstore_wrapper.get_field_values(field_list, limit=limit)
+        result = self.vectorstore_wrapper.get_field_values(
+            field_list, limit=limit, field_types=self._field_types
+        )
         return result[fields] if single else result
 
     def extract_metadata(self, text: str) -> Dict[str, Any]:
@@ -786,16 +992,9 @@ class RAGWire:
         """
         collection_info = self.vectorstore_wrapper.get_collection_info()
 
-        vectors = collection_info.config.params.vectors
-        if hasattr(vectors, "size"):
-            vector_size = vectors.size
-        else:
-            # Named vectors — take the first one
-            vector_size = next(iter(vectors.values())).size
-
         return {
             "collection_name": self.vectorstore_wrapper.collection_name,
             "total_documents": collection_info.points_count or 0,
-            "vector_size": vector_size,
+            "vector_size": self.vectorstore_wrapper.get_vector_size(),
             "indexed": getattr(collection_info, "indexed_vectors_count", None) or 0,
         }

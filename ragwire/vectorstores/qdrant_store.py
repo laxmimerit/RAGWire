@@ -211,9 +211,25 @@ class QdrantStore:
         collections = self.client.get_collections().collections
         return any(col.name == name for col in collections)
 
+    def _file_hash_filter(self, file_hash: str) -> Any:
+        """Build a Qdrant filter matching every chunk of one source file."""
+        from qdrant_client.http import models as rest
+
+        return rest.Filter(
+            must=[
+                rest.FieldCondition(
+                    key="metadata.file_hash",
+                    match=rest.MatchValue(value=file_hash),
+                )
+            ]
+        )
+
     def file_hash_exists(self, file_hash: str) -> bool:
         """
-        Check whether a file has already been ingested by its SHA256 hash.
+        Check whether any chunk of a file is present, by its SHA256 hash.
+
+        Note: presence is not the same as a complete ingest — a run that failed
+        partway leaves chunks behind. Use get_ingest_status() to distinguish.
 
         Args:
             file_hash: SHA256 hash of the file content
@@ -221,26 +237,95 @@ class QdrantStore:
         Returns:
             True if at least one chunk with this file_hash exists in the collection
         """
-        from qdrant_client.http import models as rest
+        return self.count_by_file_hash(file_hash) > 0
 
+    def count_by_file_hash(self, file_hash: str) -> int:
+        """
+        Count how many chunks of a given file are stored in the collection.
+
+        Args:
+            file_hash: SHA256 hash of the file content
+
+        Returns:
+            Number of stored chunks (0 if the collection or file is absent)
+        """
         if not self.collection_name or not self.collection_exists():
-            return False
+            return 0
+
+        result = self.client.count(
+            collection_name=self.collection_name,
+            count_filter=self._file_hash_filter(file_hash),
+            exact=True,
+        )
+        return result.count
+
+    def get_ingest_status(self, file_hash: str) -> tuple:
+        """
+        Determine whether a file is fully ingested, partially ingested, or absent.
+
+        Every chunk records the document's ``total_chunks``, so a complete ingest
+        is one where the stored chunk count matches that number. A run that died
+        partway through ``add_documents`` leaves fewer — without this check the
+        leftover chunks make the file look already-ingested and it is skipped
+        forever, leaving the document permanently truncated.
+
+        Args:
+            file_hash: SHA256 hash of the file content
+
+        Returns:
+            Tuple of (status, stored_count, expected_count) where status is
+            "absent", "partial", or "complete". expected_count is None when
+            nothing is stored.
+        """
+        stored = self.count_by_file_hash(file_hash)
+        if stored == 0:
+            return ("absent", 0, None)
 
         results, _ = self.client.scroll(
             collection_name=self.collection_name,
-            scroll_filter=rest.Filter(
-                must=[
-                    rest.FieldCondition(
-                        key="metadata.file_hash",
-                        match=rest.MatchValue(value=file_hash),
-                    )
-                ]
-            ),
+            scroll_filter=self._file_hash_filter(file_hash),
             limit=1,
-            with_payload=False,
+            with_payload=True,
             with_vectors=False,
         )
-        return len(results) > 0
+
+        expected = None
+        if results:
+            metadata = (results[0].payload or {}).get("metadata", {})
+            if isinstance(metadata, dict):
+                expected = metadata.get("total_chunks")
+
+        if not isinstance(expected, int) or expected <= 0:
+            # No usable marker — treat presence as complete rather than
+            # re-ingesting data written by an older RAGWire version.
+            return ("complete", stored, None)
+
+        return ("complete" if stored >= expected else "partial", stored, expected)
+
+    def delete_by_file_hash(self, file_hash: str) -> int:
+        """
+        Delete every stored chunk belonging to one source file.
+
+        Used to clear a partial ingest before retrying, and to remove a document
+        that is being replaced.
+
+        Args:
+            file_hash: SHA256 hash of the file content
+
+        Returns:
+            Number of chunks that were present before deletion
+        """
+        count = self.count_by_file_hash(file_hash)
+        if count == 0:
+            return 0
+
+        self.client.delete(
+            collection_name=self.collection_name,
+            points_selector=self._file_hash_filter(file_hash),
+            wait=True,
+        )
+        logger.info(f"Deleted {count} chunk(s) for file_hash {file_hash[:12]}…")
+        return count
 
     def get_collection_info(self, collection_name: Optional[str] = None) -> dict:
         """
@@ -258,6 +343,31 @@ class QdrantStore:
             raise ValueError("Collection name must be provided")
 
         return self.client.get_collection(name)
+
+    def get_vector_size(self, collection_name: Optional[str] = None) -> Optional[int]:
+        """
+        Return the dense vector dimension an existing collection was created with.
+
+        Args:
+            collection_name: Name of collection (uses current if not provided)
+
+        Returns:
+            Vector dimension, or None if it cannot be determined
+        """
+        try:
+            info = self.get_collection_info(collection_name)
+            vectors = info.config.params.vectors
+        except Exception as e:
+            logger.debug(f"Could not read vector size: {e}")
+            return None
+
+        if hasattr(vectors, "size"):
+            return vectors.size
+        if isinstance(vectors, dict) and vectors:
+            # Named vectors — RAGWire writes a single unnamed dense vector, but
+            # read the first entry so externally-created collections still work.
+            return next(iter(vectors.values())).size
+        return None
 
     #: How many points to sample when discovering which metadata keys exist.
     #: One point is not enough — a field that was None for that document is
