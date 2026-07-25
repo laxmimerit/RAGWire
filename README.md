@@ -120,15 +120,15 @@ RAGWire is in beta and designed for developers building production-style RAG sys
 
 ## Features
 
-- **Document Loading** — PDF, DOCX, XLSX, PPTX and more via MarkItDown
-- **LLM Metadata Extraction** — extracts company, doc type, fiscal period using your LLM; fully customisable via YAML
-- **Smart Text Splitting** — markdown-aware and recursive chunking strategies
-- **Multiple Embedding Providers** — Ollama, OpenAI, OpenRouter, HuggingFace, Google, FastEmbed
-- **Qdrant Vector Store** — dense, sparse, and hybrid search
-- **Advanced Retrieval** — similarity, MMR, and hybrid search with metadata filtering
-- **SHA256 Deduplication** — at both file and chunk level
-- **Directory Ingestion** — ingest an entire folder with one call, with optional recursive scan
-- **Env Var Substitution** — use `${VAR}` in `config.yaml` for secrets
+- **Document Loading**: PDF, DOCX, XLSX, PPTX and more via MarkItDown
+- **LLM Metadata Extraction**: extracts company, doc type, fiscal period using your LLM; fully customisable via YAML
+- **Smart Text Splitting**: markdown-aware and recursive chunking strategies
+- **Multiple Embedding Providers**: Ollama, OpenAI, OpenRouter, HuggingFace, Google, FastEmbed
+- **Qdrant Vector Store**: dense, sparse, and hybrid search
+- **Advanced Retrieval**: similarity, MMR, and hybrid search with metadata filtering
+- **SHA256 Deduplication**: at both file and chunk level
+- **Directory Ingestion**: ingest an entire folder with one call, with optional recursive scan
+- **Env Var Substitution**: use `${VAR}` in `config.yaml` for secrets
 
 ## Architecture
 
@@ -168,20 +168,20 @@ from ragwire import RAGWire
 
 rag = RAGWire("config.yaml")
 
-# Ingest files — SHA256 deduplication, safe to re-run
+# Ingest files. SHA256 deduplication makes this safe to re-run.
 stats = rag.ingest_documents(["data/Apple_10k_2025.pdf", "data/Microsoft_10k_2025.pdf"])
 print(f"Processed: {stats['processed']}, Skipped: {stats['skipped']}, Chunks: {stats['chunks_created']}")
 
 # Or ingest an entire directory
 stats = rag.ingest_directory("data/", recursive=True)
 
-# Basic retrieval — returns list of LangChain Document objects
+# Basic retrieval returns a list of LangChain Document objects
 results = rag.retrieve("What is the total revenue?", top_k=5)
 for doc in results:
     print(doc.page_content[:300])
-    print(doc.metadata["company_name"])   # str, lowercased — e.g. "apple"
-    print(doc.metadata["fiscal_year"])    # list[int] — e.g. [2025]  ← NOT a plain int
-    print(doc.metadata["file_name"])      # str — e.g. "Apple_10k_2025.pdf"
+    print(doc.metadata["company_name"])   # str, lowercased, e.g. "apple"
+    print(doc.metadata["fiscal_year"])    # int, e.g. 2025
+    print(doc.metadata["file_name"])      # str, e.g. "Apple_10k_2025.pdf"
 
 # Retrieval with explicit metadata filters
 results = rag.retrieve(
@@ -189,7 +189,7 @@ results = rag.retrieve(
     filters={"company_name": "apple", "fiscal_year": 2025}  # pass year as int
 )
 
-# OR logic within a field — matches any of the listed values
+# A list gives OR logic within a field, matching any of the listed values
 results = rag.retrieve("Compare revenue trends", filters={"fiscal_year": [2023, 2024, 2025]})
 
 # Agent-controlled filtering (recommended for AI agents)

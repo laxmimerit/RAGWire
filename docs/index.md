@@ -2,7 +2,7 @@
 
 **Production-grade RAG toolkit for document ingestion and retrieval with hybrid search support.**
 
-RAGWire handles the full RAG pipeline — from loading raw documents to storing and retrieving them from a vector database — so you can focus on building your application.
+RAGWire handles the full RAG pipeline, from loading raw documents to storing and retrieving them from a vector database, so you can focus on building your application.
 
 ---
 
@@ -12,13 +12,13 @@ RAGWire handles the full RAG pipeline — from loading raw documents to storing 
 
 ## Features
 
-- **Document Loading** — PDF, DOCX, XLSX, PPTX and more via MarkItDown
-- **LLM Metadata Extraction** — extracts company, doc type, and fiscal period automatically
-- **Smart Text Splitting** — markdown-aware and recursive chunking strategies
-- **Multiple Embedding Providers** — Ollama, OpenAI, OpenRouter, HuggingFace, Google, FastEmbed
-- **Qdrant Vector Store** — dense, sparse, and hybrid search
-- **Advanced Retrieval** — similarity, MMR, and hybrid search
-- **SHA256 Deduplication** — at both file and chunk level — no duplicate ingestion
+- **Document Loading**: PDF, DOCX, XLSX, PPTX and more via MarkItDown
+- **LLM Metadata Extraction**: extracts company, doc type, and fiscal period automatically
+- **Smart Text Splitting**: markdown-aware and recursive chunking strategies
+- **Multiple Embedding Providers**: Ollama, OpenAI, OpenRouter, HuggingFace, Google, FastEmbed
+- **Qdrant Vector Store**: dense, sparse, and hybrid search
+- **Advanced Retrieval**: similarity, MMR, and hybrid search
+- **SHA256 Deduplication**: at both file and chunk level, so nothing is ingested twice
 
 ---
 
