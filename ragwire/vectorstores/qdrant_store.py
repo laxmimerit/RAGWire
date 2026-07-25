@@ -22,6 +22,9 @@ class QdrantStore:
         client: QdrantClient instance
         embedding: Embedding model instance
         collection_name: Name of the Qdrant collection
+        is_local: True when backed by local file storage rather than a server.
+            Local storage silently ignores payload indexes, so field-value
+            lookups fall back to scanning points.
 
     Example:
         >>> store = QdrantStore(config, embedding)
@@ -29,6 +32,10 @@ class QdrantStore:
         >>> vectorstore = store.get_store()
         >>> docs = vectorstore.similarity_search("query", k=5)
     """
+
+    #: Overridden per-instance in __init__. Declared here so instances built by
+    #: other means (tests, subclasses) still have a sane default.
+    is_local = False
 
     def __init__(
         self, config: dict, embedding: Any, collection_name: Optional[str] = None
@@ -60,12 +67,21 @@ class QdrantStore:
         if url.startswith("http://") or url.startswith("https://"):
             # Remote or local HTTP connection
             self.client = QdrantClient(url=url, api_key=api_key)
+            self.is_local = False
             logger.info(f"Connected to Qdrant at {url}")
 
         else:
             # Local file-based storage (path may not exist yet — qdrant creates it)
             self.client = QdrantClient(path=url)
+            self.is_local = True
             logger.info(f"Using local Qdrant storage at {url}")
+            logger.info(
+                "Local storage does not support payload indexes, so metadata "
+                "filter values are collected by scanning points instead of "
+                "Qdrant's facet API. This is exact but slower on large "
+                "collections — run a server for production workloads: "
+                "docker run -p 6333:6333 qdrant/qdrant"
+            )
 
         self.embedding = embedding
         self.collection_name = collection_name
@@ -434,6 +450,12 @@ class QdrantStore:
             field_types: Optional mapping of field name → "integer" | "float" |
                          "keyword". Unlisted fields default to keyword.
         """
+        if self.is_local:
+            # Local storage accepts the call, ignores it, and emits a UserWarning
+            # for every field. get_field_values() uses a scan instead.
+            logger.debug("Local Qdrant — skipping payload indexes (not supported)")
+            return
+
         from qdrant_client.http import models as rest
 
         schema_by_type = {
@@ -473,11 +495,20 @@ class QdrantStore:
         message = str(error).lower()
         return "already exists" in message or "already indexed" in message
 
+    #: Points scanned by the local-storage fallback before giving up. Bounds the
+    #: cost on large collections; local storage is a development mode anyway.
+    _SCAN_LIMIT = 10000
+
     def get_field_values(
         self, fields: List[str], limit: int = 50, field_types: Optional[dict] = None
     ) -> dict:
         """
-        Return unique values for each requested field using Qdrant's facet API.
+        Return unique values for each requested field.
+
+        Uses Qdrant's facet API against a server, which is exact and fast at any
+        collection size. Local file storage silently ignores payload indexes, and
+        the facet API needs them — there, values are collected by scanning points
+        instead, so metadata filtering still works out of the box.
 
         Args:
             fields: List of metadata field names (without the 'metadata.' prefix)
@@ -488,6 +519,12 @@ class QdrantStore:
         Returns:
             Dict mapping field name → list of unique values
         """
+        if not self.collection_name or not self.collection_exists():
+            return {field: [] for field in fields}
+
+        if self.is_local:
+            return self._scan_field_values(fields, limit=limit)
+
         self.create_payload_indexes(fields, field_types=field_types)
         result = {}
         for field in fields:
@@ -503,3 +540,67 @@ class QdrantStore:
                 result[field] = []
 
         return result
+
+    def _scan_field_values(
+        self, fields: List[str], limit: int = 50, max_points: Optional[int] = None
+    ) -> dict:
+        """
+        Collect unique field values by scrolling through stored points.
+
+        Fallback for local storage, where the facet API is unavailable. Stops
+        early once every requested field has `limit` values, so the common case
+        (a handful of companies or doc types) reads only the first page.
+
+        Args:
+            fields: Metadata field names (without the 'metadata.' prefix)
+            limit: Max unique values to collect per field
+            max_points: Cap on points scanned (defaults to _SCAN_LIMIT)
+
+        Returns:
+            Dict mapping field name → list of unique values, in first-seen order
+        """
+        budget = max_points or self._SCAN_LIMIT
+        values: dict = {field: [] for field in fields}
+        seen: dict = {field: set() for field in fields}
+        offset = None
+        scanned = 0
+
+        while scanned < budget:
+            batch, offset = self.client.scroll(
+                collection_name=self.collection_name,
+                limit=min(256, budget - scanned),
+                offset=offset,
+                with_payload=True,
+                with_vectors=False,
+            )
+            if not batch:
+                break
+            scanned += len(batch)
+
+            for point in batch:
+                metadata = (point.payload or {}).get("metadata", {})
+                if not isinstance(metadata, dict):
+                    continue
+                for field in fields:
+                    if len(values[field]) >= limit:
+                        continue
+                    raw = metadata.get(field)
+                    if raw is None:
+                        continue
+                    for item in (raw if isinstance(raw, list) else [raw]):
+                        if not isinstance(item, (str, int, float, bool)):
+                            continue
+                        if item not in seen[field]:
+                            seen[field].add(item)
+                            values[field].append(item)
+
+            if all(len(values[f]) >= limit for f in fields) or offset is None:
+                break
+
+        if scanned >= budget:
+            logger.warning(
+                f"Field-value scan stopped at {budget} points — values may be "
+                "incomplete. Use a Qdrant server for exact results at this size."
+            )
+        logger.debug(f"Scanned {scanned} point(s) for field values")
+        return values

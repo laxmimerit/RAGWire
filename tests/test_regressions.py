@@ -371,6 +371,72 @@ def test_b15_default_char_limit_is_10k():
 
 
 # --------------------------------------------------------------------------- #
+# G15 — local storage ignores payload indexes, so facets return nothing
+# --------------------------------------------------------------------------- #
+
+def _store_with_values(is_local: bool) -> QdrantStore:
+    store = make_store()
+    store.is_local = is_local
+    store.client.upsert(
+        collection_name=store.collection_name,
+        points=[
+            rest.PointStruct(
+                id=1, vector=[0.1, 0.2, 0.3],
+                payload={"metadata": {"company_name": "apple inc.",
+                                      "fiscal_year": 2024,
+                                      "tags": ["earnings", "q1"]}},
+            ),
+            rest.PointStruct(
+                id=2, vector=[0.1, 0.2, 0.3],
+                payload={"metadata": {"company_name": "acme inc.",
+                                      "fiscal_year": 2024,
+                                      "tags": ["earnings"]}},
+            ),
+        ],
+    )
+    return store
+
+
+def test_g15_local_mode_still_returns_field_values():
+    store = _store_with_values(is_local=True)
+
+    values = store.get_field_values(["company_name", "fiscal_year"])
+
+    # The facet API needs payload indexes, which local storage ignores — this
+    # used to come back empty, silently disabling auto_filter and
+    # get_filter_context() for everyone on the default local setup.
+    assert sorted(values["company_name"]) == ["acme inc.", "apple inc."]
+    assert values["fiscal_year"] == [2024]
+
+
+def test_g15_scan_flattens_list_values():
+    store = _store_with_values(is_local=True)
+    assert sorted(store.get_field_values(["tags"])["tags"]) == ["earnings", "q1"]
+
+
+def test_g15_scan_respects_the_per_field_limit():
+    store = _store_with_values(is_local=True)
+    assert len(store.get_field_values(["company_name"], limit=1)["company_name"]) == 1
+
+
+def test_g15_local_mode_skips_payload_indexes():
+    store = object.__new__(QdrantStore)
+    store.collection_name = "c"
+    store.is_local = True
+    store.client = _RecordingClient(error=Exception("should not be called"))
+
+    store.create_payload_indexes(["company_name"])
+
+    assert store.client.calls == []
+
+
+def test_g15_missing_collection_returns_empty_values():
+    store = make_store()
+    store.collection_name = "nope"
+    assert store.get_field_values(["company_name"]) == {"company_name": []}
+
+
+# --------------------------------------------------------------------------- #
 # B4 / B5 — document processing: retries, status tagging, empty documents
 # --------------------------------------------------------------------------- #
 

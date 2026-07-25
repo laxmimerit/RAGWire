@@ -9,8 +9,9 @@
 **Status legend:** ☐ open · ◐ in progress · ☑ done · ✗ won't fix
 
 > **Current status (2026-07-25):** all 14 actionable bugs fixed and covered by
-> regression tests. B2 is won't-fix by decision. Phases 0 and 1 are complete;
-> Phases 2–4 remain open. Suite: 36 tests, all passing, no server or LLM needed.
+> regression tests, plus G15. B2 is won't-fix by decision. Phases 0 and 1 are
+> complete; Phases 2–4 remain open. Suite: 41 tests, all passing, no server or
+> LLM needed.
 
 ---
 
@@ -383,7 +384,7 @@ context window rather than a magic number.
 | G13 | **No `add_documents` batching or size guard.** A 10k-chunk document is one request. | Large documents blow request-size limits or time out mid-way, triggering B3. | Yes — internal default |
 | G14 | **Tests are import smoke tests only.** No Qdrant fixture, no fake LLM, no ingestion test. | Coverage is nominal; `--cov` in `addopts` reports on code no test exercises. | Yes |
 
-### G15 — Payload indexes do not work in local (path) mode ☐
+### G15 — Payload indexes do not work in local (path) mode ☑
 
 Surfaced while writing the B6 regression tests. `QdrantClient(path=...)` — the
 mode used whenever `vectorstore.url` is not an HTTP URL — emits:
@@ -391,13 +392,24 @@ mode used whenever `vectorstore.url` is not an HTTP URL — emits:
 > *"Payload indexes have no effect in the local Qdrant."*
 
 Payload indexes are what the facet API needs, so on local storage
-`get_field_values()` returns empty lists, which means `auto_filter` and
-`get_filter_context()` show the LLM no stored values and silently degrade. The
-library currently gives no indication that a headline feature is inert.
+`get_field_values()` returned empty lists, which meant `auto_filter` and
+`get_filter_context()` showed the LLM no stored values and silently degraded.
+The library gave no indication that a headline feature was inert.
 
-**Fix:** detect path mode at init and log one clear warning naming the affected
-features, and document that metadata filtering wants server mode
-(`docker run -p 6333:6333 qdrant/qdrant`). Related to G12.
+**Fixed** by making it work rather than only warning about it — a warning would
+still leave metadata filtering broken on the zero-setup path, which is the one
+most beginners use:
+
+- `QdrantStore.is_local` is set at init, with one INFO line naming the tradeoff
+  and pointing at the Docker one-liner.
+- `create_payload_indexes` skips entirely in local mode, so the per-field
+  `UserWarning` spam is gone.
+- `get_field_values` falls back to `_scan_field_values`, which scrolls points
+  and collects distinct values, flattening list-valued fields. It stops as soon
+  as every field has `limit` values, so the common case reads one page, and
+  caps at `_SCAN_LIMIT` (10,000) points with a warning if it hits the cap.
+
+Server mode is unchanged and still uses the facet API.
 
 ---
 
@@ -484,3 +496,4 @@ These exist so "production grade" does not quietly destroy "simple setup."
 | 2026-07-25 | Phase 1 shipped: B3, B4, B6, B7, B8, B10, B13, B14 + 31 regression tests (`13f6a53`, `bb3019e`) |
 | 2026-07-25 | New: `reingest_documents()`, `delete_document()`, `IngestStats.metadata_failed`, `metadata_status` payload field |
 | 2026-07-25 | G15 logged — payload indexes are inert in local path mode, silently disabling metadata filtering |
+| 2026-07-25 | G15 fixed — local mode now collects field values by scanning points; server mode still uses facets |
