@@ -18,6 +18,11 @@ pip install "ragwire[openrouter]"   # LLM + embeddings; Python >= 3.10
 pip install "ragwire[google]"
 pip install "ragwire[anthropic]"
 pip install fastembed        # required for hybrid search
+
+pip install "ragwire[rerank]"  # local cross-encoder reranking, no API key
+pip install "ragwire[cohere]"  # hosted reranking
+pip install "ragwire[mcp]"     # MCP server for Claude Desktop / Code / Cursor
+pip install "ragwire[s3]"      # S3 source connector for rag.sync()
 ```
 
 ---
@@ -81,6 +86,25 @@ retriever:
   search_type: "hybrid"  # "similarity" | "mmr" | "hybrid"
   top_k: 5
   auto_filter: false
+
+  # Optional. Omit the block and no reranking happens.
+  # rerank:
+  #   provider: "cross_encoder"        # or "cohere"
+  #   model: "BAAI/bge-reranker-base"
+  #   fetch_k: 25                      # default max(4 * top_k, 20)
+
+# Optional. Controls rag.query() only.
+generation:
+  max_context_chars: 12000
+
+# Optional. Used by rag.sync().
+# sources:
+#   - type: local
+#     path: "./documents"
+#     recursive: true
+#   - type: s3
+#     bucket: "my-filings"
+#     prefix: "2026/"
 ```
 
 ---
@@ -116,6 +140,148 @@ results = rag.retrieve("Apple's revenue in 2025", filters=filters)
 - `fiscal_year` takes `int`: `{"fiscal_year": 2025}` not `"2025"`
 - List values use OR logic: `{"fiscal_year": [2023, 2024]}` matches either year
 - Multiple fields use AND logic
+
+---
+
+## Answering Questions
+
+`rag.query()` returns a grounded answer instead of raw chunks. It cites every claim and refuses rather than answering from general knowledge.
+
+```python
+answer = rag.query("What was Apple's net income in fiscal 2025?")
+
+answer.text          # "Apple reported net income of $93.7 billion [1]."
+answer.citations     # [Citation([1] apple_10k_2025.pdf)]
+answer.sources       # ["apple_10k_2025.pdf"]
+answer.filters_used  # filters applied during retrieval, or None
+answer.refused       # True when the documents do not answer the question
+answer.confidence    # fraction of sentences carrying a citation
+
+print(answer.formatted())   # answer plus a numbered source list
+answer.to_dict()            # JSON-ready, for an API response
+
+# An Answer is falsy when refused.
+if not answer:
+    print("Not in the collection")
+
+# Async: only the LLM call is awaited.
+answer = await rag.aquery("What was net income?")
+```
+
+Same parameters as `retrieve()`: `top_k`, `filters`, `rerank`.
+
+**`confidence` is groundedness, not accuracy.** It measures how much of the answer is traceable to a source. A fully cited answer built on a wrong chunk still scores 1.0.
+
+---
+
+## Reranking
+
+First-stage retrieval scores query and document separately. A reranker reads the pair together and is far more accurate. Configure `retriever.rerank` and `retrieve()` fetches `fetch_k` candidates, scores them, and returns the best `top_k`.
+
+```python
+results = rag.retrieve("operating margin drivers")
+results[0].metadata["rerank_score"]   # present only when reranking ran
+
+# Compare against the unreranked baseline
+baseline = rag.retrieve("operating margin drivers", rerank=False)
+```
+
+`rerank=True` raises `ValueError` if no reranker is configured, rather than silently returning unreranked results. Reranking applies to `retrieve()` and `query()` only; `hybrid_search()` and `mmr_search()` are primitives and ignore it.
+
+---
+
+## Evaluation
+
+```python
+from ragwire.eval import GoldenSet, evaluate, sweep
+
+golden = GoldenSet.from_file("golden.yaml")
+print(evaluate(rag, golden, top_k=5))     # recall, mrr, hit_rate, precision
+
+print(sweep(rag, golden, {                 # compare settings
+    "no rerank": {"rerank": False},
+    "reranked":  {"rerank": True},
+}))
+```
+
+```yaml
+# golden.yaml
+- query: "What was Apple's net income in fiscal 2025?"
+  expected: ["apple_10k_2025.pdf"]
+  filters: {company_name: "apple"}   # optional
+```
+
+`result.failures` lists the queries that retrieved nothing correct, which is the part worth reading. Unchanged recall with improved MRR is what a working reranker looks like: it reorders the candidate pool rather than widening it.
+
+---
+
+## Syncing Sources
+
+Ingestion only ever adds, so a file deleted at the source keeps answering queries forever. `rag.sync()` reconciles instead.
+
+```python
+stats = rag.sync()                      # ingest new, replace changed, delete gone
+stats = rag.sync(dry_run=True)          # report without writing or deleting
+stats = rag.sync(delete_missing=False)  # additive only
+```
+
+**Deletion safety:** if any source fails to list, or lists zero files, sync deletes nothing that run and records why in `stats["warnings"]`. An unreachable bucket and an emptied bucket are indistinguishable from outside. Ingestion still runs.
+
+Custom sources take one class:
+
+```python
+from ragwire.sources import REGISTRY, Source
+
+class MySource(Source):
+    type_name = "mine"
+    def list_files(self):
+        return ["/local/cache/a.pdf"]   # raise on failure, never return []
+
+REGISTRY.register(MySource)
+```
+
+---
+
+## Command Line
+
+```bash
+ragwire ingest ./documents --recursive
+ragwire sync --dry-run
+ragwire eval golden.yaml --compare-rerank
+ragwire mcp serve --config config.yaml
+ragwire --version
+```
+
+---
+
+## MCP Server
+
+Exposes a collection to Claude Desktop, Claude Code and Cursor.
+
+```bash
+pip install "ragwire[mcp]"
+ragwire mcp serve --config /absolute/path/to/config.yaml
+```
+
+```json
+{
+  "mcpServers": {
+    "ragwire": {
+      "command": "ragwire",
+      "args": ["mcp", "serve", "--config", "/absolute/path/to/config.yaml"]
+    }
+  }
+}
+```
+
+Tools exposed: `get_filter_context`, `search_documents`, `answer_question`, `collection_stats`. Use an absolute config path, since the client launches the server from a working directory you do not control.
+
+The same functions work without MCP:
+
+```python
+from ragwire.mcp import search_documents, get_filter_context
+text = search_documents(rag, "revenue", top_k=5, filters={"company_name": "apple"})
+```
 
 ---
 

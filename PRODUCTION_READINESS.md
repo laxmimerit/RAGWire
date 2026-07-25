@@ -9,9 +9,9 @@
 **Status legend:** ☐ open · ◐ in progress · ☑ done · ✗ won't fix
 
 > **Current status (2026-07-25):** all 14 actionable bugs fixed and covered by
-> regression tests, plus G15. B2 is won't-fix by decision. Phases 0, 1 and 2 are
-> complete; Phases 3 and 4 remain open. Suite: 58 tests, all passing, with no
-> server and no LLM needed.
+> regression tests, plus G15. B2 is won't-fix by decision. Phases 0, 1, 2 and 3
+> are complete; Phase 4 remains open. Suite: 217 tests, all passing, with no
+> server, no LLM and no network needed.
 
 ---
 
@@ -375,10 +375,10 @@ model's context window rather than a magic number.
 | G2 ☑ | **Ingestion is fully serial.** One file at a time, one LLM call at a time, one embed call at a time. | 1,000 PDFs × (convert + LLM + embed) is hours. No `async`, no thread pool, no concurrency knob. | Yes, `workers: 1` default |
 | G3 ☑ | **No retry/backoff anywhere.** Zero retries on LLM, embedding, or Qdrant calls. | Any 429 or transient 5xx fails a file permanently (and see B3/B4). | Yes, default on |
 | G4 ☑ | **No document update path.** Dedup is by file hash; an edited document creates a *second* copy under a new hash with the old chunks still present. | Stale content is returned forever. There is no `delete_by_source` or `upsert`. | Yes, additive API |
-| G5 | **No reranking.** Retrieval ends at vector/hybrid top-k. | Hybrid-then-rerank is the single biggest quality win in modern RAG. | Yes, opt-in `reranker:` block |
-| G6 | **No evaluation harness.** No way to measure whether a config change helps. | "Production grade" is unmeasurable without recall@k or faithfulness on a golden set. | Yes, separate `ragwire.eval` |
+| G5 ☑ | **No reranking.** Retrieval ends at vector/hybrid top-k. | Hybrid-then-rerank is the single biggest quality win in modern RAG. | Yes, opt-in `reranker:` block |
+| G6 ☑ | **No evaluation harness.** No way to measure whether a config change helps. | "Production grade" is unmeasurable without recall@k or faithfulness on a golden set. | Yes, separate `ragwire.eval` |
 | G7 | **No observability.** No token counts, no latency, no cost, no trace IDs. | Cannot answer "why was this answer wrong" or "what does ingestion cost". | Yes, no-op by default |
-| G8 | **No CLI.** Every operation needs a Python script. | `ragwire ingest ./docs`, `ragwire query "..."` and `ragwire stats` would *reduce* time-to-first-success. | **Improves** setup |
+| G8 ◐ | **No CLI.** Every operation needs a Python script. | `ragwire ingest ./docs`, `ragwire query "..."` and `ragwire stats` would *reduce* time-to-first-success. | **Improves** setup |
 | G9 | **No config validation.** `Config` is a raw dict with `.get()` defaults; typos (`chunk_sise`) are silently ignored. Missing env vars log a warning and leave a literal `${OPENAI_API_KEY}` as the API key ([config.py:105](ragwire/core/config.py#L105)). | Misconfiguration surfaces as a confusing 401 from a provider, not as a config error. | **Improves** setup |
 | G10 | **`load_dotenv()` called inside `Config.__init__`** ([config.py:50](ragwire/core/config.py#L50)). | A library silently mutating `os.environ` of the host process surprises embedders. Make it opt-in. | Yes |
 | G11 ☑ | **No chunk-level dedup.** `sha256_chunk` exists and is stored but never queried. | Boilerplate (headers, disclaimers, legends) repeated across filings floods top-k with duplicates. | Yes |
@@ -441,7 +441,7 @@ Small, no API change, no new dependency.
 - [x] B14: enforce or delete `DocumentMetadata`; reconcile `fiscal_year` type
 - [x] G14: real tests with a fake LLM, in-memory Qdrant, and a full ingest→retrieve round trip
 
-### Phase 2: Scale (minor 1.5.0) ☑
+### Phase 2: Scale (shipped in 1.4.1) ☑
 - [x] G3: retry with exponential backoff on every network boundary
 - [x] G2: concurrent ingestion via `ingestion.workers` (default `1`)
 - [x] G13: internal batching for `add_documents` via `ingestion.batch_size` (default `64`)
@@ -457,17 +457,55 @@ document finishes first. `retry_call` re-raises `TypeError`, `AttributeError` an
 `ImportError` immediately instead of retrying, so genuine bugs surface at once
 rather than after three backoff delays.
 
-### Phase 3: Quality (minor 1.6.0)
-- [ ] G5: optional reranker (`reranker: {provider, model, top_n}`)
-- [ ] G6: `ragwire.eval` with golden-set recall@k, MRR, and a config A/B runner
+### Phase 3: Quality and reach (minor 1.5.0) ☑
+- [x] G5: optional reranker via `retriever.rerank`, local `cross_encoder` default plus hosted `cohere`
+- [x] G6: `ragwire.eval` with golden-set recall@k, MRR, hit rate, precision and a `sweep()` A/B runner
+- [x] `rag.query()` and `rag.aquery()`: grounded answers with citations, refusal and a groundedness score
+- [x] MCP server (`ragwire mcp serve`) exposing four tools to Claude Desktop, Claude Code and Cursor
+- [x] Source connectors (`local`, `s3`) plus `rag.sync()` reconciliation including deletions
+- [x] G8 (partial): `ragwire` CLI with `ingest`, `sync`, `eval` and `mcp serve`
 - [ ] G7: token, latency and cost callbacks; optional OpenTelemetry spans
 - [ ] Contextual chunk headers (prepend document title and section to each chunk)
-- [ ] Query rewriting and HyDE as opt-in retrieval strategies
+- [ ] Query rewriting and HyDE, which the `retriever.rerank` block was shaped to accept
 
-### Phase 4: Developer experience (minor 1.7.0)
-- [ ] G8: `ragwire` CLI with `init`, `ingest`, `query`, `stats` and `doctor`
+Design notes:
+
+**Reranking is off unless configured, and free when on.** The default provider
+is a local cross-encoder, so second-stage retrieval never becomes a paid
+feature. The model loads on first use rather than at construction, so an
+ingestion-only script never downloads it, while the package check stays eager
+so a misconfiguration fails at startup rather than on the first query.
+
+**Refusal is a return value, not an exception.** `query()` returns an `Answer`
+with `refused=True` when the sources do not support one. An unanswerable
+question is an ordinary outcome, and forcing callers into a `try` block to
+handle it would push them toward catching and ignoring it. `Answer.__bool__`
+reflects the same thing so `if not answer:` reads correctly.
+
+**`confidence` is citation coverage, and is documented as such.** Calling it
+accuracy would be a lie a user could act on: a fully cited answer drawn from a
+chunk that happens to be wrong still scores 1.0.
+
+**Sync suppresses deletion whenever a source cannot be trusted.** A source that
+fails to list, or lists zero files, cancels the deletion pass for the whole run.
+"The bucket returned nothing" and "every object was deleted" are
+indistinguishable from outside, and acting on the wrong reading empties the
+collection. Ingestion still proceeds; only the destructive half is held back.
+
+**Empty MCP results say so out loud.** An agent reads silence as a broken tool
+and retries indefinitely, so `search_documents` returns an explicit statement
+plus a pointer to `get_filter_context`. Likewise a refusal from
+`answer_question` instructs the agent not to fill the gap from its own
+knowledge, without which the collection boundary quietly disappears at exactly
+the moment it matters.
+
+### Phase 4: Developer experience (minor 1.6.0)
+- [ ] G8 (remainder): `ragwire init`, `query`, `stats` and `doctor` subcommands
 - [ ] G9: Pydantic-validated config with typo detection and fail-fast env resolution
 - [ ] G10: `Config(..., load_env=False)` opt-out
+- [ ] Google Drive source connector (deliberately deferred: needs an interactive
+      OAuth flow and token storage, and a half-built one is worse than the
+      documented `REGISTRY.register` extension point)
 - [ ] `ragwire doctor`, which checks Qdrant reachability, model availability,
       dimension match, and index health in one command
 - [ ] Docker Compose quickstart (Qdrant plus Ollama) as a single `docker compose up`
@@ -515,3 +553,6 @@ These exist so "production grade" does not quietly destroy "simple setup."
 | 2026-07-25 | Fixed a doc/schema contradiction: `fiscal_year` was documented as `list[int]` in README, `docs/metadata.md`, `llms.txt`, `llms-full.txt`, `AGENT.md` and the `json_schema_extra` example, while `FinancialMetadata` declares `Optional[int]` |
 | 2026-07-25 | Version bumped to 1.4.1, carrying Phase 2 plus the documentation and dash pass |
 | 2026-07-25 | Publishing now triggers on pushing a `v*` tag rather than on creating a GitHub release, with a guard that fails the build when the tag and `pyproject.toml` disagree |
+| 2026-07-25 | Phase 3 shipped across five commits: reranking (`fe291f1`), `ragwire.eval` (`4db9a40`), `rag.query()` (`b75132e`), MCP server and CLI (`b8704ed`), source sync (`2954395`). Suite grew from 58 to 217 tests. |
+| 2026-07-25 | New config blocks: `retriever.rerank`, `generation`, `sources`. New extras: `rerank`, `cohere`, `mcp`, `s3`. New console script: `ragwire`. |
+| 2026-07-25 | Found and fixed while building: the CI workflow installed only `pytest` and `pytest-cov` and would have failed on the new async tests; the `ragwire ingest` command read `IngestStats` keys that do not exist |

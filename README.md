@@ -59,7 +59,8 @@ RAGWire gives you the building blocks for document-heavy RAG systems without for
 - Ingest PDFs, DOCX, XLSX, PPTX, Markdown, and text files
 - Extract structured metadata with your chosen LLM
 - Store dense and optional sparse vectors in Qdrant
-- Retrieve with metadata filters, MMR, or hybrid search
+- Retrieve with metadata filters, MMR, hybrid search, or cross-encoder reranking
+- Answer questions with citations, and measure whether retrieval is any good
 - Swap LLM and embedding providers through YAML config
 - Re-run ingestion safely with SHA256 deduplication
 
@@ -201,6 +202,50 @@ results = rag.retrieve("Compare revenue trends", filters={"fiscal_year": [2023, 
 filters = rag.extract_filters("Apple's revenue in 2025")
 # → {"company_name": "apple", "fiscal_year": 2025} or None
 results = rag.retrieve("Apple's revenue in 2025", filters=filters)
+```
+
+### Grounded Answers
+
+`retrieve()` returns chunks. `query()` returns an answer with the sources it came from, and refuses rather than falling back on the model's own knowledge.
+
+```python
+answer = rag.query("What was Apple's net income in fiscal 2025?")
+
+print(answer.text)          # "Apple reported net income of $93.7 billion [1]."
+print(answer.sources)       # ["Apple_10k_2025.pdf"]
+print(answer.confidence)    # fraction of sentences carrying a citation
+
+# An Answer is falsy when the documents did not support one
+if not answer:
+    print("Not in the collection")
+
+# Async, for anything serving concurrent users
+answer = await rag.aquery("What was net income?")
+```
+
+### Keeping the Collection Current
+
+Ingestion only ever adds, so a file deleted at the source keeps answering queries forever. `sync()` reconciles instead.
+
+```yaml
+sources:
+  - type: local
+    path: "./documents"
+    recursive: true
+```
+
+```python
+stats = rag.sync(dry_run=True)   # see what would change
+stats = rag.sync()               # ingest new, replace changed, delete gone
+```
+
+### Command Line
+
+```bash
+ragwire ingest ./documents --recursive
+ragwire sync --dry-run
+ragwire eval golden.yaml --compare-rerank
+ragwire mcp serve --config config.yaml    # expose the collection to Claude Desktop
 ```
 
 ### Query & Retrieval Flow
@@ -376,6 +421,11 @@ ragwire/
 ├── embeddings/    # Multi-provider embedding factory
 ├── vectorstores/  # Qdrant wrapper with hybrid search
 ├── retriever/     # Similarity, MMR, hybrid retrieval and reranking
+├── generation/    # Grounded answers with citations
+├── eval/          # Golden sets, recall@k, MRR, config sweeps
+├── sources/       # Local and S3 connectors for rag.sync()
+├── mcp/           # MCP server and tools
+├── cli.py         # The ragwire command
 └── utils/         # Logging
 ```
 

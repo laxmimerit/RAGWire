@@ -94,7 +94,30 @@ stats = rag.ingest_directory("data/", extensions=[".pdf"])
 
 ---
 
-#### `rag.retrieve(query, top_k, filters)`
+#### `rag.sync(sources, delete_missing, dry_run)`
+
+Reconcile the collection against its configured sources: ingest new files, replace changed ones, delete documents that no source lists any more.
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `sources` | `list[Source]` | No | config value | Uses the `sources` config block when not given |
+| `delete_missing` | `bool` | No | `true` | Remove documents no source lists any more |
+| `dry_run` | `bool` | No | `false` | Report without writing or deleting |
+
+Returns: `SyncStats` with `listed`, `processed`, `skipped`, `replaced`, `deleted`, `deleted_chunks`, `failed`, `chunks_created`, `warnings`, `errors`.
+
+Raises `ValueError` if no sources are configured or passed.
+
+Deletion safety: if any source fails to list, or lists zero files, sync deletes nothing that run and records why in `warnings`. An unreachable bucket and an emptied bucket look identical from outside, so acting on the wrong reading would empty the collection. Ingestion still runs.
+
+```python
+stats = rag.sync(dry_run=True)   # look first
+stats = rag.sync()               # then commit
+```
+
+---
+
+#### `rag.retrieve(query, top_k, filters, rerank)`
 
 Retrieve the most relevant chunks for a query.
 
@@ -103,12 +126,16 @@ Retrieve the most relevant chunks for a query.
 | `query` | `str` | Yes | n/a | Search query |
 | `top_k` | `int` | No | config value | Number of results to return |
 | `filters` | `dict` | No | `None` | Metadata filters |
+| `rerank` | `bool` | No | config value | Override reranking. `False` skips it, `True` requires it. |
 
 Returns: `list[Document]`
 
 Each Document has:
 - `doc.page_content`: the chunk text (str)
 - `doc.metadata`: a dict with all metadata fields
+- `doc.metadata["rerank_score"]`: present only when reranking ran
+
+Reranking: with a `retriever.rerank` block configured, `retrieve()` fetches `fetch_k` candidates, scores each against the query, and returns the best `top_k`. `rerank=True` with no reranker configured raises `ValueError` rather than silently returning unreranked results.
 
 Filter behaviour:
 - If `filters` is passed → used as-is, no LLM call
@@ -131,6 +158,61 @@ results = rag.retrieve("revenue trends", filters={"fiscal_year": [2023, 2024, 20
 for doc in results:
     print(doc.metadata.get("company_name"))
     print(doc.page_content[:300])
+```
+
+---
+
+#### `rag.query(question, top_k, filters, rerank)`
+
+Answer a question from the collection, with citations.
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `question` | `str` | Yes | n/a | The question to answer |
+| `top_k` | `int` | No | config value | Chunks to ground the answer in |
+| `filters` | `dict` | No | `None` | Metadata filters |
+| `rerank` | `bool` | No | config value | Override reranking |
+
+Returns: `Answer`
+
+| Attribute | Type | Description |
+|---|---|---|
+| `text` | `str` | The answer, or why none could be given |
+| `citations` | `list[Citation]` | Sources actually cited, in first-reference order |
+| `documents` | `list[Document]` | Everything retrieved, cited or not |
+| `filters_used` | `dict` or `None` | Filters applied during retrieval |
+| `refused` | `bool` | True when the sources did not support an answer |
+| `confidence` | `float` | Fraction of sentences carrying a citation |
+| `sources` | `list[str]` | Distinct files cited |
+| `formatted()` | `str` | Answer plus a numbered source list |
+| `to_dict()` | `dict` | JSON-ready, for an API response |
+
+Each `Citation` has `index`, `source`, `text`, `snippet`, `metadata`, `score`.
+
+`confidence` is groundedness, not accuracy: a fully cited answer built on a wrong chunk still scores 1.0.
+
+An `Answer` is falsy when refused. `query()` never raises for an unanswerable question, since "I do not know" is a valid result rather than an error.
+
+```python
+answer = rag.query("What was Apple's net income in fiscal 2025?")
+
+if not answer:
+    print("Not in the collection")
+else:
+    print(answer.formatted())
+
+for citation in answer.citations:
+    print(citation.index, citation.source, citation.snippet)
+```
+
+---
+
+#### `rag.aquery(question, top_k, filters, rerank)`
+
+Async version of `query()`. Same parameters and return type. Only the LLM call is awaited; retrieval runs synchronously.
+
+```python
+answer = await rag.aquery("What was net income?")
 ```
 
 ---
@@ -478,9 +560,119 @@ embeddings:
 
 | Key | Required | Default | Description |
 |---|---|---|---|
-| `search_type` | No | `"similarity"` | `"similarity"`, `"mmr"`, or `"hybrid"` |
+| `search_type` | No | `"hybrid"` | `"similarity"`, `"mmr"`, or `"hybrid"` |
 | `top_k` | No | `5` | Default number of results |
 | `auto_filter` | No | `false` | Auto-extract filters from every query via LLM |
+| `rerank` | No | absent | Optional second-stage reranking, see below |
+
+### retriever.rerank subsection
+
+Omit the block and no reranking happens. Adding it is enough to switch it on.
+
+| Key | Required | Default | Description |
+|---|---|---|---|
+| `provider` | No | `"cross_encoder"` | `"cross_encoder"` (local, no API key) or `"cohere"` (hosted) |
+| `model` | No | `"BAAI/bge-reranker-base"` | Cohere default is `"rerank-v3.5"` |
+| `fetch_k` | No | `max(4 * top_k, 20)` | Candidates fetched and scored. Raised to `top_k` if set lower. |
+| `enabled` | No | `true` | `false` switches reranking off while keeping the settings |
+
+Other keys pass through to the provider. `cross_encoder` accepts `batch_size` and `device`.
+
+Install: `pip install "ragwire[rerank]"` or `pip install "ragwire[cohere]"`. A missing package raises `ImportError` at startup, not on the first query.
+
+### generation section
+
+Optional. Controls `rag.query()` only.
+
+| Key | Required | Default | Description |
+|---|---|---|---|
+| `max_context_chars` | No | `12000` | Total budget for the source block sent to the LLM |
+| `system_prompt` | No | built-in | Override the grounding instructions. Must keep `{sentinel}`. |
+
+Chunks are added in rank order until the budget runs out. A chunk crossing the limit is truncated; one that would land under 200 characters is dropped rather than given a source number. Only chunks that fit can be cited.
+
+A default chunk is 10,000 characters, so five overflow most context windows. If you raise this, raise `llm.num_ctx` too. Roughly four characters per token.
+
+A custom `system_prompt` must keep `{sentinel}`, which is replaced with the refusal token. Drop it and refusal detection stops working, so the model answers from general knowledge whenever the documents come up short.
+
+### sources section
+
+Optional. A list of places `rag.sync()` reconciles against. Every entry needs a `type`; other keys are that type's settings, plus `extensions` and `name` which all sources accept.
+
+`type: local`
+
+| Key | Required | Default | Description |
+|---|---|---|---|
+| `path` | Yes | n/a | Directory or single file |
+| `recursive` | No | `false` | Descend into subdirectories |
+
+`type: s3` (needs `pip install "ragwire[s3]"`)
+
+| Key | Required | Default | Description |
+|---|---|---|---|
+| `bucket` | Yes | n/a | Bucket name |
+| `prefix` | No | `""` | Key prefix |
+| `cache_dir` | No | `.ragwire_cache` | Where objects are downloaded before ingestion |
+| `region` | No | boto3 default | AWS region |
+| `endpoint_url` | No | AWS | For MinIO, R2, B2 and other S3-compatible stores |
+| `aws_access_key_id` / `aws_secret_access_key` | No | boto3 chain | Explicit credentials |
+
+---
+
+## Evaluation API
+
+```python
+from ragwire.eval import GoldenSet, evaluate, sweep
+```
+
+`GoldenSet.from_file(path)` loads YAML or JSON. Either a bare list of entries, or a mapping with `queries` plus `match_field` and `match_mode`.
+
+Entry keys: `query` (required), `expected` (required, str or list), `filters` (optional, passed to `retrieve()`), `note` (optional, ignored by scoring).
+
+Set-level keys: `match_field` (default `"source"`), `match_mode` (`"basename"` default, `"exact"`, `"contains"`).
+
+`evaluate(rag, golden, top_k=5, label="default", **retrieve_kwargs)` returns an `EvalResult` with `metrics` (averaged `recall`, `mrr`, `hit_rate`, `precision`), `per_query`, `failures` and `to_table()`. A query that raises is logged and scored zero rather than aborting the run.
+
+`sweep(rag, golden, variants, top_k=5)` returns a `SweepResult` with `results`, `best` and `to_table()`. `variants` maps a label to `retrieve()` kwargs; the first entry is the baseline later rows are compared against.
+
+Metric functions are exported for custom reports: `recall_at_k`, `precision_at_k`, `hit_rate_at_k`, `reciprocal_rank`, `score_query`, `mean_metrics`.
+
+Unchanged recall with improved MRR is what a working reranker looks like: it reorders the candidate pool rather than widening it.
+
+---
+
+## MCP Tools
+
+```python
+from ragwire.mcp import search_documents, answer_question, get_filter_context, collection_stats
+```
+
+Plain functions with no MCP dependency, so they work anywhere an agent needs a collection.
+
+| Function | Signature |
+|---|---|
+| `search_documents` | `(rag, query, top_k=5, filters=None)` |
+| `answer_question` | `(rag, question, top_k=5, filters=None)` |
+| `get_filter_context` | `(rag, query="")` |
+| `collection_stats` | `(rag)` |
+
+All return agent-ready text. `filters` accepts a dict or a JSON string, since models often send a string where a schema asked for an object.
+
+`build_server(rag, name="ragwire")` returns a `FastMCP` server exposing all four. Raises `ImportError` when the `mcp` package is missing. `serve(config_path, name)` builds and runs it over stdio, which is what `ragwire mcp serve` calls.
+
+---
+
+## Command Line
+
+```bash
+ragwire --version
+ragwire ingest PATH [--config CONFIG] [--recursive]
+ragwire sync [--config CONFIG] [--dry-run] [--no-delete]
+ragwire eval GOLDEN [--config CONFIG] [--top-k K] [--compare-rerank]
+ragwire mcp serve [--config CONFIG] [--name NAME]
+```
+
+`--config` defaults to `config.yaml`. `ingest` and `sync` exit non-zero when every file failed.
 
 ---
 
