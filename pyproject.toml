@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ragwire"
-version = "1.5.0"
+version = "1.6.0"
 description = "Production-grade RAG toolkit for document ingestion and retrieval with hybrid search support"
 readme = "README.md"
 license = "MIT"
@@ -54,6 +54,12 @@ dependencies = [
 
     # Document processing
     "markitdown[pdf]>=0.1.0,<1.0.0",
+
+    # Page-wise splitting (splitter.strategy: page).
+    # pypdf extracts PDFs page by page, python-pptx extracts PPTX slide by
+    # slide; MarkItDown only produces flat text with no page boundaries.
+    "pypdf>=4.0.0,<7.0.0",
+    "python-pptx>=1.0.0,<2.0.0",
 
     # Configuration
     "pyyaml>=6.0",

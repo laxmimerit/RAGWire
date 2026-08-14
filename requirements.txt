@@ -18,6 +18,10 @@ langchain-qdrant>=1.0.0,<2.0.0
 # Document processing
 markitdown[pdf]>=0.1.0,<1.0.0
 
+# Page-wise splitting (splitter.strategy: page)
+pypdf>=4.0.0,<7.0.0
+python-pptx>=1.0.0,<2.0.0
+
 # Configuration
 pyyaml>=6.0
 python-dotenv>=1.0.0

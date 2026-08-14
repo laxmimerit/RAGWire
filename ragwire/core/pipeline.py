@@ -64,7 +64,13 @@ from langchain_core.prompts import ChatPromptTemplate
 # Import pipeline components
 from .config import Config
 from ..loaders.markitdown_loader import MarkItDownLoader
-from ..processing.splitter import get_splitter, get_markdown_splitter
+from ..loaders.page_loader import PageLoader
+from ..processing.splitter import (
+    PAGE_MARKER_DEFAULT,
+    PageSplitter,
+    get_splitter,
+    get_markdown_splitter,
+)
 from ..processing.hashing import sha256_file_from_path, sha256_chunk, sha256_text
 from ..utils.retry import retry_call
 from ..metadata.extractor import MetadataExtractor
@@ -163,7 +169,13 @@ class RAGWire:
     def _initialize_loader(self) -> None:
         """Initialize document loader."""
         loader_config = self.config.get("loader", {})
-        self.loader = MarkItDownLoader()
+        strategy = self.config.get("splitter", {}).get("strategy", "markdown")
+        if strategy == "page":
+            # Page-wise splitting needs page boundaries, which MarkItDown's
+            # flat text has already lost by the time any splitter runs.
+            self.loader = PageLoader()
+        else:
+            self.loader = MarkItDownLoader()
         self.loader_extensions = loader_config.get(
             "extensions", [".pdf", ".docx", ".xlsx", ".pptx", ".txt", ".md"]
         )
@@ -175,6 +187,19 @@ class RAGWire:
         chunk_size = splitter_config.get("chunk_size", 10000)
         chunk_overlap = splitter_config.get("chunk_overlap", 2000)
         strategy = splitter_config.get("strategy", "markdown")
+
+        if strategy == "page":
+            # One chunk per page, whatever its size: chunk_size and
+            # chunk_overlap deliberately do not apply here.
+            page_marker = splitter_config.get("page_marker", PAGE_MARKER_DEFAULT)
+            self.splitter = PageSplitter(
+                page_marker=page_marker,
+                max_heading_level=splitter_config.get("page_heading_level", 2),
+            )
+            logger.info(
+                f"Text splitter initialized (strategy=page, page_marker={page_marker!r})"
+            )
+            return
 
         if strategy == "recursive":
             self.splitter = get_splitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
@@ -553,6 +578,7 @@ class RAGWire:
                 file_name=result["file_name"],
                 file_type=result["file_type"],
                 file_hash=file_hash,
+                pages=result.get("pages"),
             )
             record["metadata_ok"] = metadata_ok
 
@@ -771,6 +797,7 @@ class RAGWire:
         file_name: str,
         file_type: str,
         file_hash: str,
+        pages: Optional[List[Dict[str, Any]]] = None,
     ) -> tuple:
         """
         Process a single document into chunks with LLM-extracted metadata.
@@ -784,6 +811,8 @@ class RAGWire:
             file_name: Original file name
             file_type: File type
             file_hash: Pre-computed SHA256 hash of the file
+            pages: Loader-provided pages, present only under the "page"
+                strategy for formats with real pages (PDF, PPTX)
 
         Returns:
             Tuple of (list of Document objects, metadata_ok) where metadata_ok is
@@ -792,8 +821,14 @@ class RAGWire:
         from langchain_core.documents import Document
 
         # Split first so an empty document short-circuits before the LLM call
-        chunk_texts = self.splitter.split_text(text)
-        if not chunk_texts:
+        if isinstance(self.splitter, PageSplitter):
+            chunks = self.splitter.split(text, pages=pages, file_type=file_type)
+        else:
+            chunks = [
+                {"text": t, "page_number": None, "page_label": None, "page_total": None}
+                for t in self.splitter.split_text(text)
+            ]
+        if not chunks:
             return ([], True)
 
         # Extract from the full document text, capped inside extract(). The
@@ -801,10 +836,11 @@ class RAGWire:
         llm_metadata, metadata_ok = self._extract_metadata_with_retry(text, file_name)
 
         if self._dedup_chunks:
-            chunk_texts = self._drop_duplicate_chunks(chunk_texts, file_name)
+            chunks = self._drop_duplicate_pages(chunks, file_name)
 
         documents = []
-        for i, chunk_text in enumerate(chunk_texts):
+        for i, chunk in enumerate(chunks):
+            chunk_text = chunk["text"]
             chunk_id = f"{file_hash}_{i}"
             chunk_hash = sha256_chunk(chunk_id, chunk_text)
 
@@ -820,11 +856,21 @@ class RAGWire:
                 # chunks and documents.
                 "content_hash": sha256_text(chunk_text),
                 "chunk_index": i,
-                "total_chunks": len(chunk_texts),
+                "total_chunks": len(chunks),
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "metadata_status": "ok" if metadata_ok else "failed",
                 **llm_metadata,
             }
+
+            # Page provenance, present only under the page strategy so other
+            # strategies keep their payloads unchanged. page_number is the
+            # page's position in the source document, which can exceed
+            # chunk_index when empty pages were dropped.
+            if chunk.get("page_number") is not None:
+                chunk_metadata["page_number"] = chunk["page_number"]
+                chunk_metadata["page_total"] = chunk.get("page_total")
+                if chunk.get("page_label"):
+                    chunk_metadata["page_label"] = chunk["page_label"]
 
             # Validate the system fields before they reach the store. Custom
             # schema fields pass through untouched (extra="allow"); what this
@@ -838,7 +884,7 @@ class RAGWire:
         return (documents, metadata_ok)
 
     @staticmethod
-    def _drop_duplicate_chunks(chunk_texts: List[str], file_name: str) -> List[str]:
+    def _drop_duplicate_pages(chunks: List[dict], file_name: str) -> List[dict]:
         """
         Remove repeated chunks within a single document, keeping the first.
 
@@ -852,25 +898,34 @@ class RAGWire:
         more than it saves at ingest time.
 
         Args:
-            chunk_texts: Chunk texts in document order
+            chunks: Chunk dicts with a "text" key, in document order (page
+                metadata, when present, travels with its chunk)
             file_name: Used only in the log message
 
         Returns:
-            Chunk texts with later exact duplicates removed
+            Chunk dicts with later exact duplicates removed
         """
         seen = set()
         unique = []
-        for text in chunk_texts:
-            key = sha256_text(text.strip())
+        for chunk in chunks:
+            key = sha256_text(chunk["text"].strip())
             if key in seen:
                 continue
             seen.add(key)
-            unique.append(text)
+            unique.append(chunk)
 
-        dropped = len(chunk_texts) - len(unique)
+        dropped = len(chunks) - len(unique)
         if dropped:
             logger.info(f"Dropped {dropped} duplicate chunk(s) from {file_name}")
         return unique
+
+    @staticmethod
+    def _drop_duplicate_chunks(chunk_texts: List[str], file_name: str) -> List[str]:
+        """Plain-text variant of :meth:`_drop_duplicate_pages`."""
+        kept = RAGWire._drop_duplicate_pages(
+            [{"text": text} for text in chunk_texts], file_name
+        )
+        return [chunk["text"] for chunk in kept]
 
     def _extract_metadata_with_retry(self, text: str, file_name: str) -> tuple:
         """

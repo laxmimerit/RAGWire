@@ -14,7 +14,9 @@ loader:
 splitter:
   chunk_size: 10000
   chunk_overlap: 2000
-  strategy: "markdown"   # "markdown" | "recursive"
+  strategy: "markdown"   # "markdown" | "recursive" | "page"
+  # page_marker: "<!-- pagebreak -->"  # strategy "page": marker separating
+  #                                    # pages in text files (.txt, .md)
 
 # =================================================================
 # Ingestion (all optional, safe defaults shown)

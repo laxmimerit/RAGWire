@@ -14,7 +14,19 @@ loader:
 splitter:
   chunk_size: 10000
   chunk_overlap: 2000
-  strategy: "markdown"   # "markdown" | "recursive"
+  strategy: "markdown"   # "markdown" | "recursive" | "page"
+
+  # strategy "page": exactly one chunk per page, never sub-split, merged or
+  # overlapped, so every chunk cites a page the reader can open.
+  # Chunks carry page_number, page_total and (when known) page_label.
+  #   - PDF: one chunk per physical page          (extracted with pypdf)
+  #   - PPTX: one chunk per slide, title as label (extracted with python-pptx)
+  #   - .txt/.md: split on page_marker if present, else markdown headings,
+  #     else the whole file is a single page
+  #   - HTML: split on headings; other formats become a single page
+  # chunk_size and chunk_overlap do not apply to this strategy.
+  # page_marker: "<!-- pagebreak -->"  # marker separating pages in text files
+  # page_heading_level: 2              # deepest heading that starts a new page
 
 # =================================================================
 # Ingestion (all optional, safe defaults shown)
