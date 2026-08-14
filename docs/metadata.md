@@ -43,6 +43,14 @@ Set per chunk at ingestion time.
 | `total_chunks` | `int` | `42` | Total chunks in the document |
 | `created_at` | `str` | `"2026-03-22T10:00:00+00:00"` | UTC ISO timestamp set at ingestion |
 
+With `splitter.strategy: "page"`, each chunk is exactly one page and additionally carries:
+
+| Field | Type | Example | Description |
+|---|---|---|---|
+| `page_number` | `int` | `42` | The page's position in the source document (PDF page, slide number, marker or heading section). Can exceed `chunk_index` when empty pages were dropped. |
+| `page_total` | `int` | `120` | Pages in the source document, counting dropped empty ones |
+| `page_label` | `str` | `"Revenue Overview"` | Slide title, markdown heading, or printed PDF page label. Omitted when there is none. |
+
 ---
 
 ## Inspecting Metadata on Retrieved Chunks

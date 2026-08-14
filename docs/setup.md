@@ -92,7 +92,10 @@ loader:
 splitter:
   chunk_size: 10000
   chunk_overlap: 2000
-  strategy: "markdown"   # "markdown" or "recursive"
+  strategy: "markdown"   # "markdown", "recursive" or "page"
+  # "page" stores exactly one chunk per PDF page / PPTX slide and adds
+  # page_number to every chunk; chunk_size and chunk_overlap then no longer
+  # apply. Text files split on page_marker (default "<!-- pagebreak -->").
 
 # Turns chunks into vectors
 embeddings:

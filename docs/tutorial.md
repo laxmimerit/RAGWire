@@ -73,7 +73,7 @@ loader:
 splitter:
   chunk_size: 10000
   chunk_overlap: 2000
-  strategy: "markdown"
+  strategy: "markdown"   # or "recursive"; "page" stores one chunk per page/slide
 
 embeddings:
   provider: "ollama"

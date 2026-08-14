@@ -407,6 +407,11 @@ doc.metadata = {
     "chunk_index":    0,                # position within document
     "total_chunks":   42,              # total chunks from this file
     "created_at":     "2026-04-19T...", # ISO format UTC timestamp
+
+    # Only with splitter.strategy: "page" (one chunk per page)
+    "page_number":    42,               # page position in the source document
+    "page_total":     120,              # pages in the document
+    "page_label":     "iv",             # slide title / heading / PDF label; omitted when unknown
 }
 ```
 
@@ -694,13 +699,29 @@ results = loader.load_directory("data/", extensions=[".pdf", ".docx"], recursive
 ### Text Splitters
 
 ```python
-from ragwire import get_splitter, get_markdown_splitter, get_code_splitter
+from ragwire import get_splitter, get_markdown_splitter, get_code_splitter, PageSplitter
 
 splitter = get_markdown_splitter(chunk_size=10000, chunk_overlap=2000)  # PDF/DOCX
 splitter = get_splitter(chunk_size=5000, chunk_overlap=500)              # plain text
 splitter = get_code_splitter(chunk_size=2000, chunk_overlap=200)         # source code
 
 chunks = splitter.split_text(text)  # returns list[str]
+```
+
+Page-wise splitting (one chunk per page, no sub-splitting/merging/overlap; enabled in the
+pipeline with splitter.strategy: "page"):
+
+```python
+from ragwire import PageLoader, PageSplitter
+
+loader = PageLoader()                       # PDF → pages (pypdf), PPTX → slides (python-pptx)
+result = loader.load("report.pdf")          # MarkItDownLoader dict + "pages" key
+pages = PageSplitter().split(
+    result["text_content"], pages=result["pages"], file_type=result["file_type"]
+)
+# each page: {"text", "page_number", "page_label", "page_total"}
+# text files: split on page_marker (default "<!-- pagebreak -->"), else markdown/HTML
+# headings (levels 1-2, heading text becomes page_label), else a single page
 ```
 
 ### get_embedding
@@ -935,7 +956,11 @@ loader:
 splitter:
   chunk_size: 10000
   chunk_overlap: 2000
-  strategy: "markdown"   # "markdown" | "recursive"
+  strategy: "markdown"   # "markdown" | "recursive" | "page"
+  # strategy "page": one chunk per PDF page / PPTX slide, chunks gain
+  # page_number/page_total/page_label; chunk_size and chunk_overlap ignored
+  # page_marker: "<!-- pagebreak -->"  # page separator in .txt/.md files
+  # page_heading_level: 2              # deepest heading that starts a new page
 
 embeddings:
   # Ollama (local, no API key)

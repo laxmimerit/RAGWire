@@ -147,7 +147,7 @@ RAGWire is in beta and designed for developers building production-style RAG sys
 
 - **Document Loading**: PDF, DOCX, XLSX, PPTX and more via MarkItDown
 - **LLM Metadata Extraction**: extracts company, doc type, fiscal period using your LLM; fully customisable via YAML
-- **Smart Text Splitting**: markdown-aware and recursive chunking strategies
+- **Smart Text Splitting**: markdown-aware, recursive, and page-wise chunking strategies; page-wise keeps one chunk per PDF page or PPTX slide and stamps `page_number` on every chunk
 - **SHA256 Deduplication**: at both file and chunk level
 - **Directory Ingestion**: ingest an entire folder with one call, with optional recursive scan
 - **Source Sync**: `rag.sync()` reconciles against local folders and S3, including deletions that plain ingestion never sees
@@ -475,6 +475,18 @@ result = loader.load("document.pdf")
 splitter = get_markdown_splitter(chunk_size=10000, chunk_overlap=2000)
 chunks = splitter.split_text(result["text_content"])
 
+# Or one chunk per page (set splitter.strategy: "page" to use this in the pipeline).
+# Pages come from the format itself: PDF pages, PPTX slides, "<!-- pagebreak -->"
+# markers in text files, or markdown/HTML headings.
+from ragwire import PageLoader, PageSplitter
+
+loader = PageLoader()
+result = loader.load("report.pdf")
+pages = PageSplitter().split(
+    result["text_content"], pages=result["pages"], file_type=result["file_type"]
+)
+# each page: {"text", "page_number", "page_label", "page_total"}
+
 # Embeddings
 embedding = get_embedding({"provider": "ollama", "model": "qwen3-embedding:0.6b"})
 
@@ -510,7 +522,7 @@ context = get_filter_context(rag, "apple revenue")
 ```
 ragwire/
 ├── core/          # Config loader + RAGWire orchestrator
-├── loaders/       # MarkItDown document converter
+├── loaders/       # MarkItDown converter + page-aware loader (pypdf, python-pptx)
 ├── processing/    # Text splitters + SHA256 hashing
 ├── metadata/      # Pydantic schema + LLM extractor
 ├── embeddings/    # Multi-provider embedding factory

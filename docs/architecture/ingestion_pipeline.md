@@ -16,7 +16,7 @@ flowchart TD
     C -->|Yes| SKIP(["SKIP: already ingested\nskipped += 1"])
     C -->|No| D
 
-    D["Load document\nMarkItDownLoader.load()\nFile → Markdown text"]
+    D["Load document\nMarkItDownLoader.load()\nFile → Markdown text\n(PageLoader when strategy=page:\nFile → pages + text)"]
     D --> E{Load\nsucceeded?}
 
     E -->|No| FAIL(["Log error\nfailed += 1"])
@@ -80,7 +80,12 @@ metadata/
     ├── chunk_hash        SHA256(chunk_id + content)
     ├── chunk_index       0
     ├── total_chunks      42
-    └── created_at        "2025-01-01T00:00:00+00:00"
+    ├── created_at        "2025-01-01T00:00:00+00:00"
+    │
+    └── page strategy only (splitter.strategy: "page")
+        ├── page_number   42        position in the source document
+        ├── page_total    120       pages in the document
+        └── page_label    "iv"      slide title / heading / PDF label, when known
 ```
 
 ---
@@ -95,12 +100,14 @@ flowchart TD
 
     Strategy -->|markdown| MS["MarkdownTextSplitter\nSplits on: ## → ### → #### → paragraph → sentence"]
     Strategy -->|recursive| RS["RecursiveCharacterTextSplitter\nSplits on: \\n\\n → \\n → space → char"]
+    Strategy -->|page| PS["PageSplitter\nOne chunk per page\nPDF page · PPTX slide ·\npage_marker · heading section"]
 
     MS --> Chunks["Chunks\n~10,000 chars each\n2,000 char overlap"]
     RS --> Chunks
+    PS --> PChunks["Chunks = pages\nnever sub-split or merged\nno overlap\n+ page_number / page_label"]
 ```
 
-Overlap ensures context is not lost when a sentence spans a chunk boundary.
+Overlap ensures context is not lost when a sentence spans a chunk boundary. The `page` strategy deliberately has none: its contract is that every chunk maps one-to-one onto a page the reader can open, so citations can say "page 42". It also swaps `MarkItDownLoader` for `PageLoader` (pypdf for PDFs, python-pptx for slides), since flat MarkItDown text has already lost the page boundaries; `chunk_size` and `chunk_overlap` do not apply to it.
 
 ---
 

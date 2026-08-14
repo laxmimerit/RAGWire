@@ -15,7 +15,9 @@ graph TD
 
     PIPE --> CFG["core/config.py\nConfig"]
     PIPE --> LOAD["loaders/markitdown_loader.py\nMarkItDownLoader"]
-    PIPE --> SPLIT["processing/splitter.py\nText Splitters"]
+    PIPE --> PLOAD["loaders/page_loader.py\nPageLoader (strategy: page)"]
+    PLOAD --> LOAD
+    PIPE --> SPLIT["processing/splitter.py\nText Splitters + PageSplitter"]
     PIPE --> HASH["processing/hashing.py\nSHA256 Hashing"]
     PIPE --> EXT["metadata/extractor.py\nMetadataExtractor"]
     PIPE --> SCH["metadata/schema.py\nDocumentMetadata"]
@@ -49,7 +51,8 @@ documents and returns an `Answer`, holding no retrieval logic of its own.
 | RAGWire Module | Third-Party Libraries | Notes |
 |---|---|---|
 | `markitdown_loader.py` | `markitdown` | Document → Markdown conversion |
-| `splitter.py` | `langchain-text-splitters` | Markdown + recursive splitting |
+| `page_loader.py` | `pypdf` · `python-pptx` | Page-preserving extraction (PDF pages, PPTX slides) for the `page` strategy |
+| `splitter.py` | `langchain-text-splitters` | Markdown + recursive splitting; `PageSplitter` itself needs nothing beyond the stdlib |
 | `extractor.py` | `langchain-core` (ChatPromptTemplate) | Prompt building + LLM chain |
 | `schema.py` | `pydantic` | Metadata schema validation |
 | `factory.py` (embeddings) | `langchain-openai` · `langchain-ollama` · `langchain-huggingface` · `langchain-google-genai` · `openrouter` | Lazy import; only the configured provider is loaded |
@@ -71,8 +74,8 @@ documents and returns an `Answer`, holding no retrieval logic of its own.
 classDiagram
     class RAGWire {
         +config: dict
-        +loader: MarkItDownLoader
-        +splitter: TextSplitter
+        +loader: MarkItDownLoader or PageLoader
+        +splitter: TextSplitter or PageSplitter
         +embedding: EmbeddingModel
         +metadata_extractor: MetadataExtractor
         +vectorstore_wrapper: QdrantStore
@@ -154,7 +157,9 @@ classDiagram
 ```mermaid
 flowchart LR
     F["str\nfile path"] -->|"MarkItDownLoader"| MD["str\nmarkdown text"]
+    F -.->|"PageLoader (strategy: page)"| PG["List[dict]\npages: number, label, text"]
     MD -->|"TextSplitter"| CL["List[str]\nchunk texts"]
+    PG -.->|"PageSplitter"| CL
     CL -->|"MetadataExtractor + metadata dict"| DL["List[Document]\npage_content + metadata"]
     DL -->|"EmbeddingModel + QdrantStore"| VEC["Qdrant points\nvector + payload"]
 

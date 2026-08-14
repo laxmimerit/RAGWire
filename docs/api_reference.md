@@ -900,18 +900,45 @@ texts = [r["text_content"] for r in results if r["success"]]
 
 ---
 
+### PageLoader
+
+Page-aware loader used by the `"page"` splitter strategy. MarkItDown returns one flat string, and by the time a splitter sees it the page boundaries are gone; `PageLoader` keeps them.
+
+```python
+from ragwire import PageLoader
+```
+
+#### `loader.load(file_path)`
+
+Returns the same dict as `MarkItDownLoader.load()` plus a `pages` key:
+
+- **PDF**: one entry per physical page, extracted with `pypdf`
+- **PPTX**: one entry per slide, extracted with `python-pptx`, slide title as the label
+- **`.txt` / `.md`**: raw text with `pages: None` — finding the boundaries (marker or headings) is `PageSplitter`'s job
+- **Everything else**: MarkItDown flat text with `pages: None`
+
+```python
+loader = PageLoader()
+result = loader.load("report.pdf")
+result["pages"][0]
+# {"page_number": 1, "page_label": None, "text": "..."}
+```
+
+---
+
 ### Text Splitters
 
 ```python
-from ragwire import get_splitter, get_markdown_splitter, get_code_splitter
+from ragwire import get_splitter, get_markdown_splitter, get_code_splitter, PageSplitter
 ```
 
-All splitters return a `RecursiveCharacterTextSplitter` instance with a `.split_text(text)` method.
+The three factory functions return a `RecursiveCharacterTextSplitter` instance with a `.split_text(text)` method. `PageSplitter` is different: it produces exactly one chunk per page and carries page metadata with each chunk.
 
 **Choosing a splitter:**
 - `get_markdown_splitter`: best for PDF/DOCX/reports (converted to markdown by MarkItDown); respects document structure
 - `get_splitter`: best for plain text, HTML, or any content without markdown headers
 - `get_code_splitter`: best for source code files; splits on class/function boundaries
+- `PageSplitter`: when chunks should map one-to-one onto pages the reader can open — page-level citations, slide decks, page-stamped filings
 
 **Chunk size guidance:** Larger chunks (8k to 12k chars) preserve more context per chunk, which suits long-form financial and legal documents. Smaller chunks (500 to 2k chars) give more precise retrieval, which suits FAQ-style content. `chunk_overlap` prevents context being cut mid-sentence; 20% of chunk size is a sensible default.
 
@@ -953,6 +980,34 @@ Splits on code structure: `class`, `def`, comments. Best for source code files.
 splitter = get_code_splitter(chunk_size=2000, chunk_overlap=200)
 chunks = splitter.split_text(source_code)
 ```
+
+#### `PageSplitter(page_marker, max_heading_level)`
+
+One chunk per page, exactly. A page is never sub-split, merged, or truncated — whatever it holds becomes one chunk, however large or small, and there is no overlap across page boundaries. Enabled in the pipeline with `splitter.strategy: "page"`, which also swaps the loader for `PageLoader` so page boundaries survive loading (`chunk_size` and `chunk_overlap` do not apply).
+
+Where the pages come from, by input:
+
+| Input | Page unit | Label |
+|---|---|---|
+| PDF | Physical page (via `pypdf`) | Printed page label ("iv", "A-1") when the PDF defines one |
+| PPTX | Slide (via `python-pptx`) | Slide title |
+| `.txt` / `.md` with marker | Text between `page_marker` occurrences | — |
+| `.md` / HTML without marker | Heading section (`#` and `##` by default) | Heading text |
+| Anything else | The whole document, as a single page | — |
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `page_marker` | `str` | `"<!-- pagebreak -->"` | Marker separating pages in text files; always wins over headings when present |
+| `max_heading_level` | `int` | `2` | Deepest heading level that starts a new page |
+
+```python
+splitter = PageSplitter()
+pages = splitter.split("intro <!-- pagebreak --> details")
+# [{"text": "intro",   "page_number": 1, "page_label": None, "page_total": 2},
+#  {"text": "details", "page_number": 2, "page_label": None, "page_total": 2}]
+```
+
+Whitespace-only pages are dropped (there is nothing to embed), but numbering is preserved: `page_number` always points at the page's true position in the source document, and `page_total` counts the dropped pages too. During ingestion these fields are stored on every chunk as `page_number`, `page_total` and (when known) `page_label`, so they are filterable and can back page-level citations.
 
 ---
 

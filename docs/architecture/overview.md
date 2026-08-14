@@ -18,8 +18,8 @@ graph TB
 
     subgraph DocProc ["① Document Processing"]
         direction LR
-        Loader["MarkItDownLoader\nFile → Markdown"]
-        Splitter["Text Splitter\nMarkdown / Recursive"]
+        Loader["Loader\nMarkItDown: File → Markdown\nPageLoader: File → pages"]
+        Splitter["Text Splitter\nMarkdown / Recursive / Page"]
         Hasher["SHA256 Hasher\nDeduplication"]
     end
 
@@ -79,8 +79,8 @@ Everything is driven by `config.yaml`. The `Config` class loads the YAML, resolv
 
 ```
 config.yaml
-├── loader       → MarkItDownLoader (file extensions)
-├── splitter     → Text splitter (chunk_size, strategy)
+├── loader       → MarkItDownLoader / PageLoader (file extensions)
+├── splitter     → Text splitter (chunk_size, strategy, page_marker)
 ├── embeddings   → Embedding factory (provider, model)
 ├── llm          → LLM factory (provider, model) + MetadataExtractor
 ├── metadata     → Optional custom metadata YAML path
