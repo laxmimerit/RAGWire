@@ -93,6 +93,7 @@ llm:
 # =================================================================
 # metadata:
 #   config_file: "metadata.yaml"   # Path to a custom metadata YAML (see metadata.example.yaml)
+#                                  # Relative paths resolve against this config file's directory
 #                                  # If omitted, the built-in financial fields are used:
 #                                  # company_name, doc_type, fiscal_quarter, fiscal_year
 

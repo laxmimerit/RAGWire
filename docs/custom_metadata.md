@@ -34,6 +34,8 @@ metadata:
   config_file: "metadata.yaml"
 ```
 
+A relative path resolves against the directory of `config.yaml` itself, not the process working directory, so the reference holds no matter where the pipeline is launched from (an MCP client, a service manager, a notebook).
+
 That's it. RAGWire reads the YAML at startup, builds a Pydantic schema from your fields, and uses it for every ingested document. The extracted values are stored in Qdrant and can be filtered at query time exactly like the built-in fields.
 
 See [Domain Examples](#domain-examples) below for ready-to-use schemas for legal, HR, healthcare, and more.

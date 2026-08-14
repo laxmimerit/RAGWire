@@ -92,6 +92,8 @@ Ingestion still runs normally. Only deletion is held back.
 
 A local source goes further and raises `FileNotFoundError` if its path does not exist, for the same reason: a typo in `path` should not be indistinguishable from an emptied folder.
 
+Path style does not matter to the deletion pass. Documents record whatever path string ingest was given, which may be relative while `sources.path` is absolute, or use different separators. Sync resolves both sides before comparing, so a style mismatch is never read as "every document was deleted". Relative paths resolve against the process working directory, so run sync from the same directory ingestion ran from.
+
 ## S3
 
 ```bash

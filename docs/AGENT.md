@@ -274,7 +274,7 @@ ragwire mcp serve --config /absolute/path/to/config.yaml
 }
 ```
 
-Tools exposed: `get_filter_context`, `search_documents`, `answer_question`, `collection_stats`. Use an absolute config path, since the client launches the server from a working directory you do not control.
+Tools exposed: `get_filter_context`, `search_documents`, `answer_question`, `collection_stats`. Use an absolute config path, since the client launches the server from a working directory you do not control. Paths inside the config, such as `metadata.config_file`, resolve against the config file's own directory and can stay relative.
 
 The same functions work without MCP:
 

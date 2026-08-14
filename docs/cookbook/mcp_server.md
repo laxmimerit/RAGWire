@@ -38,7 +38,7 @@ Edit the config file:
 }
 ```
 
-Use an absolute path to `config.yaml`. The server is launched by Claude Desktop from a working directory you do not control, so a relative path will not resolve.
+Use an absolute path to `config.yaml`. The server is launched by Claude Desktop from a working directory you do not control, so a relative path will not resolve. Paths written inside the config are fine either way: `metadata.config_file` resolves against the config file's own directory, so it can stay relative.
 
 Restart Claude Desktop. The tools appear under the connector icon.
 
