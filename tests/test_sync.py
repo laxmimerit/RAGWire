@@ -247,6 +247,31 @@ def test_a_path_stored_in_a_different_form_is_not_treated_as_deleted(tmp_path):
     assert store.deleted == []
 
 
+def test_a_relative_stored_path_survives_an_absolute_listing(tmp_path, monkeypatch):
+    # Ingested from the project root with a relative path, then synced against
+    # an absolute sources.path. This exact combination once deleted an entire
+    # collection while ingest hash-skipped every file.
+    _touch(tmp_path, "docs/a.pdf")
+    monkeypatch.chdir(tmp_path)
+    store = _RecordingStore(["docs/a.pdf"])
+    rag = _pipeline(store)
+
+    rag.sync(sources=[LocalSource(path=str(tmp_path / "docs"))])
+
+    assert store.deleted == []
+
+
+def test_an_absolute_stored_path_survives_a_relative_listing(tmp_path, monkeypatch):
+    _touch(tmp_path, "docs/a.pdf")
+    monkeypatch.chdir(tmp_path)
+    store = _RecordingStore([str(tmp_path / "docs" / "a.pdf")])
+    rag = _pipeline(store)
+
+    rag.sync(sources=[LocalSource(path="docs")])
+
+    assert store.deleted == []
+
+
 def test_delete_missing_false_makes_sync_additive(tmp_path):
     _touch(tmp_path, "a.pdf")
     store = _RecordingStore([str(tmp_path / "gone.pdf")])

@@ -132,6 +132,11 @@ class RAGWire:
         # Load configuration
         self.config = Config(config_path).config
 
+        # Anchor for relative paths named inside the config. The process
+        # working directory is wherever the launcher happened to start us,
+        # which for an MCP client or a service manager is not the project.
+        self._config_dir = Path(config_path).resolve().parent
+
         # Cache for stored filter values, populated on first query and cleared after ingestion
         self._stored_values_cache: Optional[Dict[str, Any]] = None
 
@@ -148,6 +153,25 @@ class RAGWire:
         self._initialize_sources()
 
         logger.info("RAG pipeline initialized successfully")
+
+    def _resolve_config_relative(self, path_str: str) -> str:
+        """
+        Resolve a path named in the config against the config file's directory.
+
+        A relative path here used to be resolved against the process working
+        directory, which broke any launch from another directory: an MCP
+        client or a service manager starts the process wherever it likes.
+        Anchoring to the config file keeps the reference stable no matter who
+        launches the pipeline. The old CWD-relative lookup is kept as a
+        fallback so configs that relied on it keep working.
+        """
+        path = Path(path_str)
+        if path.is_absolute():
+            return path_str
+        anchored = self._config_dir / path
+        if anchored.exists() or not path.exists():
+            return str(anchored)
+        return path_str
 
     def _initialize_logging(self) -> None:
         """Apply logging configuration from config file."""
@@ -320,6 +344,7 @@ class RAGWire:
         metadata_yaml = metadata_config.get("config_file") if metadata_config else None
 
         if metadata_yaml:
+            metadata_yaml = self._resolve_config_relative(metadata_yaml)
             self.metadata_extractor = MetadataExtractor.from_yaml(llm, metadata_yaml)
             logger.info(f"Metadata extractor loaded from: {metadata_yaml}")
             self._filter_fields = self.metadata_extractor.fields or ["company_name", "doc_type", "fiscal_quarter", "fiscal_year"]
@@ -1340,7 +1365,14 @@ class RAGWire:
         for path in listed:
             keep |= self._path_forms(path)
 
-        orphaned = [source for source in stored if source not in keep]
+        # The stored side needs the same normalization. Chunks record whatever
+        # path string was passed to ingest, so a document ingested with a
+        # relative path must not read as orphaned just because the source
+        # listing is absolute, or vice versa. Comparing raw stored strings
+        # against normalized listed forms deleted whole collections that way.
+        orphaned = [
+            source for source in stored if not (self._path_forms(source) & keep)
+        ]
         if not orphaned:
             return
 
