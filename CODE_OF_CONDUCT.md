@@ -69,7 +69,7 @@ activity.
 ## Reporting concerns
 
 Report conduct concerns privately to
-**[uditmerit@gmail.com](mailto:uditmerit@gmail.com)**.
+**[info@kgptalkie.com](mailto:info@kgptalkie.com)**.
 
 You may report an incident you experienced or witnessed. Include as much of the
 following as you are comfortable providing:
